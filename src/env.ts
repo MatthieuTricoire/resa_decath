@@ -10,14 +10,13 @@ export const env = createEnv({
 	},
 	clientPrefix: "VITE_",
 	client: {
-		VITE_APP_TITLE: z.string().min(1).optional(),
+		// VITE_APP_TITLE: z.string().min(1).optional(),
 	},
 	runtimeEnvStrict: {
 		DATABASE_URL: process.env.DATABASE_URL,
 		NODE_ENV: process.env.NODE_ENV,
 		BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
 		BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
-		VITE_APP_TITLE: import.meta.env.VITE_APP_TITLE,
 	},
 	emptyStringAsUndefined: true,
 });

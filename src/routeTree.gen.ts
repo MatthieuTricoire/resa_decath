@@ -12,9 +12,29 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminLayoutRouteImport } from './routes/admin/_layout'
+import { Route as AdminLayoutIndexRouteImport } from './routes/admin/_layout/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as AdminLayoutUsersRouteImport } from './routes/admin/_layout/users'
-import { Route as AdminLayoutDashboardRouteImport } from './routes/admin/_layout/dashboard'
+import { Route as AdminLayoutUtilisateursRouteImport } from './routes/admin/_layout/utilisateurs'
+import { Route as AdminLayoutStatistiquesRouteImport } from './routes/admin/_layout/statistiques'
+import { Route as AdminLayoutReservationsRouteImport } from './routes/admin/_layout/reservations'
+import { Route as AdminLayoutFacturationRouteImport } from './routes/admin/_layout/facturation'
+import { Route as AdminLayoutEquipementsRouteImport } from './routes/admin/_layout/equipements'
+import { Route as AdminLayoutDureesRouteImport } from './routes/admin/_layout/durees'
+import { Route as AdminLayoutUtilisateursIndexRouteImport } from './routes/admin/_layout/utilisateurs/index'
+import { Route as AdminLayoutReservationsIndexRouteImport } from './routes/admin/_layout/reservations/index'
+import { Route as AdminLayoutEquipementsIndexRouteImport } from './routes/admin/_layout/equipements/index'
+import { Route as AdminLayoutUtilisateursAjouterRouteImport } from './routes/admin/_layout/utilisateurs/ajouter'
+import { Route as AdminLayoutUtilisateursUserIdRouteImport } from './routes/admin/_layout/utilisateurs/$userId'
+import { Route as AdminLayoutReservationsAjouterRouteImport } from './routes/admin/_layout/reservations/ajouter'
+import { Route as AdminLayoutReservationsReservationIdRouteImport } from './routes/admin/_layout/reservations/$reservationId'
+import { Route as AdminLayoutEquipementsCategoriesRouteImport } from './routes/admin/_layout/equipements/categories'
+import { Route as AdminLayoutEquipementsAjouterRouteImport } from './routes/admin/_layout/equipements/ajouter'
+import { Route as AdminLayoutEquipementsItemIdRouteImport } from './routes/admin/_layout/equipements/$itemId'
+import { Route as AdminLayoutUtilisateursUserIdIndexRouteImport } from './routes/admin/_layout/utilisateurs/$userId/index'
+import { Route as AdminLayoutReservationsReservationIdIndexRouteImport } from './routes/admin/_layout/reservations/$reservationId/index'
+import { Route as AdminLayoutEquipementsItemIdIndexRouteImport } from './routes/admin/_layout/equipements/$itemId/index'
+import { Route as AdminLayoutUtilisateursUserIdModifierRouteImport } from './routes/admin/_layout/utilisateurs/$userId/modifier'
+import { Route as AdminLayoutEquipementsItemIdModifierRouteImport } from './routes/admin/_layout/equipements/$itemId/modifier'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -31,46 +51,214 @@ const AdminLayoutRoute = AdminLayoutRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminLayoutIndexRoute = AdminLayoutIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminLayoutRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminLayoutUsersRoute = AdminLayoutUsersRouteImport.update({
-  id: '/users',
-  path: '/users',
+const AdminLayoutUtilisateursRoute = AdminLayoutUtilisateursRouteImport.update({
+  id: '/utilisateurs',
+  path: '/utilisateurs',
   getParentRoute: () => AdminLayoutRoute,
 } as any)
-const AdminLayoutDashboardRoute = AdminLayoutDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+const AdminLayoutStatistiquesRoute = AdminLayoutStatistiquesRouteImport.update({
+  id: '/statistiques',
+  path: '/statistiques',
   getParentRoute: () => AdminLayoutRoute,
 } as any)
+const AdminLayoutReservationsRoute = AdminLayoutReservationsRouteImport.update({
+  id: '/reservations',
+  path: '/reservations',
+  getParentRoute: () => AdminLayoutRoute,
+} as any)
+const AdminLayoutFacturationRoute = AdminLayoutFacturationRouteImport.update({
+  id: '/facturation',
+  path: '/facturation',
+  getParentRoute: () => AdminLayoutRoute,
+} as any)
+const AdminLayoutEquipementsRoute = AdminLayoutEquipementsRouteImport.update({
+  id: '/equipements',
+  path: '/equipements',
+  getParentRoute: () => AdminLayoutRoute,
+} as any)
+const AdminLayoutDureesRoute = AdminLayoutDureesRouteImport.update({
+  id: '/durees',
+  path: '/durees',
+  getParentRoute: () => AdminLayoutRoute,
+} as any)
+const AdminLayoutUtilisateursIndexRoute =
+  AdminLayoutUtilisateursIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminLayoutUtilisateursRoute,
+  } as any)
+const AdminLayoutReservationsIndexRoute =
+  AdminLayoutReservationsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminLayoutReservationsRoute,
+  } as any)
+const AdminLayoutEquipementsIndexRoute =
+  AdminLayoutEquipementsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminLayoutEquipementsRoute,
+  } as any)
+const AdminLayoutUtilisateursAjouterRoute =
+  AdminLayoutUtilisateursAjouterRouteImport.update({
+    id: '/ajouter',
+    path: '/ajouter',
+    getParentRoute: () => AdminLayoutUtilisateursRoute,
+  } as any)
+const AdminLayoutUtilisateursUserIdRoute =
+  AdminLayoutUtilisateursUserIdRouteImport.update({
+    id: '/$userId',
+    path: '/$userId',
+    getParentRoute: () => AdminLayoutUtilisateursRoute,
+  } as any)
+const AdminLayoutReservationsAjouterRoute =
+  AdminLayoutReservationsAjouterRouteImport.update({
+    id: '/ajouter',
+    path: '/ajouter',
+    getParentRoute: () => AdminLayoutReservationsRoute,
+  } as any)
+const AdminLayoutReservationsReservationIdRoute =
+  AdminLayoutReservationsReservationIdRouteImport.update({
+    id: '/$reservationId',
+    path: '/$reservationId',
+    getParentRoute: () => AdminLayoutReservationsRoute,
+  } as any)
+const AdminLayoutEquipementsCategoriesRoute =
+  AdminLayoutEquipementsCategoriesRouteImport.update({
+    id: '/categories',
+    path: '/categories',
+    getParentRoute: () => AdminLayoutEquipementsRoute,
+  } as any)
+const AdminLayoutEquipementsAjouterRoute =
+  AdminLayoutEquipementsAjouterRouteImport.update({
+    id: '/ajouter',
+    path: '/ajouter',
+    getParentRoute: () => AdminLayoutEquipementsRoute,
+  } as any)
+const AdminLayoutEquipementsItemIdRoute =
+  AdminLayoutEquipementsItemIdRouteImport.update({
+    id: '/$itemId',
+    path: '/$itemId',
+    getParentRoute: () => AdminLayoutEquipementsRoute,
+  } as any)
+const AdminLayoutUtilisateursUserIdIndexRoute =
+  AdminLayoutUtilisateursUserIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminLayoutUtilisateursUserIdRoute,
+  } as any)
+const AdminLayoutReservationsReservationIdIndexRoute =
+  AdminLayoutReservationsReservationIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminLayoutReservationsReservationIdRoute,
+  } as any)
+const AdminLayoutEquipementsItemIdIndexRoute =
+  AdminLayoutEquipementsItemIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminLayoutEquipementsItemIdRoute,
+  } as any)
+const AdminLayoutUtilisateursUserIdModifierRoute =
+  AdminLayoutUtilisateursUserIdModifierRouteImport.update({
+    id: '/modifier',
+    path: '/modifier',
+    getParentRoute: () => AdminLayoutUtilisateursUserIdRoute,
+  } as any)
+const AdminLayoutEquipementsItemIdModifierRoute =
+  AdminLayoutEquipementsItemIdModifierRouteImport.update({
+    id: '/modifier',
+    path: '/modifier',
+    getParentRoute: () => AdminLayoutEquipementsItemIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminLayoutRouteWithChildren
   '/admin/login': typeof AdminLoginRoute
-  '/admin/dashboard': typeof AdminLayoutDashboardRoute
-  '/admin/users': typeof AdminLayoutUsersRoute
+  '/admin/durees': typeof AdminLayoutDureesRoute
+  '/admin/equipements': typeof AdminLayoutEquipementsRouteWithChildren
+  '/admin/facturation': typeof AdminLayoutFacturationRoute
+  '/admin/reservations': typeof AdminLayoutReservationsRouteWithChildren
+  '/admin/statistiques': typeof AdminLayoutStatistiquesRoute
+  '/admin/utilisateurs': typeof AdminLayoutUtilisateursRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/admin/': typeof AdminLayoutIndexRoute
+  '/admin/equipements/$itemId': typeof AdminLayoutEquipementsItemIdRouteWithChildren
+  '/admin/equipements/ajouter': typeof AdminLayoutEquipementsAjouterRoute
+  '/admin/equipements/categories': typeof AdminLayoutEquipementsCategoriesRoute
+  '/admin/reservations/$reservationId': typeof AdminLayoutReservationsReservationIdRouteWithChildren
+  '/admin/reservations/ajouter': typeof AdminLayoutReservationsAjouterRoute
+  '/admin/utilisateurs/$userId': typeof AdminLayoutUtilisateursUserIdRouteWithChildren
+  '/admin/utilisateurs/ajouter': typeof AdminLayoutUtilisateursAjouterRoute
+  '/admin/equipements/': typeof AdminLayoutEquipementsIndexRoute
+  '/admin/reservations/': typeof AdminLayoutReservationsIndexRoute
+  '/admin/utilisateurs/': typeof AdminLayoutUtilisateursIndexRoute
+  '/admin/equipements/$itemId/modifier': typeof AdminLayoutEquipementsItemIdModifierRoute
+  '/admin/utilisateurs/$userId/modifier': typeof AdminLayoutUtilisateursUserIdModifierRoute
+  '/admin/equipements/$itemId/': typeof AdminLayoutEquipementsItemIdIndexRoute
+  '/admin/reservations/$reservationId/': typeof AdminLayoutReservationsReservationIdIndexRoute
+  '/admin/utilisateurs/$userId/': typeof AdminLayoutUtilisateursUserIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminLayoutRouteWithChildren
   '/admin/login': typeof AdminLoginRoute
-  '/admin/dashboard': typeof AdminLayoutDashboardRoute
-  '/admin/users': typeof AdminLayoutUsersRoute
+  '/admin/durees': typeof AdminLayoutDureesRoute
+  '/admin/facturation': typeof AdminLayoutFacturationRoute
+  '/admin/statistiques': typeof AdminLayoutStatistiquesRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/admin': typeof AdminLayoutIndexRoute
+  '/admin/equipements/ajouter': typeof AdminLayoutEquipementsAjouterRoute
+  '/admin/equipements/categories': typeof AdminLayoutEquipementsCategoriesRoute
+  '/admin/reservations/ajouter': typeof AdminLayoutReservationsAjouterRoute
+  '/admin/utilisateurs/ajouter': typeof AdminLayoutUtilisateursAjouterRoute
+  '/admin/equipements': typeof AdminLayoutEquipementsIndexRoute
+  '/admin/reservations': typeof AdminLayoutReservationsIndexRoute
+  '/admin/utilisateurs': typeof AdminLayoutUtilisateursIndexRoute
+  '/admin/equipements/$itemId/modifier': typeof AdminLayoutEquipementsItemIdModifierRoute
+  '/admin/utilisateurs/$userId/modifier': typeof AdminLayoutUtilisateursUserIdModifierRoute
+  '/admin/equipements/$itemId': typeof AdminLayoutEquipementsItemIdIndexRoute
+  '/admin/reservations/$reservationId': typeof AdminLayoutReservationsReservationIdIndexRoute
+  '/admin/utilisateurs/$userId': typeof AdminLayoutUtilisateursUserIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin/_layout': typeof AdminLayoutRouteWithChildren
   '/admin/login': typeof AdminLoginRoute
-  '/admin/_layout/dashboard': typeof AdminLayoutDashboardRoute
-  '/admin/_layout/users': typeof AdminLayoutUsersRoute
+  '/admin/_layout/durees': typeof AdminLayoutDureesRoute
+  '/admin/_layout/equipements': typeof AdminLayoutEquipementsRouteWithChildren
+  '/admin/_layout/facturation': typeof AdminLayoutFacturationRoute
+  '/admin/_layout/reservations': typeof AdminLayoutReservationsRouteWithChildren
+  '/admin/_layout/statistiques': typeof AdminLayoutStatistiquesRoute
+  '/admin/_layout/utilisateurs': typeof AdminLayoutUtilisateursRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/admin/_layout/': typeof AdminLayoutIndexRoute
+  '/admin/_layout/equipements/$itemId': typeof AdminLayoutEquipementsItemIdRouteWithChildren
+  '/admin/_layout/equipements/ajouter': typeof AdminLayoutEquipementsAjouterRoute
+  '/admin/_layout/equipements/categories': typeof AdminLayoutEquipementsCategoriesRoute
+  '/admin/_layout/reservations/$reservationId': typeof AdminLayoutReservationsReservationIdRouteWithChildren
+  '/admin/_layout/reservations/ajouter': typeof AdminLayoutReservationsAjouterRoute
+  '/admin/_layout/utilisateurs/$userId': typeof AdminLayoutUtilisateursUserIdRouteWithChildren
+  '/admin/_layout/utilisateurs/ajouter': typeof AdminLayoutUtilisateursAjouterRoute
+  '/admin/_layout/equipements/': typeof AdminLayoutEquipementsIndexRoute
+  '/admin/_layout/reservations/': typeof AdminLayoutReservationsIndexRoute
+  '/admin/_layout/utilisateurs/': typeof AdminLayoutUtilisateursIndexRoute
+  '/admin/_layout/equipements/$itemId/modifier': typeof AdminLayoutEquipementsItemIdModifierRoute
+  '/admin/_layout/utilisateurs/$userId/modifier': typeof AdminLayoutUtilisateursUserIdModifierRoute
+  '/admin/_layout/equipements/$itemId/': typeof AdminLayoutEquipementsItemIdIndexRoute
+  '/admin/_layout/reservations/$reservationId/': typeof AdminLayoutReservationsReservationIdIndexRoute
+  '/admin/_layout/utilisateurs/$userId/': typeof AdminLayoutUtilisateursUserIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -78,25 +266,78 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/admin/login'
-    | '/admin/dashboard'
-    | '/admin/users'
+    | '/admin/durees'
+    | '/admin/equipements'
+    | '/admin/facturation'
+    | '/admin/reservations'
+    | '/admin/statistiques'
+    | '/admin/utilisateurs'
     | '/api/auth/$'
+    | '/admin/'
+    | '/admin/equipements/$itemId'
+    | '/admin/equipements/ajouter'
+    | '/admin/equipements/categories'
+    | '/admin/reservations/$reservationId'
+    | '/admin/reservations/ajouter'
+    | '/admin/utilisateurs/$userId'
+    | '/admin/utilisateurs/ajouter'
+    | '/admin/equipements/'
+    | '/admin/reservations/'
+    | '/admin/utilisateurs/'
+    | '/admin/equipements/$itemId/modifier'
+    | '/admin/utilisateurs/$userId/modifier'
+    | '/admin/equipements/$itemId/'
+    | '/admin/reservations/$reservationId/'
+    | '/admin/utilisateurs/$userId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/admin/login'
-    | '/admin/dashboard'
-    | '/admin/users'
+    | '/admin/durees'
+    | '/admin/facturation'
+    | '/admin/statistiques'
     | '/api/auth/$'
+    | '/admin'
+    | '/admin/equipements/ajouter'
+    | '/admin/equipements/categories'
+    | '/admin/reservations/ajouter'
+    | '/admin/utilisateurs/ajouter'
+    | '/admin/equipements'
+    | '/admin/reservations'
+    | '/admin/utilisateurs'
+    | '/admin/equipements/$itemId/modifier'
+    | '/admin/utilisateurs/$userId/modifier'
+    | '/admin/equipements/$itemId'
+    | '/admin/reservations/$reservationId'
+    | '/admin/utilisateurs/$userId'
   id:
     | '__root__'
     | '/'
     | '/admin/_layout'
     | '/admin/login'
-    | '/admin/_layout/dashboard'
-    | '/admin/_layout/users'
+    | '/admin/_layout/durees'
+    | '/admin/_layout/equipements'
+    | '/admin/_layout/facturation'
+    | '/admin/_layout/reservations'
+    | '/admin/_layout/statistiques'
+    | '/admin/_layout/utilisateurs'
     | '/api/auth/$'
+    | '/admin/_layout/'
+    | '/admin/_layout/equipements/$itemId'
+    | '/admin/_layout/equipements/ajouter'
+    | '/admin/_layout/equipements/categories'
+    | '/admin/_layout/reservations/$reservationId'
+    | '/admin/_layout/reservations/ajouter'
+    | '/admin/_layout/utilisateurs/$userId'
+    | '/admin/_layout/utilisateurs/ajouter'
+    | '/admin/_layout/equipements/'
+    | '/admin/_layout/reservations/'
+    | '/admin/_layout/utilisateurs/'
+    | '/admin/_layout/equipements/$itemId/modifier'
+    | '/admin/_layout/utilisateurs/$userId/modifier'
+    | '/admin/_layout/equipements/$itemId/'
+    | '/admin/_layout/reservations/$reservationId/'
+    | '/admin/_layout/utilisateurs/$userId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -129,6 +370,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/_layout/': {
+      id: '/admin/_layout/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminLayoutIndexRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -136,31 +384,285 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/_layout/users': {
-      id: '/admin/_layout/users'
-      path: '/users'
-      fullPath: '/admin/users'
-      preLoaderRoute: typeof AdminLayoutUsersRouteImport
+    '/admin/_layout/utilisateurs': {
+      id: '/admin/_layout/utilisateurs'
+      path: '/utilisateurs'
+      fullPath: '/admin/utilisateurs'
+      preLoaderRoute: typeof AdminLayoutUtilisateursRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
-    '/admin/_layout/dashboard': {
-      id: '/admin/_layout/dashboard'
-      path: '/dashboard'
-      fullPath: '/admin/dashboard'
-      preLoaderRoute: typeof AdminLayoutDashboardRouteImport
+    '/admin/_layout/statistiques': {
+      id: '/admin/_layout/statistiques'
+      path: '/statistiques'
+      fullPath: '/admin/statistiques'
+      preLoaderRoute: typeof AdminLayoutStatistiquesRouteImport
       parentRoute: typeof AdminLayoutRoute
+    }
+    '/admin/_layout/reservations': {
+      id: '/admin/_layout/reservations'
+      path: '/reservations'
+      fullPath: '/admin/reservations'
+      preLoaderRoute: typeof AdminLayoutReservationsRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
+    '/admin/_layout/facturation': {
+      id: '/admin/_layout/facturation'
+      path: '/facturation'
+      fullPath: '/admin/facturation'
+      preLoaderRoute: typeof AdminLayoutFacturationRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
+    '/admin/_layout/equipements': {
+      id: '/admin/_layout/equipements'
+      path: '/equipements'
+      fullPath: '/admin/equipements'
+      preLoaderRoute: typeof AdminLayoutEquipementsRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
+    '/admin/_layout/durees': {
+      id: '/admin/_layout/durees'
+      path: '/durees'
+      fullPath: '/admin/durees'
+      preLoaderRoute: typeof AdminLayoutDureesRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
+    '/admin/_layout/utilisateurs/': {
+      id: '/admin/_layout/utilisateurs/'
+      path: '/'
+      fullPath: '/admin/utilisateurs/'
+      preLoaderRoute: typeof AdminLayoutUtilisateursIndexRouteImport
+      parentRoute: typeof AdminLayoutUtilisateursRoute
+    }
+    '/admin/_layout/reservations/': {
+      id: '/admin/_layout/reservations/'
+      path: '/'
+      fullPath: '/admin/reservations/'
+      preLoaderRoute: typeof AdminLayoutReservationsIndexRouteImport
+      parentRoute: typeof AdminLayoutReservationsRoute
+    }
+    '/admin/_layout/equipements/': {
+      id: '/admin/_layout/equipements/'
+      path: '/'
+      fullPath: '/admin/equipements/'
+      preLoaderRoute: typeof AdminLayoutEquipementsIndexRouteImport
+      parentRoute: typeof AdminLayoutEquipementsRoute
+    }
+    '/admin/_layout/utilisateurs/ajouter': {
+      id: '/admin/_layout/utilisateurs/ajouter'
+      path: '/ajouter'
+      fullPath: '/admin/utilisateurs/ajouter'
+      preLoaderRoute: typeof AdminLayoutUtilisateursAjouterRouteImport
+      parentRoute: typeof AdminLayoutUtilisateursRoute
+    }
+    '/admin/_layout/utilisateurs/$userId': {
+      id: '/admin/_layout/utilisateurs/$userId'
+      path: '/$userId'
+      fullPath: '/admin/utilisateurs/$userId'
+      preLoaderRoute: typeof AdminLayoutUtilisateursUserIdRouteImport
+      parentRoute: typeof AdminLayoutUtilisateursRoute
+    }
+    '/admin/_layout/reservations/ajouter': {
+      id: '/admin/_layout/reservations/ajouter'
+      path: '/ajouter'
+      fullPath: '/admin/reservations/ajouter'
+      preLoaderRoute: typeof AdminLayoutReservationsAjouterRouteImport
+      parentRoute: typeof AdminLayoutReservationsRoute
+    }
+    '/admin/_layout/reservations/$reservationId': {
+      id: '/admin/_layout/reservations/$reservationId'
+      path: '/$reservationId'
+      fullPath: '/admin/reservations/$reservationId'
+      preLoaderRoute: typeof AdminLayoutReservationsReservationIdRouteImport
+      parentRoute: typeof AdminLayoutReservationsRoute
+    }
+    '/admin/_layout/equipements/categories': {
+      id: '/admin/_layout/equipements/categories'
+      path: '/categories'
+      fullPath: '/admin/equipements/categories'
+      preLoaderRoute: typeof AdminLayoutEquipementsCategoriesRouteImport
+      parentRoute: typeof AdminLayoutEquipementsRoute
+    }
+    '/admin/_layout/equipements/ajouter': {
+      id: '/admin/_layout/equipements/ajouter'
+      path: '/ajouter'
+      fullPath: '/admin/equipements/ajouter'
+      preLoaderRoute: typeof AdminLayoutEquipementsAjouterRouteImport
+      parentRoute: typeof AdminLayoutEquipementsRoute
+    }
+    '/admin/_layout/equipements/$itemId': {
+      id: '/admin/_layout/equipements/$itemId'
+      path: '/$itemId'
+      fullPath: '/admin/equipements/$itemId'
+      preLoaderRoute: typeof AdminLayoutEquipementsItemIdRouteImport
+      parentRoute: typeof AdminLayoutEquipementsRoute
+    }
+    '/admin/_layout/utilisateurs/$userId/': {
+      id: '/admin/_layout/utilisateurs/$userId/'
+      path: '/'
+      fullPath: '/admin/utilisateurs/$userId/'
+      preLoaderRoute: typeof AdminLayoutUtilisateursUserIdIndexRouteImport
+      parentRoute: typeof AdminLayoutUtilisateursUserIdRoute
+    }
+    '/admin/_layout/reservations/$reservationId/': {
+      id: '/admin/_layout/reservations/$reservationId/'
+      path: '/'
+      fullPath: '/admin/reservations/$reservationId/'
+      preLoaderRoute: typeof AdminLayoutReservationsReservationIdIndexRouteImport
+      parentRoute: typeof AdminLayoutReservationsReservationIdRoute
+    }
+    '/admin/_layout/equipements/$itemId/': {
+      id: '/admin/_layout/equipements/$itemId/'
+      path: '/'
+      fullPath: '/admin/equipements/$itemId/'
+      preLoaderRoute: typeof AdminLayoutEquipementsItemIdIndexRouteImport
+      parentRoute: typeof AdminLayoutEquipementsItemIdRoute
+    }
+    '/admin/_layout/utilisateurs/$userId/modifier': {
+      id: '/admin/_layout/utilisateurs/$userId/modifier'
+      path: '/modifier'
+      fullPath: '/admin/utilisateurs/$userId/modifier'
+      preLoaderRoute: typeof AdminLayoutUtilisateursUserIdModifierRouteImport
+      parentRoute: typeof AdminLayoutUtilisateursUserIdRoute
+    }
+    '/admin/_layout/equipements/$itemId/modifier': {
+      id: '/admin/_layout/equipements/$itemId/modifier'
+      path: '/modifier'
+      fullPath: '/admin/equipements/$itemId/modifier'
+      preLoaderRoute: typeof AdminLayoutEquipementsItemIdModifierRouteImport
+      parentRoute: typeof AdminLayoutEquipementsItemIdRoute
     }
   }
 }
 
+interface AdminLayoutEquipementsItemIdRouteChildren {
+  AdminLayoutEquipementsItemIdModifierRoute: typeof AdminLayoutEquipementsItemIdModifierRoute
+  AdminLayoutEquipementsItemIdIndexRoute: typeof AdminLayoutEquipementsItemIdIndexRoute
+}
+
+const AdminLayoutEquipementsItemIdRouteChildren: AdminLayoutEquipementsItemIdRouteChildren =
+  {
+    AdminLayoutEquipementsItemIdModifierRoute:
+      AdminLayoutEquipementsItemIdModifierRoute,
+    AdminLayoutEquipementsItemIdIndexRoute:
+      AdminLayoutEquipementsItemIdIndexRoute,
+  }
+
+const AdminLayoutEquipementsItemIdRouteWithChildren =
+  AdminLayoutEquipementsItemIdRoute._addFileChildren(
+    AdminLayoutEquipementsItemIdRouteChildren,
+  )
+
+interface AdminLayoutEquipementsRouteChildren {
+  AdminLayoutEquipementsItemIdRoute: typeof AdminLayoutEquipementsItemIdRouteWithChildren
+  AdminLayoutEquipementsAjouterRoute: typeof AdminLayoutEquipementsAjouterRoute
+  AdminLayoutEquipementsCategoriesRoute: typeof AdminLayoutEquipementsCategoriesRoute
+  AdminLayoutEquipementsIndexRoute: typeof AdminLayoutEquipementsIndexRoute
+}
+
+const AdminLayoutEquipementsRouteChildren: AdminLayoutEquipementsRouteChildren =
+  {
+    AdminLayoutEquipementsItemIdRoute:
+      AdminLayoutEquipementsItemIdRouteWithChildren,
+    AdminLayoutEquipementsAjouterRoute: AdminLayoutEquipementsAjouterRoute,
+    AdminLayoutEquipementsCategoriesRoute:
+      AdminLayoutEquipementsCategoriesRoute,
+    AdminLayoutEquipementsIndexRoute: AdminLayoutEquipementsIndexRoute,
+  }
+
+const AdminLayoutEquipementsRouteWithChildren =
+  AdminLayoutEquipementsRoute._addFileChildren(
+    AdminLayoutEquipementsRouteChildren,
+  )
+
+interface AdminLayoutReservationsReservationIdRouteChildren {
+  AdminLayoutReservationsReservationIdIndexRoute: typeof AdminLayoutReservationsReservationIdIndexRoute
+}
+
+const AdminLayoutReservationsReservationIdRouteChildren: AdminLayoutReservationsReservationIdRouteChildren =
+  {
+    AdminLayoutReservationsReservationIdIndexRoute:
+      AdminLayoutReservationsReservationIdIndexRoute,
+  }
+
+const AdminLayoutReservationsReservationIdRouteWithChildren =
+  AdminLayoutReservationsReservationIdRoute._addFileChildren(
+    AdminLayoutReservationsReservationIdRouteChildren,
+  )
+
+interface AdminLayoutReservationsRouteChildren {
+  AdminLayoutReservationsReservationIdRoute: typeof AdminLayoutReservationsReservationIdRouteWithChildren
+  AdminLayoutReservationsAjouterRoute: typeof AdminLayoutReservationsAjouterRoute
+  AdminLayoutReservationsIndexRoute: typeof AdminLayoutReservationsIndexRoute
+}
+
+const AdminLayoutReservationsRouteChildren: AdminLayoutReservationsRouteChildren =
+  {
+    AdminLayoutReservationsReservationIdRoute:
+      AdminLayoutReservationsReservationIdRouteWithChildren,
+    AdminLayoutReservationsAjouterRoute: AdminLayoutReservationsAjouterRoute,
+    AdminLayoutReservationsIndexRoute: AdminLayoutReservationsIndexRoute,
+  }
+
+const AdminLayoutReservationsRouteWithChildren =
+  AdminLayoutReservationsRoute._addFileChildren(
+    AdminLayoutReservationsRouteChildren,
+  )
+
+interface AdminLayoutUtilisateursUserIdRouteChildren {
+  AdminLayoutUtilisateursUserIdModifierRoute: typeof AdminLayoutUtilisateursUserIdModifierRoute
+  AdminLayoutUtilisateursUserIdIndexRoute: typeof AdminLayoutUtilisateursUserIdIndexRoute
+}
+
+const AdminLayoutUtilisateursUserIdRouteChildren: AdminLayoutUtilisateursUserIdRouteChildren =
+  {
+    AdminLayoutUtilisateursUserIdModifierRoute:
+      AdminLayoutUtilisateursUserIdModifierRoute,
+    AdminLayoutUtilisateursUserIdIndexRoute:
+      AdminLayoutUtilisateursUserIdIndexRoute,
+  }
+
+const AdminLayoutUtilisateursUserIdRouteWithChildren =
+  AdminLayoutUtilisateursUserIdRoute._addFileChildren(
+    AdminLayoutUtilisateursUserIdRouteChildren,
+  )
+
+interface AdminLayoutUtilisateursRouteChildren {
+  AdminLayoutUtilisateursUserIdRoute: typeof AdminLayoutUtilisateursUserIdRouteWithChildren
+  AdminLayoutUtilisateursAjouterRoute: typeof AdminLayoutUtilisateursAjouterRoute
+  AdminLayoutUtilisateursIndexRoute: typeof AdminLayoutUtilisateursIndexRoute
+}
+
+const AdminLayoutUtilisateursRouteChildren: AdminLayoutUtilisateursRouteChildren =
+  {
+    AdminLayoutUtilisateursUserIdRoute:
+      AdminLayoutUtilisateursUserIdRouteWithChildren,
+    AdminLayoutUtilisateursAjouterRoute: AdminLayoutUtilisateursAjouterRoute,
+    AdminLayoutUtilisateursIndexRoute: AdminLayoutUtilisateursIndexRoute,
+  }
+
+const AdminLayoutUtilisateursRouteWithChildren =
+  AdminLayoutUtilisateursRoute._addFileChildren(
+    AdminLayoutUtilisateursRouteChildren,
+  )
+
 interface AdminLayoutRouteChildren {
-  AdminLayoutDashboardRoute: typeof AdminLayoutDashboardRoute
-  AdminLayoutUsersRoute: typeof AdminLayoutUsersRoute
+  AdminLayoutDureesRoute: typeof AdminLayoutDureesRoute
+  AdminLayoutEquipementsRoute: typeof AdminLayoutEquipementsRouteWithChildren
+  AdminLayoutFacturationRoute: typeof AdminLayoutFacturationRoute
+  AdminLayoutReservationsRoute: typeof AdminLayoutReservationsRouteWithChildren
+  AdminLayoutStatistiquesRoute: typeof AdminLayoutStatistiquesRoute
+  AdminLayoutUtilisateursRoute: typeof AdminLayoutUtilisateursRouteWithChildren
+  AdminLayoutIndexRoute: typeof AdminLayoutIndexRoute
 }
 
 const AdminLayoutRouteChildren: AdminLayoutRouteChildren = {
-  AdminLayoutDashboardRoute: AdminLayoutDashboardRoute,
-  AdminLayoutUsersRoute: AdminLayoutUsersRoute,
+  AdminLayoutDureesRoute: AdminLayoutDureesRoute,
+  AdminLayoutEquipementsRoute: AdminLayoutEquipementsRouteWithChildren,
+  AdminLayoutFacturationRoute: AdminLayoutFacturationRoute,
+  AdminLayoutReservationsRoute: AdminLayoutReservationsRouteWithChildren,
+  AdminLayoutStatistiquesRoute: AdminLayoutStatistiquesRoute,
+  AdminLayoutUtilisateursRoute: AdminLayoutUtilisateursRouteWithChildren,
+  AdminLayoutIndexRoute: AdminLayoutIndexRoute,
 }
 
 const AdminLayoutRouteWithChildren = AdminLayoutRoute._addFileChildren(

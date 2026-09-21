@@ -1,24 +1,35 @@
 import { redirect } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
-import { auth } from "#/lib/auth";
+import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
+import { getSession } from "./session.server";
 
-export const getAdminSession = createServerFn({ method: "GET" }).handler(
+export type AppRole = "user" | "manager" | "admin";
+
+const DASHBOARD_ROLES: AppRole[] = ["admin", "manager"];
+
+// Accès au dashboard admin : admins et gérants
+export const getDashboardSession = createServerFn({ method: "GET" }).handler(
 	async () => {
-		const request = getRequest();
-
-		const session = await auth.api.getSession({
-			headers: request.headers,
-		});
+		const session = await getSession();
 
 		if (!session) {
 			throw redirect({ to: "/admin/login" });
 		}
 
-		if (session.user.role !== "admin") {
+		if (!DASHBOARD_ROLES.includes(session.user.role as AppRole)) {
 			throw redirect({ to: "/" });
 		}
 
 		return session;
 	},
 );
+
+// Accès strict admin (modifications sensibles, ex: tarification)
+export const requireAdminSession = createServerOnlyFn(async () => {
+	const session = await getSession();
+
+	if (!session || session.user.role !== "admin") {
+		throw new Error("Accès refusé : réservé aux administrateurs.");
+	}
+
+	return session;
+});

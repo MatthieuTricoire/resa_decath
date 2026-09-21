@@ -1,4 +1,5 @@
 import { useSelector } from "@tanstack/react-store";
+import type { ConfirmDeleteData } from "#/stores/dialog.store";
 import { closeDialog, dialogStore } from "#/stores/dialog.store";
 import { Button } from "../ui/button";
 import {
@@ -16,7 +17,7 @@ export function ConfirmDeleteDialog() {
 		(s) => s.openDialog === "confirmDelete",
 	);
 	const data = useSelector(dialogStore, (s) =>
-		s.openDialog === "confirmDelete" ? s.data : null,
+		s.openDialog === "confirmDelete" ? (s.data as ConfirmDeleteData) : null,
 	);
 
 	const handleConfirm = async () => {

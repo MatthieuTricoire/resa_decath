@@ -1,15 +1,20 @@
 import { createStore } from "@tanstack/react-store";
 
-type ConfirmDeleteData = {
+export type ConfirmDeleteData = {
 	title: string;
 	description: string;
 	onConfirm: () => void | Promise<void>;
 };
 
+export type EditCategoryData = {
+	categoryId: string;
+	currentName: string;
+};
+
 type DialogData = {
 	confirmDelete: ConfirmDeleteData;
 	createUser: Record<string, never>;
-	// ...
+	editCategory: EditCategoryData;
 };
 
 type DialogId = keyof DialogData;
