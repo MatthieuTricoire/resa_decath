@@ -4,14 +4,25 @@ import postgres from "postgres";
 import { env } from "#/env";
 import * as schema from "./schema";
 
-// 1. Éviter de saturer les connexions à la DB en mode développement (HMR)
 const globalForDb = globalThis as unknown as {
 	conn: postgres.Sql | undefined;
 };
 
-// 2. Initialisation du client de connexion postgres.js
-const conn = globalForDb.conn ?? postgres(env.DATABASE_URL);
+// Lecture robuste de l'URL au runtime
+const connectionString = process.env.DATABASE_URL || env.DATABASE_URL;
+
+if (!connectionString) {
+	throw new Error("CRITICAL: DATABASE_URL is missing or empty at runtime!");
+}
+
+// Neon impose SSL et préfère max: 1 en environnement Serverless
+const conn =
+	globalForDb.conn ??
+	postgres(connectionString, {
+		ssl: "require",
+		max: 1, // Recommandé pour éviter d'épuiser le pooler Neon sur les fonctions serverless
+	});
+
 if (env.NODE_ENV !== "production") globalForDb.conn = conn;
 
-// 3. Export de l'instance Drizzle configurée avec ton schéma
 export const db = drizzle({ client: conn, schema });
