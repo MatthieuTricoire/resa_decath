@@ -20,5 +20,10 @@ export const env = createEnv({
 		BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
 		BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
 	},
+	onValidationError: (issues) => {
+		console.error("❌ Erreur de validation des variables d'environnement :");
+		console.error(JSON.stringify(issues, null, 2));
+		throw new Error("Invalid environment variables");
+	},
 	emptyStringAsUndefined: true,
 });
