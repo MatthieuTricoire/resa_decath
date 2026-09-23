@@ -8,21 +8,40 @@ const globalForDb = globalThis as unknown as {
 	conn: postgres.Sql | undefined;
 };
 
-// Lecture robuste de l'URL au runtime
-const connectionString = process.env.DATABASE_URL || env.DATABASE_URL;
+// Récupération et nettoyage strict de la chaîne de connexion
+const rawUrl = process.env.DATABASE_URL || env?.DATABASE_URL || "";
+const connectionString = rawUrl.trim().replace(/^["']|["']$/g, "");
 
-if (!connectionString) {
+if (!connectionString || connectionString.length === 0) {
+	console.error(
+		"🚨 DATABASE_URL est vide ou absente dans l'environnement de la fonction Netlify !",
+	);
 	throw new Error("CRITICAL: DATABASE_URL is missing or empty at runtime!");
 }
 
-// Neon impose SSL et préfère max: 1 en environnement Serverless
+// Vérification préventive pour intercepter l'erreur avant postgres.js
+try {
+	new URL(connectionString);
+} catch (err) {
+	console.error(
+		"🚨 La chaîne DATABASE_URL n'est pas une URL valide :",
+		connectionString.slice(0, 15) + "...",
+	);
+	throw new Error(
+		"CRITICAL: DATABASE_URL is not a valid URL for Node.js URL parser!",
+	);
+}
+
+// Instanciation adaptée à Neon et aux fonctions Serverless
 const conn =
 	globalForDb.conn ??
 	postgres(connectionString, {
 		ssl: "require",
-		max: 1, // Recommandé pour éviter d'épuiser le pooler Neon sur les fonctions serverless
+		max: 1,
 	});
 
-if (env.NODE_ENV !== "production") globalForDb.conn = conn;
+if (env?.NODE_ENV !== "production") {
+	globalForDb.conn = conn;
+}
 
 export const db = drizzle({ client: conn, schema });
