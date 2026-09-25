@@ -23,6 +23,16 @@ export const getDashboardSession = createServerFn({ method: "GET" }).handler(
 	},
 );
 
+export const requireDashboardSession = createServerOnlyFn(async () => {
+	const session = await getSession();
+
+	if (!session || !DASHBOARD_ROLES.includes(session.user.role as AppRole)) {
+		throw new Error("Accès refusé : réservé aux administrateurs et gérants.");
+	}
+
+	return session;
+});
+
 // Accès strict admin (modifications sensibles, ex: tarification)
 export const requireAdminSession = createServerOnlyFn(async () => {
 	const session = await getSession();

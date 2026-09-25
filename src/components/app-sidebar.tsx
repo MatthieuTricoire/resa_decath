@@ -2,12 +2,10 @@ import {
 	IconCalendarWeek,
 	IconCamera,
 	IconChartBar,
-	IconClock,
 	IconDashboard,
 	IconFileAi,
 	IconFileDescription,
 	IconReceiptEuro,
-	IconSearch,
 	IconSettings,
 	IconStack3,
 	IconUsers,
@@ -48,19 +46,9 @@ const data = {
 			icon: IconStack3,
 		},
 		{
-			title: "Durées",
-			url: "/admin/durees",
-			icon: IconClock,
-		},
-		{
 			title: "Statistiques",
 			url: "/admin/statistiques",
 			icon: IconChartBar,
-		},
-		{
-			title: "Facturation",
-			url: "/admin/facturation",
-			icon: IconReceiptEuro,
 		},
 	],
 	navClouds: [
@@ -113,14 +101,14 @@ const data = {
 	],
 	navSecondary: [
 		{
-			title: "Settings",
-			url: "#",
-			icon: IconSettings,
+			title: "Facturation",
+			url: "/admin/facturation",
+			icon: IconReceiptEuro,
 		},
 		{
-			title: "Search",
-			url: "#",
-			icon: IconSearch,
+			title: "Réglages",
+			url: "/admin/reglages",
+			icon: IconSettings,
 		},
 	],
 };

@@ -187,6 +187,23 @@ export const rentalDurations = pgTable("rental_durations", {
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const rentalSettings = pgTable("rental_settings", {
+	id: integer("id").primaryKey().default(1),
+	seasonalFilteringEnabled: boolean("seasonal_filtering_enabled")
+		.notNull()
+		.default(false),
+	isRentalOpen: boolean("is_rental_open").notNull().default(true),
+	seasonOverride: text("season_override")
+		.$type<"auto" | "summer" | "winter">()
+		.notNull()
+		.default("auto"),
+	summerFrom: varchar("summer_from", { length: 5 }),
+	summerTo: varchar("summer_to", { length: 5 }),
+	winterFrom: varchar("winter_from", { length: 5 }),
+	winterTo: varchar("winter_to", { length: 5 }),
+	updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // =============================
 // 3. Tables des réservations
 // =============================

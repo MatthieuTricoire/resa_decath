@@ -13,16 +13,16 @@ export function SiteHeader({
 	actions?: ReactNode;
 }) {
 	return (
-		<header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
-			<div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
+		<header className="flex min-h-(--header-height) shrink-0 items-center gap-2 border-b py-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height) md:py-0">
+			<div className="flex w-full min-w-0 flex-1 flex-wrap items-center gap-1 px-4 lg:gap-2 lg:px-6">
 				<SidebarTrigger className="-ml-1" />
 				<Separator
 					orientation="vertical"
 					className="mx-2 data-[orientation=vertical]:h-4"
 				/>
-				<h1 className="text-base font-medium">{title}</h1>
+				<h1 className="min-w-0 truncate text-base font-medium">{title}</h1>
 				{links && links.length > 0 && (
-					<nav className="ml-4 flex items-center gap-1">
+					<nav className="ml-4 hidden items-center gap-1 md:flex">
 						{links.map((link) => (
 							<Link
 								key={link.href}
@@ -37,7 +37,9 @@ export function SiteHeader({
 					</nav>
 				)}
 				{actions && (
-					<div className="ml-auto flex items-center gap-2">{actions}</div>
+					<div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
+						{actions}
+					</div>
 				)}
 			</div>
 		</header>

@@ -9,8 +9,10 @@ import {
 	CardHeader,
 	CardTitle,
 } from "#/components/ui/card";
+import { cn } from "#/lib/utils.ts";
 
 type KpiCardProps = {
+	compact?: boolean;
 	label: string;
 	value: string | number;
 	trend?: {
@@ -25,6 +27,7 @@ type KpiCardProps = {
 };
 
 export function KpiCard({
+	compact = false,
 	label,
 	value,
 	trend,
@@ -32,10 +35,27 @@ export function KpiCard({
 	children,
 }: KpiCardProps) {
 	return (
-		<Card className="@container/card">
-			<CardHeader>
-				<CardDescription>{label}</CardDescription>
-				<CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+		<Card
+			className={cn(
+				"@container/card min-w-0",
+				compact && "gap-2 py-3 sm:gap-6 sm:py-6",
+			)}
+		>
+			<CardHeader className={cn(compact && "gap-1.5 px-2 sm:px-3 lg:px-6")}>
+				<CardDescription
+					className={cn(
+						compact && "text-xs leading-tight sm:text-sm sm:leading-normal",
+					)}
+				>
+					{label}
+				</CardDescription>
+				<CardTitle
+					className={cn(
+						"font-semibold tabular-nums",
+						compact ? "text-xl sm:text-2xl" : "text-2xl",
+						"@[250px]/card:text-3xl",
+					)}
+				>
 					{value}
 				</CardTitle>
 				{trend && (

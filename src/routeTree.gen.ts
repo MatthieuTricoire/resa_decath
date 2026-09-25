@@ -17,6 +17,7 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AdminLayoutUtilisateursRouteImport } from './routes/admin/_layout/utilisateurs'
 import { Route as AdminLayoutStatistiquesRouteImport } from './routes/admin/_layout/statistiques'
 import { Route as AdminLayoutReservationsRouteImport } from './routes/admin/_layout/reservations'
+import { Route as AdminLayoutReglagesRouteImport } from './routes/admin/_layout/reglages'
 import { Route as AdminLayoutFacturationRouteImport } from './routes/admin/_layout/facturation'
 import { Route as AdminLayoutEquipementsRouteImport } from './routes/admin/_layout/equipements'
 import { Route as AdminLayoutDureesRouteImport } from './routes/admin/_layout/durees'
@@ -74,6 +75,11 @@ const AdminLayoutStatistiquesRoute = AdminLayoutStatistiquesRouteImport.update({
 const AdminLayoutReservationsRoute = AdminLayoutReservationsRouteImport.update({
   id: '/reservations',
   path: '/reservations',
+  getParentRoute: () => AdminLayoutRoute,
+} as any)
+const AdminLayoutReglagesRoute = AdminLayoutReglagesRouteImport.update({
+  id: '/reglages',
+  path: '/reglages',
   getParentRoute: () => AdminLayoutRoute,
 } as any)
 const AdminLayoutFacturationRoute = AdminLayoutFacturationRouteImport.update({
@@ -189,6 +195,7 @@ export interface FileRoutesByFullPath {
   '/admin/durees': typeof AdminLayoutDureesRoute
   '/admin/equipements': typeof AdminLayoutEquipementsRouteWithChildren
   '/admin/facturation': typeof AdminLayoutFacturationRoute
+  '/admin/reglages': typeof AdminLayoutReglagesRoute
   '/admin/reservations': typeof AdminLayoutReservationsRouteWithChildren
   '/admin/statistiques': typeof AdminLayoutStatistiquesRoute
   '/admin/utilisateurs': typeof AdminLayoutUtilisateursRouteWithChildren
@@ -215,6 +222,7 @@ export interface FileRoutesByTo {
   '/admin/login': typeof AdminLoginRoute
   '/admin/durees': typeof AdminLayoutDureesRoute
   '/admin/facturation': typeof AdminLayoutFacturationRoute
+  '/admin/reglages': typeof AdminLayoutReglagesRoute
   '/admin/statistiques': typeof AdminLayoutStatistiquesRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/admin': typeof AdminLayoutIndexRoute
@@ -239,6 +247,7 @@ export interface FileRoutesById {
   '/admin/_layout/durees': typeof AdminLayoutDureesRoute
   '/admin/_layout/equipements': typeof AdminLayoutEquipementsRouteWithChildren
   '/admin/_layout/facturation': typeof AdminLayoutFacturationRoute
+  '/admin/_layout/reglages': typeof AdminLayoutReglagesRoute
   '/admin/_layout/reservations': typeof AdminLayoutReservationsRouteWithChildren
   '/admin/_layout/statistiques': typeof AdminLayoutStatistiquesRoute
   '/admin/_layout/utilisateurs': typeof AdminLayoutUtilisateursRouteWithChildren
@@ -269,6 +278,7 @@ export interface FileRouteTypes {
     | '/admin/durees'
     | '/admin/equipements'
     | '/admin/facturation'
+    | '/admin/reglages'
     | '/admin/reservations'
     | '/admin/statistiques'
     | '/admin/utilisateurs'
@@ -295,6 +305,7 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/durees'
     | '/admin/facturation'
+    | '/admin/reglages'
     | '/admin/statistiques'
     | '/api/auth/$'
     | '/admin'
@@ -318,6 +329,7 @@ export interface FileRouteTypes {
     | '/admin/_layout/durees'
     | '/admin/_layout/equipements'
     | '/admin/_layout/facturation'
+    | '/admin/_layout/reglages'
     | '/admin/_layout/reservations'
     | '/admin/_layout/statistiques'
     | '/admin/_layout/utilisateurs'
@@ -403,6 +415,13 @@ declare module '@tanstack/react-router' {
       path: '/reservations'
       fullPath: '/admin/reservations'
       preLoaderRoute: typeof AdminLayoutReservationsRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
+    '/admin/_layout/reglages': {
+      id: '/admin/_layout/reglages'
+      path: '/reglages'
+      fullPath: '/admin/reglages'
+      preLoaderRoute: typeof AdminLayoutReglagesRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
     '/admin/_layout/facturation': {
@@ -649,6 +668,7 @@ interface AdminLayoutRouteChildren {
   AdminLayoutDureesRoute: typeof AdminLayoutDureesRoute
   AdminLayoutEquipementsRoute: typeof AdminLayoutEquipementsRouteWithChildren
   AdminLayoutFacturationRoute: typeof AdminLayoutFacturationRoute
+  AdminLayoutReglagesRoute: typeof AdminLayoutReglagesRoute
   AdminLayoutReservationsRoute: typeof AdminLayoutReservationsRouteWithChildren
   AdminLayoutStatistiquesRoute: typeof AdminLayoutStatistiquesRoute
   AdminLayoutUtilisateursRoute: typeof AdminLayoutUtilisateursRouteWithChildren
@@ -659,6 +679,7 @@ const AdminLayoutRouteChildren: AdminLayoutRouteChildren = {
   AdminLayoutDureesRoute: AdminLayoutDureesRoute,
   AdminLayoutEquipementsRoute: AdminLayoutEquipementsRouteWithChildren,
   AdminLayoutFacturationRoute: AdminLayoutFacturationRoute,
+  AdminLayoutReglagesRoute: AdminLayoutReglagesRoute,
   AdminLayoutReservationsRoute: AdminLayoutReservationsRouteWithChildren,
   AdminLayoutStatistiquesRoute: AdminLayoutStatistiquesRoute,
   AdminLayoutUtilisateursRoute: AdminLayoutUtilisateursRouteWithChildren,

@@ -3,6 +3,9 @@ import { asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "#/db";
 import * as schema from "#/db/schema";
+import { requireDashboardSession } from "#/features/auth/queries";
+import { evaluateItemAvailability } from "#/features/reservations/availability";
+import { getRentalSettingsRecord } from "#/features/settings/queries";
 
 export type VariantAttribute = {
 	name: string;
@@ -32,6 +35,11 @@ export type VariantRow = {
 	categoryName: string;
 	categoryId: string;
 	status: string;
+	season: "winter" | "summer" | "all";
+	availableFrom: string | null;
+	availableTo: string | null;
+	minDuration: number;
+	minDurationUnit: "half_day" | "day";
 	attributes: VariantAttribute[];
 	priceOptions: PriceOptionRow[];
 };
@@ -67,93 +75,148 @@ export const updateCategory = createServerFn({ method: "POST" })
 			.where(eq(schema.categories.id, data.id));
 	});
 
-export const getVariants = createServerFn({ method: "GET" }).handler(
-	async (): Promise<VariantRow[]> => {
-		const raw = await db
-			.select({
-				id: schema.itemVariants.id,
-				decathlonSku: schema.itemVariants.decathlonSku,
-				totalStock: schema.itemVariants.totalStock,
-				pricingMode: schema.itemVariants.pricingMode,
-				dailyPrice: schema.itemVariants.dailyPrice,
-				itemName: schema.items.name,
-				brand: schema.items.brand,
-				itemId: schema.items.id,
-				categoryName: schema.categories.name,
-				categoryId: schema.categories.id,
-				status: schema.itemVariants.status,
-				attributeName: schema.variantAttributes.name,
-				attributeValue: schema.variantAttributes.value,
-			})
-			.from(schema.itemVariants)
-			.innerJoin(schema.items, eq(schema.itemVariants.itemId, schema.items.id))
-			.innerJoin(
-				schema.categories,
-				eq(schema.items.categoryId, schema.categories.id),
-			)
-			.leftJoin(
-				schema.variantAttributes,
-				eq(schema.itemVariants.id, schema.variantAttributes.variantId),
-			)
-			.orderBy(asc(schema.items.name));
+async function loadVariants(): Promise<VariantRow[]> {
+	const raw = await db
+		.select({
+			id: schema.itemVariants.id,
+			decathlonSku: schema.itemVariants.decathlonSku,
+			totalStock: schema.itemVariants.totalStock,
+			pricingMode: schema.itemVariants.pricingMode,
+			dailyPrice: schema.itemVariants.dailyPrice,
+			itemName: schema.items.name,
+			brand: schema.items.brand,
+			itemId: schema.items.id,
+			categoryName: schema.categories.name,
+			categoryId: schema.categories.id,
+			status: schema.itemVariants.status,
+			season: schema.items.season,
+			availableFrom: schema.items.availableFrom,
+			availableTo: schema.items.availableTo,
+			minDuration: schema.items.minDuration,
+			minDurationUnit: schema.items.minDurationUnit,
+			attributeName: schema.variantAttributes.name,
+			attributeValue: schema.variantAttributes.value,
+		})
+		.from(schema.itemVariants)
+		.innerJoin(schema.items, eq(schema.itemVariants.itemId, schema.items.id))
+		.innerJoin(
+			schema.categories,
+			eq(schema.items.categoryId, schema.categories.id),
+		)
+		.leftJoin(
+			schema.variantAttributes,
+			eq(schema.itemVariants.id, schema.variantAttributes.variantId),
+		)
+		.orderBy(asc(schema.items.name));
 
-		const variantIds = raw.map((r) => r.id);
-		const uniqueIds = [...new Set(variantIds)];
+	const variantIds = raw.map((r) => r.id);
+	const uniqueIds = [...new Set(variantIds)];
 
-		const priceOptRows =
-			uniqueIds.length > 0
-				? await db
-						.select()
-						.from(schema.priceOptions)
-						.where(inArray(schema.priceOptions.variantId, uniqueIds))
-				: [];
+	const priceOptRows =
+		uniqueIds.length > 0
+			? await db
+					.select()
+					.from(schema.priceOptions)
+					.where(inArray(schema.priceOptions.variantId, uniqueIds))
+			: [];
 
-		const priceOptMap = new Map<string, PriceOptionRow[]>();
-		for (const po of priceOptRows) {
-			if (!priceOptMap.has(po.variantId)) {
-				priceOptMap.set(po.variantId, []);
-			}
-			priceOptMap.get(po.variantId)?.push({
-				id: po.id,
-				label: po.label,
-				duration: po.duration,
-				price: po.price,
-				barcode: po.barcode,
-				isActive: po.isActive,
+	const priceOptMap = new Map<string, PriceOptionRow[]>();
+	for (const po of priceOptRows) {
+		if (!priceOptMap.has(po.variantId)) {
+			priceOptMap.set(po.variantId, []);
+		}
+		priceOptMap.get(po.variantId)?.push({
+			id: po.id,
+			label: po.label,
+			duration: po.duration,
+			price: po.price,
+			barcode: po.barcode,
+			isActive: po.isActive,
+		});
+	}
+
+	const map = new Map<string, VariantRow>();
+
+	for (const row of raw) {
+		if (!map.has(row.id)) {
+			map.set(row.id, {
+				id: row.id,
+				decathlonSku: row.decathlonSku,
+				totalStock: row.totalStock,
+				pricingMode: row.pricingMode,
+				dailyPrice: row.dailyPrice,
+				itemName: row.itemName,
+				brand: row.brand,
+				itemId: row.itemId,
+				categoryName: row.categoryName,
+				categoryId: row.categoryId,
+				status: row.status,
+				season: row.season,
+				availableFrom: row.availableFrom,
+				availableTo: row.availableTo,
+				minDuration: row.minDuration,
+				minDurationUnit: row.minDurationUnit,
+				attributes: [],
+				priceOptions: priceOptMap.get(row.id) ?? [],
 			});
 		}
-
-		const map = new Map<string, VariantRow>();
-
-		for (const row of raw) {
-			if (!map.has(row.id)) {
-				map.set(row.id, {
-					id: row.id,
-					decathlonSku: row.decathlonSku,
-					totalStock: row.totalStock,
-					pricingMode: row.pricingMode,
-					dailyPrice: row.dailyPrice,
-					itemName: row.itemName,
-					brand: row.brand,
-					itemId: row.itemId,
-					categoryName: row.categoryName,
-					categoryId: row.categoryId,
-					status: row.status,
-					attributes: [],
-					priceOptions: priceOptMap.get(row.id) ?? [],
-				});
-			}
-			if (row.attributeName && row.attributeValue) {
-				map.get(row.id)?.attributes.push({
-					name: row.attributeName,
-					value: row.attributeValue,
-				});
-			}
+		if (row.attributeName && row.attributeValue) {
+			map.get(row.id)?.attributes.push({
+				name: row.attributeName,
+				value: row.attributeValue,
+			});
 		}
+	}
 
-		return Array.from(map.values());
-	},
+	return Array.from(map.values());
+}
+
+export const getVariants = createServerFn({ method: "GET" }).handler(
+	loadVariants,
 );
+
+const reservableVariantsSchema = z.object({
+	pickupDate: z.string().datetime(),
+	returnDate: z.string().datetime(),
+});
+
+export const getReservableVariants = createServerFn({ method: "GET" })
+	.inputValidator(reservableVariantsSchema.parse)
+	.handler(
+		async ({
+			data,
+		}): Promise<{
+			isRentalOpen: boolean;
+			variants: VariantRow[];
+		}> => {
+			await requireDashboardSession();
+			const [settings, variants] = await Promise.all([
+				getRentalSettingsRecord(),
+				loadVariants(),
+			]);
+			const pickupDate = new Date(data.pickupDate);
+			const returnDate = new Date(data.returnDate);
+			return {
+				isRentalOpen: settings.isRentalOpen,
+				variants: variants
+					.filter(
+						(variant) =>
+							evaluateItemAvailability({
+								item: variant,
+								settings,
+								pickupDate,
+								returnDate,
+							}).available,
+					)
+					.map((variant) => ({
+						...variant,
+						priceOptions: variant.priceOptions.filter(
+							(priceOption) => priceOption.isActive,
+						),
+					})),
+			};
+		},
+	);
 
 export type ItemImage = {
 	id: string;
@@ -235,6 +298,11 @@ export const getItemVariants = createServerFn({ method: "GET" })
 				categoryName: schema.categories.name,
 				categoryId: schema.categories.id,
 				status: schema.itemVariants.status,
+				season: schema.items.season,
+				availableFrom: schema.items.availableFrom,
+				availableTo: schema.items.availableTo,
+				minDuration: schema.items.minDuration,
+				minDurationUnit: schema.items.minDurationUnit,
 				attributeName: schema.variantAttributes.name,
 				attributeValue: schema.variantAttributes.value,
 			})
@@ -292,6 +360,11 @@ export const getItemVariants = createServerFn({ method: "GET" })
 					categoryName: row.categoryName,
 					categoryId: row.categoryId,
 					status: row.status,
+					season: row.season,
+					availableFrom: row.availableFrom,
+					availableTo: row.availableTo,
+					minDuration: row.minDuration,
+					minDurationUnit: row.minDurationUnit,
 					attributes: [],
 					priceOptions: priceOptMap.get(row.id) ?? [],
 				});

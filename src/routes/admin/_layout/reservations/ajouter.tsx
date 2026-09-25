@@ -3,6 +3,7 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ReservationDateRangePicker } from "#/components/forms/reservation-date-range-picker";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card";
@@ -14,7 +15,7 @@ import {
 	ComboboxItem,
 	ComboboxList,
 } from "#/components/ui/combobox";
-import { Field, FieldLabel } from "#/components/ui/field";
+import { Field, FieldDescription, FieldLabel } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
 import {
 	Select,
@@ -31,7 +32,13 @@ import {
 	TableHeader,
 	TableRow,
 } from "#/components/ui/table";
-import { getVariants } from "#/features/equipements/queries";
+import {
+	getReservableVariants,
+	type VariantRow,
+} from "#/features/equipements/queries";
+import { queryKeys as equipmentQueryKeys } from "#/features/equipements/query-keys";
+import { getReservationDurationDays } from "#/features/reservations/availability";
+import { validateClient } from "#/features/reservations/client-validation";
 import {
 	type CreateReservationInput,
 	createReservation,
@@ -53,6 +60,15 @@ const formatPrice = (val: string | null) => {
 	if (!val) return "—";
 	return `${parseFloat(val).toFixed(2).replace(".", ",")} €`;
 };
+
+function getVariantLabel(variant: VariantRow, variantCount: number): string {
+	const attributes = variant.attributes
+		.map((attribute) => `${attribute.name}: ${attribute.value}`)
+		.join(", ");
+	if (attributes) return attributes;
+	if (variantCount <= 1) return "Variante unique";
+	return variant.decathlonSku ? `SKU ${variant.decathlonSku}` : "Par défaut";
+}
 
 function RouteComponent() {
 	const router = useRouter();
@@ -81,6 +97,7 @@ function RouteComponent() {
 			priceOptionId: string | null;
 			quantity: number;
 			itemName: string;
+			variantLabel: string;
 			priceOptionLabel: string;
 			unitPrice: string;
 		}>
@@ -91,10 +108,62 @@ function RouteComponent() {
 		queryFn: () => getUsers({ data: {} }),
 	});
 
-	const { data: allVariants } = useQuery({
-		queryKey: ["equipements", "variants"],
-		queryFn: () => getVariants(),
+	const clientValidation = useMemo(
+		() =>
+			clientMode === "existing"
+				? validateClient({
+						mode: "existing",
+						selectedUserId,
+						knownUserIds: (users ?? []).map((user) => user.id),
+					})
+				: validateClient({
+						mode: "new",
+						name: newName,
+						email: newEmail,
+						phone: newPhone,
+					}),
+		[clientMode, selectedUserId, users, newName, newEmail, newPhone],
+	);
+	const clientErrorMessage =
+		clientValidation.errors.user ??
+		clientValidation.errors.name ??
+		clientValidation.errors.email ??
+		clientValidation.errors.phone;
+	const clientHint =
+		clientMode === "existing"
+			? "Sélectionnez un client pour créer la réservation."
+			: "Renseignez le nom, l'email et le téléphone du nouveau client.";
+	const emailError =
+		newEmail.trim() && clientValidation.errors.email
+			? clientValidation.errors.email
+			: undefined;
+
+	const reservableDates = useMemo(() => {
+		if (!pickupDate || !returnDate) return null;
+		const pickup = new Date(`${pickupDate}T12:00:00.000Z`);
+		const returned = new Date(`${returnDate}T12:00:00.001Z`);
+		if (returned <= pickup) return null;
+		return {
+			pickupDate: pickup.toISOString(),
+			returnDate: returned.toISOString(),
+		};
+	}, [pickupDate, returnDate]);
+
+	const { data: reservableData, isFetching: variantsPending } = useQuery({
+		queryKey: equipmentQueryKeys.variants.reservable(
+			reservableDates?.pickupDate ?? "",
+			reservableDates?.returnDate ?? "",
+		),
+		queryFn: () =>
+			getReservableVariants({
+				data: {
+					pickupDate: reservableDates?.pickupDate ?? "",
+					returnDate: reservableDates?.returnDate ?? "",
+				},
+			}),
+		enabled: reservableDates !== null,
 	});
+	const allVariants = reservableData?.variants;
 
 	const selectedVariant = useMemo(
 		() => allVariants?.find((v) => v.id === selectedVariantId),
@@ -112,11 +181,9 @@ function RouteComponent() {
 
 	const computedDuration = useMemo(() => {
 		if (!pickupDate || !returnDate) return null;
-		const pickup = new Date(`${pickupDate}T00:00:00.000`);
-		const retour = new Date(`${returnDate}T23:59:59.999`);
-		const diffMs = retour.getTime() - pickup.getTime();
-		if (diffMs <= 0) return null;
-		return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+		const pickup = new Date(`${pickupDate}T12:00:00.000Z`);
+		const retour = new Date(`${returnDate}T12:00:00.000Z`);
+		return getReservationDurationDays(pickup, retour);
 	}, [pickupDate, returnDate]);
 
 	const perDayPrice = useMemo(() => {
@@ -153,7 +220,7 @@ function RouteComponent() {
 		);
 	}, [selectedVariant, computedDuration]);
 
-	const hasDates = pickupDate && returnDate;
+	const hasDates = reservableDates !== null;
 
 	const stockQuery = useQuery({
 		queryKey: ["stock", selectedVariantId, pickupDate, returnDate],
@@ -161,8 +228,8 @@ function RouteComponent() {
 			getAvailableStock({
 				data: {
 					variantId: selectedVariantId,
-					pickupDate: new Date(`${pickupDate}T00:00:00.000`).toISOString(),
-					returnDate: new Date(`${returnDate}T23:59:59.999`).toISOString(),
+					pickupDate: new Date(`${pickupDate}T12:00:00.000Z`).toISOString(),
+					returnDate: new Date(`${returnDate}T12:00:00.001Z`).toISOString(),
 				},
 			}),
 		enabled: !!selectedVariantId && !!hasDates,
@@ -208,11 +275,36 @@ function RouteComponent() {
 		[allVariants, selectedItemId],
 	);
 
+	useEffect(() => {
+		const nextItemId = uniqueItems.some((item) => item.id === selectedItemId)
+			? selectedItemId
+			: uniqueItems.length === 1
+				? uniqueItems[0].id
+				: "";
+		if (nextItemId !== selectedItemId) setSelectedItemId(nextItemId);
+	}, [selectedItemId, uniqueItems]);
+
+	useEffect(() => {
+		const nextVariantId = filteredVariants.some(
+			(v) => v.id === selectedVariantId,
+		)
+			? selectedVariantId
+			: filteredVariants.length === 1
+				? filteredVariants[0].id
+				: "";
+		if (nextVariantId !== selectedVariantId)
+			setSelectedVariantId(nextVariantId);
+	}, [filteredVariants, selectedVariantId]);
+
 	const addItem = () => {
 		if (!selectedVariant) return;
+		const variantLabel = getVariantLabel(
+			selectedVariant,
+			filteredVariants.length,
+		);
 
 		if (selectedVariant.pricingMode === "per_day") {
-			if (!computedDuration || !perDayPrice) return;
+			if (!computedDuration || perDayPrice === null) return;
 			setLineItems((prev) => [
 				...prev,
 				{
@@ -221,6 +313,7 @@ function RouteComponent() {
 					priceOptionId: null,
 					quantity,
 					itemName: selectedVariant.itemName,
+					variantLabel,
 					priceOptionLabel: `${computedDuration} jour${
 						computedDuration > 1 ? "s" : ""
 					} · ${Number.parseFloat(selectedVariant.dailyPrice).toFixed(2)} €/j`,
@@ -237,6 +330,7 @@ function RouteComponent() {
 					priceOptionId: selectedPriceOption.id,
 					quantity,
 					itemName: selectedVariant.itemName,
+					variantLabel,
 					priceOptionLabel: selectedPriceOption.label,
 					unitPrice: selectedPriceOption.price,
 				},
@@ -303,9 +397,18 @@ function RouteComponent() {
 			toast.error("Ajoutez au moins un article à la réservation");
 			return;
 		}
+		if (
+			lineItems.some(
+				(item) =>
+					!allVariants?.some((variant) => variant.id === item.variantId),
+			)
+		) {
+			toast.error("Un article n’est plus disponible pour ces dates");
+			return;
+		}
 
-		const pickup = new Date(`${pickupDate}T00:00:00.000`);
-		const returnD = new Date(`${returnDate}T23:59:59.999`);
+		const pickup = new Date(`${pickupDate}T12:00:00.000Z`);
+		const returnD = new Date(`${returnDate}T12:00:00.001Z`);
 
 		if (returnD <= pickup) {
 			toast.error("La date de retour doit être après la date de retrait");
@@ -314,17 +417,21 @@ function RouteComponent() {
 
 		let userId = selectedUserId;
 
+		if (!clientValidation.valid) {
+			toast.error(
+				clientErrorMessage ??
+					"Renseignez les informations du client avant de continuer",
+			);
+			return;
+		}
+
 		if (clientMode === "new") {
-			if (!newName || !newEmail || !newPhone) {
-				toast.error("Veuillez remplir le nom, l'email et le téléphone");
-				return;
-			}
 			try {
 				const created = await createUserMutation.mutateAsync({
-					name: newName,
-					email: newEmail,
-					phone: newPhone,
-					loyaltyCard: newLoyaltyCard || undefined,
+					name: newName.trim(),
+					email: newEmail.trim(),
+					phone: newPhone.trim(),
+					loyaltyCard: newLoyaltyCard.trim() || undefined,
 				});
 				userId = created.id;
 			} catch (err) {
@@ -333,11 +440,6 @@ function RouteComponent() {
 						? err.message
 						: "Erreur lors de la création du client",
 				);
-				return;
-			}
-		} else {
-			if (!userId) {
-				toast.error("Veuillez sélectionner un client");
 				return;
 			}
 		}
@@ -367,7 +469,7 @@ function RouteComponent() {
 
 			<Card>
 				<CardHeader>
-					<CardTitle>Client</CardTitle>
+					<CardTitle>Client *</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div className="flex gap-2">
@@ -391,7 +493,7 @@ function RouteComponent() {
 
 					{clientMode === "existing" ? (
 						<Field>
-							<FieldLabel>Sélectionner un client</FieldLabel>
+							<FieldLabel>Sélectionner un client *</FieldLabel>
 							<Combobox
 								items={users ?? []}
 								value={selectedUserId}
@@ -401,6 +503,7 @@ function RouteComponent() {
 									placeholder="Rechercher un client..."
 									value={searchClient}
 									onChange={(e) => setSearchClient(e.target.value)}
+									aria-invalid={!clientValidation.valid}
 								/>
 								<ComboboxContent>
 									<ComboboxEmpty>Aucun client trouvé</ComboboxEmpty>
@@ -413,42 +516,46 @@ function RouteComponent() {
 									</ComboboxList>
 								</ComboboxContent>
 							</Combobox>
-							<Select value={selectedUserId} onValueChange={setSelectedUserId}>
-								<SelectTrigger>
-									<SelectValue placeholder="Choisir un client..." />
-								</SelectTrigger>
-								<SelectContent>
-									{users?.map((u) => (
-										<SelectItem key={u.id} value={u.id}>
-											{u.name} — {u.email}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
 						</Field>
 					) : (
 						<div className="grid grid-cols-2 gap-4">
 							<Field>
-								<FieldLabel>Nom *</FieldLabel>
+								<FieldLabel htmlFor="new-client-name">Nom *</FieldLabel>
 								<Input
+									id="new-client-name"
+									name="name"
+									autoComplete="name"
+									required
 									value={newName}
 									onChange={(e) => setNewName(e.target.value)}
 									placeholder="Prénom et nom"
 								/>
 							</Field>
 							<Field>
-								<FieldLabel>Email *</FieldLabel>
+								<FieldLabel htmlFor="new-client-email">Email *</FieldLabel>
 								<Input
+									id="new-client-email"
+									name="email"
+									autoComplete="email"
 									type="email"
+									required
+									aria-invalid={Boolean(emailError)}
 									value={newEmail}
 									onChange={(e) => setNewEmail(e.target.value)}
 									placeholder="client@example.com"
 								/>
+								{emailError && (
+									<FieldDescription>{emailError}</FieldDescription>
+								)}
 							</Field>
 							<Field>
-								<FieldLabel>Téléphone *</FieldLabel>
+								<FieldLabel htmlFor="new-client-phone">Téléphone *</FieldLabel>
 								<Input
+									id="new-client-phone"
+									name="phone"
+									autoComplete="tel"
 									type="tel"
+									required
 									value={newPhone}
 									onChange={(e) => setNewPhone(e.target.value)}
 									placeholder="06 12 34 56 78"
@@ -464,6 +571,10 @@ function RouteComponent() {
 							</Field>
 						</div>
 					)}
+
+					{!clientValidation.valid && (
+						<FieldDescription>{clientHint}</FieldDescription>
+					)}
 				</CardContent>
 			</Card>
 
@@ -471,27 +582,21 @@ function RouteComponent() {
 				<CardHeader>
 					<CardTitle>Dates</CardTitle>
 				</CardHeader>
-				<CardContent className="grid grid-cols-2 gap-4">
-					<Field>
-						<FieldLabel>Date de retrait</FieldLabel>
-						<input
-							type="date"
-							value={pickupDate}
-							onChange={(e) => setPickupDate(e.target.value)}
-							className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors"
-						/>
-					</Field>
-					<Field>
-						<FieldLabel>Date de retour</FieldLabel>
-						<input
-							type="date"
-							value={returnDate}
-							onChange={(e) => setReturnDate(e.target.value)}
-							className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors"
-						/>
-					</Field>
+				<CardContent className="space-y-2">
+					<ReservationDateRangePicker
+						valueFrom={pickupDate}
+						valueTo={returnDate}
+						onChange={(from, to) => {
+							setPickupDate(from);
+							setReturnDate(to);
+							setLineItems([]);
+							setSelectedItemId("");
+							setSelectedVariantId("");
+							setSelectedPriceOptionId("");
+						}}
+					/>
 					{computedDuration && (
-						<p className="text-sm text-muted-foreground col-span-2 -mt-2">
+						<p className="text-sm text-muted-foreground">
 							Durée : {computedDuration} jour{computedDuration > 1 ? "s" : ""}
 						</p>
 					)}
@@ -506,7 +611,29 @@ function RouteComponent() {
 					</Badge>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					<div className="grid grid-cols-5 gap-3 items-end">
+					{!reservableDates && (
+						<p className="text-sm text-muted-foreground">
+							Renseignez les dates de retrait et de retour pour afficher les
+							articles disponibles pendant toute la période.
+						</p>
+					)}
+					{reservableDates && reservableData?.isRentalOpen === false && (
+						<p className="text-sm text-destructive">
+							Les locations sont actuellement fermées.
+						</p>
+					)}
+					{reservableDates &&
+						reservableData?.isRentalOpen !== false &&
+						(variantsPending ? (
+							<p className="text-sm text-muted-foreground">
+								Filtrage des articles disponibles...
+							</p>
+						) : allVariants?.length === 0 ? (
+							<p className="text-sm text-muted-foreground">
+								Aucun article n’est disponible pour ces dates.
+							</p>
+						) : null)}
+					<div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-5">
 						<div>
 							<Field>
 								<FieldLabel>Article</FieldLabel>
@@ -517,6 +644,11 @@ function RouteComponent() {
 										setSelectedVariantId("");
 										setSelectedPriceOptionId("");
 									}}
+									disabled={
+										!reservableDates ||
+										reservableData?.isRentalOpen === false ||
+										variantsPending
+									}
 								>
 									<SelectTrigger>
 										<SelectValue placeholder="Choisir..." />
@@ -540,23 +672,23 @@ function RouteComponent() {
 										setSelectedVariantId(v);
 										setSelectedPriceOptionId("");
 									}}
-									disabled={!selectedItemId}
+									disabled={!selectedItemId || filteredVariants.length <= 1}
 								>
 									<SelectTrigger>
 										<SelectValue
 											placeholder={
-												selectedItemId
-													? "Choisir..."
-													: "D'abord choisir un article"
+												!selectedItemId
+													? "D'abord choisir un article"
+													: filteredVariants.length === 0
+														? "Aucune variante disponible"
+														: "Choisir..."
 											}
 										/>
 									</SelectTrigger>
 									<SelectContent>
 										{filteredVariants.map((v) => (
 											<SelectItem key={v.id} value={v.id}>
-												{v.attributes.map((a) => a.value).join(" / ") ||
-													v.decathlonSku ||
-													"Par défaut"}
+												{getVariantLabel(v, filteredVariants.length)}
 											</SelectItem>
 										))}
 									</SelectContent>
@@ -675,7 +807,12 @@ function RouteComponent() {
 							<TableBody>
 								{lineItems.map((item, i) => (
 									<TableRow key={item.key}>
-										<TableCell className="text-sm">{item.itemName}</TableCell>
+										<TableCell className="text-sm">
+											{item.itemName}
+											<div className="text-xs text-muted-foreground">
+												{item.variantLabel}
+											</div>
+										</TableCell>
 										<TableCell className="text-sm">
 											{item.priceOptionLabel}
 										</TableCell>
@@ -712,7 +849,16 @@ function RouteComponent() {
 			</Card>
 
 			<div className="flex justify-end">
-				<Button type="submit" size="lg" disabled={isPending}>
+				<Button
+					type="submit"
+					size="lg"
+					disabled={
+						isPending ||
+						!reservableDates ||
+						reservableData?.isRentalOpen === false ||
+						!clientValidation.valid
+					}
+				>
 					{isPending ? "Création en cours..." : "Créer la réservation"}
 				</Button>
 			</div>

@@ -222,18 +222,20 @@ function RouteComponent() {
 				</Table>
 			</div>
 
-			<div className="flex items-center justify-between">
-				<Label className="text-sm text-muted-foreground">
+			<div className="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+				<Label className="text-sm text-muted-foreground sm:whitespace-nowrap">
 					{table.getRowModel().rows.length} résultat
 					{table.getRowModel().rows.length > 1 ? "s" : ""} sur{" "}
 					{filteredData.length}
 				</Label>
-				<div className="flex items-center gap-2">
+				<div className="flex min-w-0 flex-wrap items-center justify-center gap-2 sm:justify-end">
 					<Button
 						variant="outline"
 						size="sm"
+						className="hidden sm:inline-flex"
 						onClick={() => table.setPageIndex(0)}
 						disabled={!table.getCanPreviousPage()}
+						aria-label="Première page"
 					>
 						<ChevronsLeft className="size-4" />
 					</Button>
@@ -242,10 +244,11 @@ function RouteComponent() {
 						size="sm"
 						onClick={() => table.previousPage()}
 						disabled={!table.getCanPreviousPage()}
+						aria-label="Page précédente"
 					>
 						<ChevronLeft className="size-4" />
 					</Button>
-					<span className="text-sm text-muted-foreground">
+					<span className="min-w-16 text-center text-sm whitespace-nowrap text-muted-foreground">
 						{table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
 					</span>
 					<Button
@@ -253,14 +256,17 @@ function RouteComponent() {
 						size="sm"
 						onClick={() => table.nextPage()}
 						disabled={!table.getCanNextPage()}
+						aria-label="Page suivante"
 					>
 						<ChevronRight className="size-4" />
 					</Button>
 					<Button
 						variant="outline"
 						size="sm"
+						className="hidden sm:inline-flex"
 						onClick={() => table.setPageIndex(table.getPageCount() - 1)}
 						disabled={!table.getCanNextPage()}
+						aria-label="Dernière page"
 					>
 						<ChevronsRight className="size-4" />
 					</Button>
@@ -270,7 +276,7 @@ function RouteComponent() {
 							table.setPageSize(Number(v));
 						}}
 					>
-						<SelectTrigger className="w-16 h-8">
+						<SelectTrigger className="h-8 w-16" aria-label="Lignes par page">
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>

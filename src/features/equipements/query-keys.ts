@@ -10,5 +10,13 @@ export const queryKeys = {
 	variants: {
 		all: ["equipements", "variants"] as const,
 		byItem: (itemId: string) => ["equipements", "variants", itemId] as const,
+		reservable: (pickupDate: string, returnDate: string) =>
+			[
+				"equipements",
+				"variants",
+				"reservable",
+				pickupDate,
+				returnDate,
+			] as const,
 	},
 };

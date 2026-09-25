@@ -3,7 +3,10 @@ import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "#/db";
 import * as schema from "#/db/schema";
-import { requireAdminSession } from "#/features/auth/queries";
+import {
+	requireAdminSession,
+	requireDashboardSession,
+} from "#/features/auth/queries";
 
 // Forfait mensuel + commission (% du CA) appliqués au gérant de la plateforme.
 // Si la table est vide (jamais seedée), valeurs par défaut.
@@ -43,7 +46,10 @@ async function getSettingsOrDefaults(): Promise<BillingSettings> {
 }
 
 export const getBillingSettings = createServerFn({ method: "GET" }).handler(
-	async (): Promise<BillingSettings> => getSettingsOrDefaults(),
+	async (): Promise<BillingSettings> => {
+		await requireDashboardSession();
+		return getSettingsOrDefaults();
+	},
 );
 
 const updateSettingsSchema = z.object({
@@ -78,6 +84,7 @@ export const getMonthlyBilling = createServerFn({ method: "GET" }).handler(
 		settings: BillingSettings;
 		months: MonthlyBillingRow[];
 	}> => {
+		await requireDashboardSession();
 		const now = new Date();
 		const from = new Date(
 			now.getFullYear(),

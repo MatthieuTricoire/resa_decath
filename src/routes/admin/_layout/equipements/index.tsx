@@ -20,7 +20,7 @@ import {
 	Eye,
 	Search,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import {
@@ -38,6 +38,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "#/components/ui/select";
+import { Switch } from "#/components/ui/switch";
 import {
 	Table,
 	TableBody,
@@ -53,6 +54,16 @@ import {
 	type VariantRow,
 } from "#/features/equipements/queries";
 import { queryKeys } from "#/features/equipements/query-keys";
+import {
+	getSeasonalAvailability,
+	type SeasonalAvailability,
+} from "#/features/reservations/availability";
+import {
+	getRentalSettings,
+	type RentalSettings,
+} from "#/features/settings/queries";
+import { queryKeys as settingsQueryKeys } from "#/features/settings/query-keys";
+import { Route as AdminLayoutRoute } from "../../_layout";
 
 const formatPrice = (val: string | null) => {
 	if (!val) return "—";
@@ -73,6 +84,61 @@ const statusLabel: Record<string, string> = {
 	RETIRED: "Retiré",
 };
 
+const seasonLabel: Record<VariantRow["season"], string> = {
+	all: "Toutes saisons",
+	winter: "Hiver",
+	summer: "Été",
+};
+
+const seasonalAvailabilityLabel: Record<SeasonalAvailability, string> = {
+	available: "Réservable",
+	out_of_season: "Hors saison",
+	not_configured: "Saison non configurée",
+	not_filtered: "Non filtrée",
+};
+
+const seasonalAvailabilityBadgeClass: Record<SeasonalAvailability, string> = {
+	available:
+		"bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+	out_of_season:
+		"bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400",
+	not_configured:
+		"bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
+	not_filtered:
+		"bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300",
+};
+
+const reservableOnlyStorageKey = (userId: string) =>
+	`resa-decath:equipements:reservable-only:${userId}`;
+
+const isVariantReservable = (
+	variant: VariantRow,
+	settings: RentalSettings,
+	date: Date,
+): boolean => {
+	if (
+		!settings.isRentalOpen ||
+		variant.status !== "AVAILABLE" ||
+		variant.totalStock <= 0
+	) {
+		return false;
+	}
+
+	return (
+		!settings.seasonalFilteringEnabled ||
+		getSeasonalAvailability({ season: variant.season }, settings, date) ===
+			"available"
+	);
+};
+
+const formatMonthDay = (value: string) => {
+	const [month, day] = value.split("-").map(Number);
+	return new Intl.DateTimeFormat("fr-FR", {
+		month: "short",
+		day: "numeric",
+	}).format(new Date(2000, month - 1, day));
+};
+
 export const Route = createFileRoute("/admin/_layout/equipements/")({
 	loader: async ({ context: { queryClient } }) => {
 		await Promise.all([
@@ -84,13 +150,30 @@ export const Route = createFileRoute("/admin/_layout/equipements/")({
 				queryKey: queryKeys.categories.all,
 				queryFn: () => getCategories(),
 			}),
+			queryClient.prefetchQuery({
+				queryKey: settingsQueryKeys.settings.all,
+				queryFn: getRentalSettings,
+			}),
 		]);
+		return { today: new Date().toISOString() };
 	},
 	component: RouteComponent,
 });
 
 function RouteComponent() {
+	const { today } = Route.useLoaderData();
+	const { user } = AdminLayoutRoute.useLoaderData();
+	const storageKey = reservableOnlyStorageKey(user.id);
 	const [search, setSearch] = useState("");
+	const [reservableOnly, setReservableOnly] = useState(false);
+
+	useEffect(() => {
+		try {
+			setReservableOnly(window.localStorage.getItem(storageKey) === "true");
+		} catch {
+			setReservableOnly(false);
+		}
+	}, [storageKey]);
 	const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 	const [sorting, setSorting] = useState<SortingState>([
 		{ id: "itemName", desc: false },
@@ -106,13 +189,39 @@ function RouteComponent() {
 		queryFn: () => getVariants(),
 	});
 
+	const { data: settings, isPending: settingsPending } = useQuery({
+		queryKey: settingsQueryKeys.settings.all,
+		queryFn: getRentalSettings,
+	});
+
+	const seasonalDate = useMemo(() => new Date(today), [today]);
+	const getSeasonalAvailabilityForVariant = (
+		variant: VariantRow,
+	): SeasonalAvailability =>
+		settings
+			? getSeasonalAvailability(
+					{ season: variant.season },
+					settings,
+					seasonalDate,
+				)
+			: "not_filtered";
+
 	const { data: categories } = useQuery({
 		queryKey: queryKeys.categories.all,
 		queryFn: () => getCategories(),
 	});
 
+	const availabilityFilteredData = useMemo(() => {
+		if (!reservableOnly || !settings) {
+			return variants ?? [];
+		}
+		return (variants ?? []).filter((variant) =>
+			isVariantReservable(variant, settings, seasonalDate),
+		);
+	}, [variants, reservableOnly, settings, seasonalDate]);
+
 	const filteredData = useMemo(() => {
-		let data = variants ?? [];
+		let data = availabilityFilteredData;
 		if (selectedCategory) {
 			data = data.filter((v) => v.categoryId === selectedCategory);
 		}
@@ -127,17 +236,27 @@ function RouteComponent() {
 			);
 		}
 		return data;
-	}, [variants, selectedCategory, search]);
+	}, [availabilityFilteredData, selectedCategory, search]);
 
 	const categoryCounts = useMemo(() => {
 		const counts: Record<string, number> = {};
-		for (const v of variants ?? []) {
+		for (const v of availabilityFilteredData) {
 			counts[v.categoryId] = (counts[v.categoryId] ?? 0) + 1;
 		}
 		return counts;
-	}, [variants]);
+	}, [availabilityFilteredData]);
 
 	const emptyTabValue = "__all__";
+
+	const handleReservableOnlyChange = (checked: boolean) => {
+		setReservableOnly(checked);
+		setPagination((current) => ({ ...current, pageIndex: 0 }));
+		try {
+			window.localStorage.setItem(storageKey, String(checked));
+		} catch {
+			return;
+		}
+	};
 
 	const columns: ColumnDef<VariantRow>[] = [
 		{
@@ -148,6 +267,35 @@ function RouteComponent() {
 		{
 			accessorKey: "brand",
 			header: "Marque",
+		},
+		{
+			accessorKey: "season",
+			header: "Disponibilité saisonnière",
+			cell: ({ row }) => (
+				<div className="flex min-w-32 flex-col gap-1">
+					<Badge variant="secondary" className="w-fit">
+						{seasonLabel[row.original.season]}
+					</Badge>
+					{row.original.availableFrom && row.original.availableTo && (
+						<span className="text-xs text-muted-foreground">
+							Exception : {formatMonthDay(row.original.availableFrom)} →{" "}
+							{formatMonthDay(row.original.availableTo)}
+						</span>
+					)}
+				</div>
+			),
+		},
+		{
+			id: "seasonalAvailability",
+			header: "Réservabilité saisonnière",
+			cell: ({ row }) => {
+				const availability = getSeasonalAvailabilityForVariant(row.original);
+				return (
+					<Badge className={seasonalAvailabilityBadgeClass[availability]}>
+						{seasonalAvailabilityLabel[availability]}
+					</Badge>
+				);
+			},
 		},
 		{
 			accessorKey: "decathlonSku",
@@ -238,7 +386,7 @@ function RouteComponent() {
 		getPaginationRowModel: getPaginationRowModel(),
 	});
 
-	if (variantsPending) {
+	if (variantsPending || settingsPending) {
 		return <div className="text-sm text-muted-foreground">Chargement...</div>;
 	}
 
@@ -275,7 +423,7 @@ function RouteComponent() {
 				</div>
 			</div>
 
-			<div className="flex items-center gap-4">
+			<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
 				<div className="relative flex-1">
 					<Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 					<Input
@@ -288,6 +436,16 @@ function RouteComponent() {
 						className="pl-8"
 					/>
 				</div>
+				<div className="flex items-center gap-2 sm:shrink-0">
+					<Switch
+						id="reservable-only"
+						checked={reservableOnly}
+						onCheckedChange={handleReservableOnlyChange}
+					/>
+					<Label htmlFor="reservable-only" className="text-sm">
+						Réservables uniquement
+					</Label>
+				</div>
 			</div>
 
 			<Tabs
@@ -296,20 +454,28 @@ function RouteComponent() {
 					setSelectedCategory(val === emptyTabValue ? null : val);
 					setPagination((p) => ({ ...p, pageIndex: 0 }));
 				}}
+				className="min-w-0"
 			>
-				<TabsList variant="line">
-					<TabsTrigger value={emptyTabValue}>
-						Tout <Badge variant="secondary">{variants?.length ?? 0}</Badge>
+				<TabsList
+					variant="line"
+					className="w-max min-w-full max-w-full justify-start overflow-x-auto pb-1 md:justify-center"
+				>
+					<TabsTrigger value={emptyTabValue} className="shrink-0">
+						Tout{" "}
+						<Badge variant="secondary">{availabilityFilteredData.length}</Badge>
 					</TabsTrigger>
 					{categories?.map((cat) => (
-						<TabsTrigger key={cat.id} value={cat.id}>
+						<TabsTrigger key={cat.id} value={cat.id} className="shrink-0">
 							{cat.name}{" "}
 							<Badge variant="secondary">{categoryCounts[cat.id] ?? 0}</Badge>
 						</TabsTrigger>
 					))}
 				</TabsList>
 
-				<TabsContent value={selectedCategory ?? emptyTabValue}>
+				<TabsContent
+					value={selectedCategory ?? emptyTabValue}
+					className="min-w-0"
+				>
 					<div className="overflow-hidden rounded-lg border">
 						<Table>
 							<TableHeader className="bg-muted">

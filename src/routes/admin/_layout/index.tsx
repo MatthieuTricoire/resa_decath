@@ -9,6 +9,7 @@ import { KpiCard } from "#/components/kpi-card";
 import { SiteHeader } from "#/components/site-header";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
+import { Card, CardContent } from "#/components/ui/card";
 import {
 	Table,
 	TableBody,
@@ -38,78 +39,339 @@ function lateLabel(iso: string, days: number = daysLate(iso)) {
 	return days <= 1 ? "il y a 1 jour" : `il y a ${days} jours`;
 }
 
+function MobileReservationList({
+	rows,
+	isLoading = false,
+	emptyLabel,
+	renderDetails,
+	renderActions,
+}: {
+	rows: TodayReservationRow[];
+	isLoading?: boolean;
+	emptyLabel: string;
+	renderDetails: (row: TodayReservationRow) => ReactNode;
+	renderActions: (row: TodayReservationRow) => ReactNode;
+}) {
+	if (isLoading || rows.length === 0) {
+		return (
+			<div className="p-3 md:hidden">
+				<Card className="gap-3 rounded-lg bg-background py-3 shadow-none">
+					<CardContent
+						className="px-3 text-center text-sm text-muted-foreground"
+						role={isLoading ? "status" : undefined}
+					>
+						{isLoading ? "Chargement..." : emptyLabel}
+					</CardContent>
+				</Card>
+			</div>
+		);
+	}
+
+	return (
+		<ul className="m-0 grid list-none gap-2 p-3 md:hidden">
+			{rows.map((row) => (
+				<li key={row.id}>
+					<Card className="gap-3 rounded-lg bg-background py-3 shadow-none">
+						<CardContent className="space-y-3 px-3">
+							<div className="min-w-0">
+								<p className="truncate text-sm font-medium">{row.clientName}</p>
+								<p className="break-all text-xs text-muted-foreground">
+									{row.clientEmail}
+								</p>
+							</div>
+							<div className="flex flex-wrap items-end justify-between gap-3">
+								<div className="min-w-0">{renderDetails(row)}</div>
+								<div className="flex shrink-0 items-center gap-2">
+									{renderActions(row)}
+								</div>
+							</div>
+						</CardContent>
+					</Card>
+				</li>
+			))}
+		</ul>
+	);
+}
+
+function ReservationActions({
+	row,
+	actionLabel,
+	actionIcon,
+	onAction,
+	isPending,
+}: {
+	row: TodayReservationRow;
+	actionLabel: (row: TodayReservationRow) => string;
+	actionIcon: ReactNode;
+	onAction: (id: string) => void;
+	isPending: boolean;
+}) {
+	const accessibleActionLabel = actionLabel(row);
+
+	return (
+		<>
+			<Button variant="ghost" size="icon-lg" asChild>
+				<Link
+					to="/admin/reservations/$reservationId"
+					params={{ reservationId: row.id }}
+					aria-label={`Voir la réservation de ${row.clientName}`}
+					title="Voir la réservation"
+				>
+					<Eye className="size-4" />
+				</Link>
+			</Button>
+			<Button
+				type="button"
+				variant="outline"
+				size="icon-lg"
+				disabled={isPending}
+				onClick={() => onAction(row.id)}
+				aria-label={accessibleActionLabel}
+				title={accessibleActionLabel}
+			>
+				{actionIcon}
+			</Button>
+		</>
+	);
+}
+
 function LateSection({
+	titleId,
 	title,
 	rows,
 	dateField,
-	renderAction,
-	emptyLabel,
+	actionLabel,
+	actionIcon,
+	onAction,
+	isActionPending,
 }: {
+	titleId: string;
 	title: string;
 	rows: TodayReservationRow[];
 	dateField: "pickupDate" | "returnDate";
-	renderAction: (row: TodayReservationRow) => ReactNode;
-	emptyLabel: string;
+	actionLabel: (row: TodayReservationRow) => string;
+	actionIcon: ReactNode;
+	onAction: (id: string) => void;
+	isActionPending: boolean;
 }) {
 	return (
-		<div className="overflow-hidden rounded-md border border-red-200 bg-white dark:border-red-900 dark:bg-card">
+		<section
+			className="overflow-hidden rounded-md border border-red-200 bg-white dark:border-red-900 dark:bg-card"
+			aria-labelledby={titleId}
+		>
 			<div className="flex items-center justify-between border-b border-red-200 bg-red-50 px-4 py-2.5 dark:border-red-900 dark:bg-red-950/40">
-				<div className="flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-400">
+				<h3
+					id={titleId}
+					className="flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-400"
+				>
 					<AlertTriangle className="size-4" />
 					{title}
-				</div>
-				{rows.length > 0 && (
-					<Badge className="bg-red-600 text-white">{rows.length}</Badge>
-				)}
+				</h3>
+				<Badge className="bg-red-600 text-white">{rows.length}</Badge>
 			</div>
-			<Table>
-				<TableHeader className="bg-muted/50">
-					<TableRow>
-						<TableHead>Client</TableHead>
-						<TableHead>Prévu</TableHead>
-						<TableHead>Articles</TableHead>
-						<TableHead className="w-20" />
-					</TableRow>
-				</TableHeader>
-				<TableBody>
-					{rows.length === 0 ? (
+			<MobileReservationList
+				rows={rows}
+				emptyLabel="Aucun retard"
+				renderDetails={(row) => (
+					<div className="space-y-1.5 text-sm">
+						<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+							<span className="text-xs text-muted-foreground">Prévu</span>
+							<time dateTime={row[dateField]} className="font-medium">
+								{formatDateTime(row[dateField])}
+							</time>
+						</div>
+						<div className="flex items-center gap-2">
+							<span className="text-xs text-muted-foreground">Articles</span>
+							<span className="font-medium tabular-nums">{row.itemCount}</span>
+						</div>
+						<Badge className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
+							{lateLabel(row[dateField])}
+						</Badge>
+					</div>
+				)}
+				renderActions={(row) => (
+					<ReservationActions
+						row={row}
+						actionLabel={actionLabel}
+						actionIcon={actionIcon}
+						onAction={onAction}
+						isPending={isActionPending}
+					/>
+				)}
+			/>
+			<div className="hidden md:block">
+				<Table>
+					<TableHeader className="bg-muted/50">
 						<TableRow>
-							<TableCell
-								colSpan={4}
-								className="text-center text-sm text-muted-foreground"
-							>
-								{emptyLabel}
-							</TableCell>
+							<TableHead scope="col">Client</TableHead>
+							<TableHead scope="col">Prévu</TableHead>
+							<TableHead scope="col">Articles</TableHead>
+							<TableHead scope="col" className="w-24">
+								<span className="sr-only">Actions</span>
+							</TableHead>
 						</TableRow>
-					) : (
-						rows.map((r) => (
-							<TableRow key={r.id}>
+					</TableHeader>
+					<TableBody>
+						{rows.map((row) => (
+							<TableRow key={row.id}>
 								<TableCell>
-									<div className="text-sm font-medium">{r.clientName}</div>
+									<div className="text-sm font-medium">{row.clientName}</div>
 									<div className="text-xs text-muted-foreground">
-										{r.clientEmail}
+										{row.clientEmail}
 									</div>
 								</TableCell>
 								<TableCell>
 									<div className="text-sm whitespace-nowrap">
-										{formatDateTime(r[dateField])}
+										{formatDateTime(row[dateField])}
 									</div>
 									<Badge className="mt-1 bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
-										{lateLabel(r[dateField])}
+										{lateLabel(row[dateField])}
 									</Badge>
 								</TableCell>
-								<TableCell className="text-sm">{r.itemCount}</TableCell>
+								<TableCell className="text-sm tabular-nums">
+									{row.itemCount}
+								</TableCell>
 								<TableCell>
 									<div className="flex items-center gap-1">
-										{renderAction(r)}
+										<ReservationActions
+											row={row}
+											actionLabel={actionLabel}
+											actionIcon={actionIcon}
+											onAction={onAction}
+											isPending={isActionPending}
+										/>
 									</div>
 								</TableCell>
 							</TableRow>
-						))
-					)}
-				</TableBody>
-			</Table>
-		</div>
+						))}
+					</TableBody>
+				</Table>
+			</div>
+		</section>
+	);
+}
+
+function ScheduleSection({
+	id,
+	title,
+	rows,
+	isLoading,
+	emptyLabel,
+	actionLabel,
+	actionIcon,
+	onAction,
+	isActionPending,
+}: {
+	id: string;
+	title: string;
+	rows: TodayReservationRow[];
+	isLoading: boolean;
+	emptyLabel: string;
+	actionLabel: (row: TodayReservationRow) => string;
+	actionIcon: ReactNode;
+	onAction: (id: string) => void;
+	isActionPending: boolean;
+}) {
+	return (
+		<section
+			className="min-w-0 overflow-hidden rounded-md border bg-card"
+			aria-labelledby={id}
+		>
+			<div className="flex items-center justify-between border-b px-4 py-3">
+				<h2 id={id} className="text-sm font-medium">
+					{title}
+				</h2>
+				{rows.length > 0 && <Badge variant="outline">{rows.length}</Badge>}
+			</div>
+			<MobileReservationList
+				rows={rows}
+				isLoading={isLoading}
+				emptyLabel={emptyLabel}
+				renderDetails={(row) => (
+					<div className="space-y-1 text-sm">
+						<div className="flex items-center gap-2">
+							<span className="text-xs text-muted-foreground">Heure</span>
+							<span className="font-semibold tabular-nums">{row.time}</span>
+						</div>
+						<p className="text-muted-foreground">
+							{row.itemCount} article{row.itemCount > 1 ? "s" : ""}
+						</p>
+					</div>
+				)}
+				renderActions={(row) => (
+					<ReservationActions
+						row={row}
+						actionLabel={actionLabel}
+						actionIcon={actionIcon}
+						onAction={onAction}
+						isPending={isActionPending}
+					/>
+				)}
+			/>
+			<div className="hidden md:block">
+				<Table>
+					<TableHeader className="bg-muted/50">
+						<TableRow>
+							<TableHead scope="col">Client</TableHead>
+							<TableHead scope="col">Heure</TableHead>
+							<TableHead scope="col">Articles</TableHead>
+							<TableHead scope="col" className="w-24">
+								<span className="sr-only">Actions</span>
+							</TableHead>
+						</TableRow>
+					</TableHeader>
+					<TableBody>
+						{isLoading ? (
+							<TableRow>
+								<TableCell
+									colSpan={4}
+									className="text-center text-sm text-muted-foreground"
+								>
+									Chargement...
+								</TableCell>
+							</TableRow>
+						) : rows.length === 0 ? (
+							<TableRow>
+								<TableCell
+									colSpan={4}
+									className="text-center text-sm text-muted-foreground"
+								>
+									{emptyLabel}
+								</TableCell>
+							</TableRow>
+						) : (
+							rows.map((row) => (
+								<TableRow key={row.id}>
+									<TableCell>
+										<div className="text-sm font-medium">{row.clientName}</div>
+										<div className="text-xs text-muted-foreground">
+											{row.clientEmail}
+										</div>
+									</TableCell>
+									<TableCell className="text-sm tabular-nums">
+										{row.time}
+									</TableCell>
+									<TableCell className="text-sm tabular-nums">
+										{row.itemCount}
+									</TableCell>
+									<TableCell>
+										<div className="flex items-center gap-1">
+											<ReservationActions
+												row={row}
+												actionLabel={actionLabel}
+												actionIcon={actionIcon}
+												onAction={onAction}
+												isPending={isActionPending}
+											/>
+										</div>
+									</TableCell>
+								</TableRow>
+							))
+						)}
+					</TableBody>
+				</Table>
+			</div>
+		</section>
 	);
 }
 
@@ -204,272 +466,95 @@ function RouteComponent() {
 	return (
 		<>
 			<SiteHeader title="Dashboard" />
-			<div className="@container/main flex flex-1 flex-col gap-2">
-				<div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6 px-4 lg:px-6">
+			<div className="@container/main flex min-w-0 flex-1 flex-col gap-2">
+				<div className="flex min-w-0 flex-col gap-4 px-4 py-4 md:gap-6 md:py-6 lg:px-6">
 					{hasAlerts && (
 						<div className="flex flex-col gap-3 rounded-lg border-2 border-red-300 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950/20">
 							<div className="flex items-center gap-2 px-1">
 								<AlertTriangle className="size-4 text-red-600 dark:text-red-400" />
-								<h3 className="text-sm font-semibold text-red-700 dark:text-red-400">
+								<h2 className="text-sm font-semibold text-red-700 dark:text-red-400">
 									Retards à gérer
-								</h3>
+								</h2>
 								<Badge className="bg-red-600 text-white">
 									{overdueReturns.length + expiredPickups.length}
 								</Badge>
 							</div>
 							{overdueReturns.length > 0 && (
 								<LateSection
+									titleId="late-returns"
 									title="Retours en retard"
 									rows={overdueReturns}
 									dateField="returnDate"
-									emptyLabel="Aucun retour en retard"
-									renderAction={(r) => (
-										<>
-											<Button
-												variant="ghost"
-												size="icon"
-												className="size-7"
-												asChild
-											>
-												<Link
-													to="/admin/reservations/$reservationId"
-													params={{ reservationId: r.id }}
-												>
-													<Eye className="size-3.5" />
-												</Link>
-											</Button>
-											<Button
-												variant="outline"
-												size="sm"
-												className="size-7 p-0"
-												disabled={returnMutation.isPending}
-												onClick={() => returnMutation.mutate(r.id)}
-												title="Marquer comme retourné"
-											>
-												<Undo2 className="size-3.5" />
-											</Button>
-										</>
-									)}
+									actionLabel={(row) =>
+										`Marquer le retour de ${row.clientName} comme effectué`
+									}
+									actionIcon={<Undo2 className="size-4" />}
+									onAction={(id) => returnMutation.mutate(id)}
+									isActionPending={returnMutation.isPending}
 								/>
 							)}
 							{expiredPickups.length > 0 && (
 								<LateSection
+									titleId="late-pickups"
 									title="Retraits dépassés — matériel à libérer"
 									rows={expiredPickups}
 									dateField="pickupDate"
-									emptyLabel="Aucun retrait dépassé"
-									renderAction={(r) => (
-										<>
-											<Button
-												variant="ghost"
-												size="icon"
-												className="size-7"
-												asChild
-											>
-												<Link
-													to="/admin/reservations/$reservationId"
-													params={{ reservationId: r.id }}
-												>
-													<Eye className="size-3.5" />
-												</Link>
-											</Button>
-											<Button
-												variant="outline"
-												size="sm"
-												className="size-7 p-0"
-												disabled={cancelMutation.isPending}
-												onClick={() => cancelMutation.mutate(r.id)}
-												title="Annuler et libérer le matériel"
-											>
-												<X className="size-3.5" />
-											</Button>
-										</>
-									)}
+									actionLabel={(row) =>
+										`Annuler la réservation de ${row.clientName} et libérer le matériel`
+									}
+									actionIcon={<X className="size-4" />}
+									onAction={(id) => cancelMutation.mutate(id)}
+									isActionPending={cancelMutation.isPending}
 								/>
 							)}
 						</div>
 					)}
-					<div className="grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs @xl:grid-cols-2 @5xl:grid-cols-4 dark:*:data-[slot=card]:bg-card">
+					<div className="grid grid-cols-3 gap-2 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs sm:gap-4 dark:*:data-[slot=card]:bg-card">
 						<KpiCard
-							label="Réservations du jour"
+							compact
+							label="Aujourd’hui"
 							value={kpis?.todayCount ?? "—"}
 						/>
-						<KpiCard label="En cours" value={kpis?.activeCount ?? "—"} />
 						<KpiCard
-							label="Revenu du mois"
-							value={
-								kpis?.monthlyRevenue
-									? `${Number(kpis.monthlyRevenue).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} €`
-									: "—"
-							}
+							compact
+							label="En cours"
+							value={kpis?.activeCount ?? "—"}
 						/>
-						<KpiCard label="À récupérer" value={kpis?.pendingPickup ?? "—"} />
+						<KpiCard
+							compact
+							label="À récupérer"
+							value={kpis?.pendingPickup ?? "—"}
+						/>
 					</div>
 
-					<div className="grid grid-cols-1 gap-4 @5xl:grid-cols-2">
-						<div className="rounded-md border">
-							<div className="flex items-center justify-between px-4 py-3 border-b">
-								<h3 className="text-sm font-medium">À récupérer aujourd'hui</h3>
-								{schedule && schedule.pickups.length > 0 && (
-									<Badge variant="outline">{schedule.pickups.length}</Badge>
-								)}
-							</div>
-							<Table>
-								<TableHeader className="bg-muted/50">
-									<TableRow>
-										<TableHead>Client</TableHead>
-										<TableHead>Heure</TableHead>
-										<TableHead>Articles</TableHead>
-										<TableHead className="w-20" />
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{!schedule ? (
-										<TableRow>
-											<TableCell
-												colSpan={5}
-												className="text-center text-sm text-muted-foreground"
-											>
-												Chargement...
-											</TableCell>
-										</TableRow>
-									) : schedule.pickups.length === 0 ? (
-										<TableRow>
-											<TableCell
-												colSpan={5}
-												className="text-center text-sm text-muted-foreground"
-											>
-												Aucune réservation à récupérer aujourd'hui
-											</TableCell>
-										</TableRow>
-									) : (
-										schedule.pickups.map((r) => (
-											<TableRow key={r.id}>
-												<TableCell>
-													<div className="text-sm font-medium">
-														{r.clientName}
-													</div>
-													<div className="text-xs text-muted-foreground">
-														{r.clientEmail}
-													</div>
-												</TableCell>
-												<TableCell className="text-sm">{r.time}</TableCell>
-												<TableCell className="text-sm">{r.itemCount}</TableCell>
-												<TableCell>
-													<div className="flex items-center gap-1">
-														<Button
-															variant="ghost"
-															size="icon"
-															className="size-7"
-															asChild
-														>
-															<Link
-																to="/admin/reservations/$reservationId"
-																params={{ reservationId: r.id }}
-															>
-																<Eye className="size-3.5" />
-															</Link>
-														</Button>
-														<Button
-															variant="outline"
-															size="sm"
-															className="size-7 p-0"
-															disabled={pickupMutation.isPending}
-															onClick={() => pickupMutation.mutate(r.id)}
-															title="Marquer comme récupéré"
-														>
-															<Check className="size-3.5" />
-														</Button>
-													</div>
-												</TableCell>
-											</TableRow>
-										))
-									)}
-								</TableBody>
-							</Table>
-						</div>
+					<div className="grid min-w-0 grid-cols-1 gap-4 @5xl:grid-cols-2">
+						<ScheduleSection
+							id="today-pickups"
+							title="À récupérer aujourd'hui"
+							rows={schedule?.pickups ?? []}
+							isLoading={!schedule}
+							emptyLabel="Aucune réservation à récupérer aujourd'hui"
+							actionLabel={(row) =>
+								`Marquer la réservation de ${row.clientName} comme récupérée`
+							}
+							actionIcon={<Check className="size-4" />}
+							onAction={(id) => pickupMutation.mutate(id)}
+							isActionPending={pickupMutation.isPending}
+						/>
 
-						<div className="rounded-md border">
-							<div className="flex items-center justify-between px-4 py-3 border-b">
-								<h3 className="text-sm font-medium">À rendre aujourd'hui</h3>
-								{schedule && schedule.returns.length > 0 && (
-									<Badge variant="outline">{schedule.returns.length}</Badge>
-								)}
-							</div>
-							<Table>
-								<TableHeader className="bg-muted/50">
-									<TableRow>
-										<TableHead>Client</TableHead>
-										<TableHead>Heure</TableHead>
-										<TableHead>Articles</TableHead>
-										<TableHead className="w-20" />
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{!schedule ? (
-										<TableRow>
-											<TableCell
-												colSpan={5}
-												className="text-center text-sm text-muted-foreground"
-											>
-												Chargement...
-											</TableCell>
-										</TableRow>
-									) : schedule.returns.length === 0 ? (
-										<TableRow>
-											<TableCell
-												colSpan={5}
-												className="text-center text-sm text-muted-foreground"
-											>
-												Aucune réservation à rendre aujourd'hui
-											</TableCell>
-										</TableRow>
-									) : (
-										schedule.returns.map((r) => (
-											<TableRow key={r.id}>
-												<TableCell>
-													<div className="text-sm font-medium">
-														{r.clientName}
-													</div>
-													<div className="text-xs text-muted-foreground">
-														{r.clientEmail}
-													</div>
-												</TableCell>
-												<TableCell className="text-sm">{r.time}</TableCell>
-												<TableCell className="text-sm">{r.itemCount}</TableCell>
-												<TableCell>
-													<div className="flex items-center gap-1">
-														<Button
-															variant="ghost"
-															size="icon"
-															className="size-7"
-															asChild
-														>
-															<Link
-																to="/admin/reservations/$reservationId"
-																params={{ reservationId: r.id }}
-															>
-																<Eye className="size-3.5" />
-															</Link>
-														</Button>
-														<Button
-															variant="outline"
-															size="sm"
-															className="size-7 p-0"
-															disabled={returnMutation.isPending}
-															onClick={() => returnMutation.mutate(r.id)}
-															title="Marquer comme retourné"
-														>
-															<Undo2 className="size-3.5" />
-														</Button>
-													</div>
-												</TableCell>
-											</TableRow>
-										))
-									)}
-								</TableBody>
-							</Table>
-						</div>
+						<ScheduleSection
+							id="today-returns"
+							title="À rendre aujourd'hui"
+							rows={schedule?.returns ?? []}
+							isLoading={!schedule}
+							emptyLabel="Aucune réservation à rendre aujourd'hui"
+							actionLabel={(row) =>
+								`Marquer la réservation de ${row.clientName} comme retournée`
+							}
+							actionIcon={<Undo2 className="size-4" />}
+							onAction={(id) => returnMutation.mutate(id)}
+							isActionPending={returnMutation.isPending}
+						/>
 					</div>
 				</div>
 			</div>

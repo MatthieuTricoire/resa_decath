@@ -8,37 +8,46 @@ const globalForDb = globalThis as unknown as {
 	conn: postgres.Sql | undefined;
 };
 
-// Récupération et nettoyage strict de la chaîne de connexion
-const rawUrl = process.env.DATABASE_URL || env?.DATABASE_URL || "";
-const connectionString = rawUrl.trim().replace(/^["']|["']$/g, "");
+const rawUrl = (process.env.DATABASE_URL || env?.DATABASE_URL || "")
+	.trim()
+	.replace(/^["']|["']$/g, "");
 
-if (!connectionString || connectionString.length === 0) {
-	console.error(
-		"🚨 DATABASE_URL est vide ou absente dans l'environnement de la fonction Netlify !",
-	);
+if (!rawUrl) {
 	throw new Error("CRITICAL: DATABASE_URL is missing or empty at runtime!");
 }
 
-// Vérification préventive pour intercepter l'erreur avant postgres.js
-try {
-	new URL(connectionString);
-} catch (err) {
-	console.error(
-		"🚨 La chaîne DATABASE_URL n'est pas une URL valide :",
-		connectionString.slice(0, 15) + "...",
-	);
-	throw new Error(
-		"CRITICAL: DATABASE_URL is not a valid URL for Node.js URL parser!",
-	);
-}
+// Activer le SSL uniquement pour Neon / serveurs distants, pas pour localhost
+const isLocalhost =
+	rawUrl.includes("localhost") || rawUrl.includes("127.0.0.1");
+const sslConfig = isLocalhost ? false : "require";
 
-// Instanciation adaptée à Neon et aux fonctions Serverless
-const conn =
-	globalForDb.conn ??
-	postgres(connectionString, {
-		ssl: "require",
-		max: 1,
-	});
+const match = rawUrl.match(
+	/^postgres(?:ql)?:\/\/([^:]+):([^@]+)@([^/:]+)(?::(\d+))?\/([^?]+)(?:\?.*)?$/,
+);
+
+let conn: postgres.Sql;
+
+if (match) {
+	const [, user, password, host, port, database] = match;
+	conn =
+		globalForDb.conn ??
+		postgres({
+			host,
+			port: port ? Number.parseInt(port, 10) : 5432,
+			database,
+			user,
+			pass: decodeURIComponent(password),
+			ssl: sslConfig,
+			max: 1,
+		});
+} else {
+	conn =
+		globalForDb.conn ??
+		postgres(rawUrl, {
+			ssl: sslConfig,
+			max: 1,
+		});
+}
 
 if (env?.NODE_ENV !== "production") {
 	globalForDb.conn = conn;

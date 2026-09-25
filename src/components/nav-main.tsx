@@ -1,5 +1,5 @@
 import { type Icon, IconCirclePlusFilled } from "@tabler/icons-react";
-import { Link, useRouter } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 
 import {
 	SidebarGroup,
@@ -7,6 +7,7 @@ import {
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
+	useSidebar,
 } from "#/components/ui/sidebar.tsx";
 
 export function NavMain({
@@ -19,7 +20,7 @@ export function NavMain({
 		exact?: boolean;
 	}[];
 }) {
-	const router = useRouter();
+	const { setOpenMobile } = useSidebar();
 
 	return (
 		<SidebarGroup>
@@ -27,14 +28,19 @@ export function NavMain({
 				<SidebarMenu>
 					<SidebarMenuItem className="flex items-center gap-2">
 						<SidebarMenuButton
-							onClick={() =>
-								router.navigate({ to: "/admin/reservations/ajouter" })
-							}
+							asChild
 							tooltip="Créer une réservation"
-							className="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
+							className="min-w-8 bg-primary text-white duration-200 ease-linear hover:bg-primary/90 hover:text-white active:bg-primary/90 active:text-white"
 						>
-							<IconCirclePlusFilled />
-							<span>Créer une réservation</span>
+							<Link
+								to="/admin/reservations/ajouter"
+								onClick={() => setOpenMobile(false)}
+								className="text-white"
+								style={{ color: "white" }}
+							>
+								<IconCirclePlusFilled />
+								<span>Créer une réservation</span>
+							</Link>
 						</SidebarMenuButton>
 					</SidebarMenuItem>
 				</SidebarMenu>
@@ -46,6 +52,7 @@ export function NavMain({
 									to={item.url}
 									activeOptions={{ exact: item.exact ?? false }}
 									activeProps={{ "data-active": true as const }}
+									onClick={() => setOpenMobile(false)}
 								>
 									{item.icon && <item.icon />}
 									<span>{item.title}</span>
