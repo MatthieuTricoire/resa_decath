@@ -1,8 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap');
-@import 'tailwindcss';
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap");
+@import "tailwindcss";
 @plugin '@tailwindcss/typography';
 
-@import 'tw-animate-css';
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -24,7 +24,8 @@
   --chip-bg: rgba(255, 255, 255, 0.8);
   --chip-line: rgba(0, 0, 0, 0.12);
   --link-bg-hover: rgba(255, 255, 255, 0.9);
-  --hero-a: rgba(255, 255, 255, 0.6);
+  /* --hero-a: rgba(255, 255, 255, 0.6); */
+  --hero-a: rgba(54, 67, 186, 0.1);
   --hero-b: rgba(0, 0, 0, 0.04);
 
   --background: oklch(1 0 0);
@@ -33,7 +34,8 @@
   --card-foreground: oklch(0.141 0.005 285.823);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.21 0.006 285.885);
+  /* --primary: oklch(0.21 0.006 285.885); */
+  --primary: #3643ba;
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.967 0.001 286.375);
   --secondary-foreground: oklch(0.21 0.006 285.885);
@@ -45,7 +47,7 @@
   --destructive-foreground: oklch(0.577 0.245 27.325);
   --border: oklch(0.92 0.004 286.32);
   --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.871 0.006 286.286);
+  --ring: #c9cffb;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -101,7 +103,7 @@
   --destructive-foreground: oklch(0.637 0.237 25.331);
   --border: oklch(0.274 0.006 286.033);
   --input: oklch(0.274 0.006 286.033);
-  --ring: oklch(0.442 0.017 285.786);
+  --ring: #4c5ad0;
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -118,7 +120,7 @@
 }
 
 @theme inline {
-  --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -163,6 +165,14 @@ body,
   min-height: 100%;
 }
 
+/* Défilement doux vers l’ancre « Louer du matériel » (étape 1). Désactivé si
+   l’utilisateur demande moins d’animation. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 body {
   margin: 0;
   color: var(--sea-ink);
@@ -178,19 +188,27 @@ body {
 }
 
 body::before {
-  content: '';
+  content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: -1;
   opacity: 0.28;
   background:
-    radial-gradient(circle at 20% 15%, rgba(255, 255, 255, 0.8), transparent 34%),
-    radial-gradient(circle at 78% 26%, rgba(255, 255, 255, 0.3), transparent 42%);
+    radial-gradient(
+      circle at 20% 15%,
+      rgba(255, 255, 255, 0.8),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 78% 26%,
+      rgba(255, 255, 255, 0.3),
+      transparent 42%
+    );
 }
 
 body::after {
-  content: '';
+  content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
@@ -203,15 +221,19 @@ body::after {
   mask-image: radial-gradient(circle at 50% 30%, black, transparent 78%);
 }
 
-a {
+a:not([data-slot="button"]) {
   color: var(--sea-ink-soft);
   text-decoration-color: var(--line);
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
 }
 
-a:hover {
-  color: var(--sea-ink);
+a:not([data-slot="button"]):hover {
+  color: #2e39a6;
+}
+
+.dark a:not([data-slot="button"]):hover {
+  color: #9aa7f5;
 }
 
 code {
@@ -244,7 +266,7 @@ pre code {
 }
 
 .display-title {
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: "Fraunces", Georgia, serif;
 }
 
 .island-shell {
@@ -258,7 +280,11 @@ pre code {
 }
 
 .feature-card {
-  background: linear-gradient(165deg, color-mix(in oklab, var(--surface-strong) 93%, white 7%), var(--surface));
+  background: linear-gradient(
+    165deg,
+    color-mix(in oklab, var(--surface-strong) 93%, white 7%),
+    var(--surface)
+  );
   box-shadow:
     0 1px 0 var(--inset-glint) inset,
     0 18px 34px rgba(0, 0, 0, 0.06),
@@ -273,7 +299,10 @@ pre code {
 button,
 .island-shell,
 a {
-  transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease,
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    border-color 180ms ease,
     transform 180ms ease;
 }
 
@@ -292,7 +321,7 @@ a {
 }
 
 .nav-link::after {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   bottom: -8px;
@@ -300,7 +329,7 @@ a {
   height: 2px;
   transform: scaleX(0);
   transform-origin: left;
-  background: linear-gradient(90deg, var(--lagoon), var(--sea-ink-soft));
+  background: linear-gradient(90deg, var(--primary), #5c6fe0);
   transition: transform 170ms ease;
 }
 

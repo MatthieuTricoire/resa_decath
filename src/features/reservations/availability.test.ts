@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+	availableQuantity,
+	cartLineBlocker,
 	evaluateItemAvailability,
 	getActiveSeasonsForRange,
 	getReservationDurationDays,
 	getSeasonalAvailability,
 	type RentalAvailabilitySettings,
+	stockShortage,
 } from "./availability";
 
 const configuredSettings: RentalAvailabilitySettings = {
@@ -159,7 +162,7 @@ describe("evaluateItemAvailability", () => {
 
 	it("refuse une durée inférieure au minimum du produit", () => {
 		const result = evaluateItemAvailability({
-			item: { ...item, minDuration: 2, minDurationUnit: "day" },
+			item: { ...item, minDuration: 2 },
 			settings: configuredSettings,
 			pickupDate: at("2026-07-10"),
 			returnDate: at("2026-07-10"),
@@ -252,5 +255,70 @@ describe("getSeasonalAvailability", () => {
 		expect(
 			getSeasonalAvailability({ season: "all" }, settings, at("2026-07-10")),
 		).toBe("available");
+	});
+});
+
+describe("quantités disponibles", () => {
+	it("déduit les réservations actives du stock total", () => {
+		expect(availableQuantity(5, 0)).toBe(5);
+		expect(availableQuantity(5, 3)).toBe(2);
+	});
+
+	it("borne à zéro, y compris en cas de surréservation", () => {
+		expect(availableQuantity(5, 8)).toBe(0);
+		expect(availableQuantity(0, 2)).toBe(0);
+	});
+
+	it("tolère les valeurs manquantes", () => {
+		expect(availableQuantity(null, null)).toBe(0);
+		expect(availableQuantity(undefined, undefined)).toBe(0);
+	});
+
+	it("repère une commande qui dépasse le stock restant", () => {
+		expect(stockShortage(2, 5)).toBe(false);
+		expect(stockShortage(5, 5)).toBe(false);
+		expect(stockShortage(6, 5)).toBe(true);
+		expect(stockShortage(1, 0)).toBe(true);
+	});
+});
+
+describe("cartLineBlocker", () => {
+	const line = {
+		status: "available",
+		message: null,
+		quantity: 1,
+		availableQuantity: 3,
+	};
+
+	it("laisse passer une ligne servable", () => {
+		expect(cartLineBlocker(line)).toBeNull();
+	});
+
+	it("reprend le message du serveur quand le devis refuse", () => {
+		expect(
+			cartLineBlocker({
+				...line,
+				status: "unavailable",
+				message: "Hors saison",
+			}),
+		).toBe("Hors saison");
+		expect(cartLineBlocker({ ...line, status: "unavailable" })).toBe(
+			"Ce matériel n’est pas louable pour ces dates.",
+		);
+	});
+
+	it("signale un stock insuffisant en donnant le nombre restant", () => {
+		expect(cartLineBlocker({ ...line, quantity: 5 })).toBe(
+			"Stock insuffisant : 3 exemplaires disponibles pour ces dates.",
+		);
+		expect(
+			cartLineBlocker({ ...line, quantity: 4, availableQuantity: 1 }),
+		).toBe("Stock insuffisant : 1 exemplaire disponible pour ces dates.");
+	});
+
+	it("distingue l'épuisement complet", () => {
+		expect(
+			cartLineBlocker({ ...line, quantity: 1, availableQuantity: 0 }),
+		).toBe("Tous les exemplaires sont réservés ou loués pour ces dates.");
 	});
 });

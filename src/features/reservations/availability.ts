@@ -15,9 +15,73 @@ export type AvailabilityItem = {
 	availableFrom: string | null;
 	availableTo: string | null;
 	status?: string;
+	/** Durée minimale de location, en journées entières. */
 	minDuration?: number;
-	minDurationUnit?: "half_day" | "day";
 };
+
+/**
+ * Durée minimale exigée par l'article, en journées.
+ *
+ * La location se fait en journées entières : une durée de 2 jours minimum
+ * refuse une journée, une durée de 1 jour minimum accepte tout.
+ */
+export function minimumRentalDays(minDuration?: number | null): number {
+	if (minDuration === undefined || minDuration === null) return 0;
+	return Number.isFinite(minDuration) ? minDuration : 0;
+}
+
+/**
+ * Statuts de réservation qui immobilisent du matériel. Toute autre source de
+ * stock : ces réservations se chevauchent sur la fenêtre demandée, les
+ * Exemplaires sont donc déjà sortis ou réservés.
+ */
+export const STOCK_CONSUMING_STATUSES = [
+	"PENDING_VERIFICATION",
+	"CONFIRMED",
+	"COLLECTED",
+] as const;
+
+/** Exemplaires encore réservables une fois les réservations actives déduites. */
+export function availableQuantity(
+	totalStock: number | null | undefined,
+	reservedQuantity: number | null | undefined,
+): number {
+	const total = Math.max(0, Number(totalStock ?? 0));
+	const reserved = Math.max(0, Number(reservedQuantity ?? 0));
+	return Math.max(0, total - reserved);
+}
+
+/** `true` si la ligne de commande dépasse ce qu'il reste pour la fenêtre. */
+export function stockShortage(
+	quantity: number,
+	available: number | null | undefined,
+): boolean {
+	return quantity > Math.max(0, Number(available ?? 0));
+}
+
+/**
+ * Raison pour laquelle une ligne du panier ne peut pas être réservée, ou `null`
+ * si elle est reservable. Deux causes distinctes : le devis serveur la refuse
+ * (matériel retiré, hors saison, durée non tarifée), ou bien la ligne dépasse le
+ * stock restant, ce qui est Visible côté client mais n'apparaît dans aucun prix.
+ */
+export function cartLineBlocker(line: {
+	status: string;
+	message: string | null;
+	quantity: number;
+	availableQuantity: number;
+}): string | null {
+	if (line.status !== "available") {
+		return line.message ?? "Ce matériel n’est pas louable pour ces dates.";
+	}
+	if (!stockShortage(line.quantity, line.availableQuantity)) return null;
+	const left = Math.max(0, line.availableQuantity);
+	if (left === 0) {
+		return "Tous les exemplaires sont réservés ou loués pour ces dates.";
+	}
+	const noun = `${left} exemplaire${left > 1 ? "s" : ""}`;
+	return `Stock insuffisant : ${noun} disponible${left > 1 ? "s" : ""} pour ces dates.`;
+}
 
 export type AvailabilityResult = {
 	available: boolean;
@@ -241,12 +305,9 @@ export function evaluateItemAvailability({
 		return { available: false, reason: "outside_item_period" };
 	}
 
-	const minimumDuration =
-		item.minDuration === undefined
-			? 0
-			: item.minDuration * (item.minDurationUnit === "day" ? 1 : 0.5);
 	if (
-		minimumDuration > (getReservationDurationDays(pickupDate, returnDate) ?? 0)
+		minimumRentalDays(item.minDuration) >
+		(getReservationDurationDays(pickupDate, returnDate) ?? 0)
 	) {
 		return { available: false, reason: "below_minimum_duration" };
 	}

@@ -25,6 +25,20 @@ function mulberry32(seed: number) {
 	};
 }
 
+// Références lisibles, uniques et reproductibles (même alphabet que le code applicatif)
+const REFERENCE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+let referenceCounter = 0;
+function nextReference(): string {
+	referenceCounter += 1;
+	let n = referenceCounter;
+	let reference = "";
+	for (let i = 0; i < 8; i += 1) {
+		reference += REFERENCE_ALPHABET[n % REFERENCE_ALPHABET.length];
+		n = Math.floor(n / REFERENCE_ALPHABET.length);
+	}
+	return `RES-${reference}`;
+}
+
 const FIRST_NAMES = [
 	"Lucas",
 	"Emma",
@@ -107,8 +121,6 @@ type CatalogVariant = {
 	itemId: string;
 	itemName: string;
 	categoryId: string;
-	pricingMode: "per_day" | "per_duration";
-	dailyPrice: string;
 	options: Array<{
 		id: string;
 		duration: number;
@@ -125,7 +137,7 @@ const MONTH_FACTOR = [
 const DOW_FACTOR = [1.3, 0.9, 0.85, 0.9, 1.0, 1.15, 1.45];
 
 function pickOption(variant: CatalogVariant, roll: number) {
-	if (variant.pricingMode !== "per_duration" || variant.options.length === 0) {
+	if (variant.options.length === 0) {
 		return null;
 	}
 	// Plus l'option est courte, plus elle est fréquente
@@ -158,8 +170,6 @@ async function main() {
 			itemId: schema.itemVariants.itemId,
 			itemName: schema.items.name,
 			categoryId: schema.items.categoryId,
-			pricingMode: schema.itemVariants.pricingMode,
-			dailyPrice: schema.itemVariants.dailyPrice,
 		})
 		.from(schema.itemVariants)
 		.innerJoin(schema.items, eq(schema.items.id, schema.itemVariants.itemId))
@@ -206,12 +216,27 @@ async function main() {
 		optionsByVariant.set(option.variantId, list);
 	}
 
-	const catalog: CatalogVariant[] = rows.map((v) => ({
-		...v,
-		options: [...(optionsByVariant.get(v.id) ?? [])].sort(
-			(a, b) => a.duration - b.duration,
-		),
-	}));
+	const catalog: CatalogVariant[] = rows
+		.map((v) => ({
+			...v,
+			options: [...(optionsByVariant.get(v.id) ?? [])].sort(
+				(a, b) => a.duration - b.duration,
+			),
+		}))
+		// Sans option de prix active, une ligne historique n'aurait ni tarif ni
+		// code-barres à rejouer à la caisse : on l'écarte du tirage.
+		.filter((variant) => variant.options.length > 0);
+	if (catalog.length === 0) {
+		throw new Error(
+			"Aucune variante avec un prix. Lancez `npm run db:seed` après avoir créé des options de durée.",
+		);
+	}
+	const unpriced = rows.length - catalog.length;
+	if (unpriced > 0) {
+		console.log(
+			`⚠ ${unpriced} variante(s) sans option de prix ignorée(s) dans l'historique.`,
+		);
+	}
 
 	// --- Utilisateurs factices ---
 	const userCount = 70;
@@ -339,31 +364,17 @@ async function main() {
 			for (let li = 0; li < lineCount; li++) {
 				const lv = catalog[Math.floor(rng() * catalog.length)];
 				const lopt = pickOption(lv, rng());
+				if (!lopt) continue;
 				const quantity = 1 + (rng() < 0.15 ? 1 : 0);
-
-				if (lv.pricingMode === "per_duration" && lopt) {
-					const price = Number.parseFloat(lopt.price);
-					totalPrice += price * quantity;
-					lineItems.push({
-						variantId: lv.id,
-						priceOptionId: lopt.id,
-						label: lopt.label,
-						quantity,
-						priceAppliedAtReservation: lopt.price,
-					});
-				} else {
-					const daily = Math.max(1, Number.parseFloat(lv.dailyPrice));
-					const days = Math.round(Math.min(14, Math.max(1, effectiveDuration)));
-					const price = daily * days;
-					totalPrice += price * quantity;
-					lineItems.push({
-						variantId: lv.id,
-						priceOptionId: null,
-						label: `${days} jour${days > 1 ? "s" : ""} · ${daily.toFixed(2)} €/j`,
-						quantity,
-						priceAppliedAtReservation: price.toFixed(2),
-					});
-				}
+				const price = Number.parseFloat(lopt.price);
+				totalPrice += price * quantity;
+				lineItems.push({
+					variantId: lv.id,
+					priceOptionId: lopt.id,
+					label: lopt.label,
+					quantity,
+					priceAppliedAtReservation: lopt.price,
+				});
 			}
 
 			const isExpired = status === "EXPIRED";
@@ -371,6 +382,7 @@ async function main() {
 				row: {
 					id: randomUUID(),
 					userId,
+					reference: nextReference(),
 					status,
 					pickupDate: pickup,
 					returnDate: retour,

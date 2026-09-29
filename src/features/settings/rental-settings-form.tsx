@@ -33,6 +33,7 @@ export function RentalSettingsForm({ settings }: { settings: RentalSettings }) {
 		settings.seasonalFilteringEnabled,
 	);
 	const [isRentalOpen, setIsRentalOpen] = useState(settings.isRentalOpen);
+	const [sundayOpen, setSundayOpen] = useState(settings.sundayOpen);
 	const [seasonOverride, setSeasonOverride] = useState(settings.seasonOverride);
 	const [summerFrom, setSummerFrom] = useState(settings.summerFrom ?? "");
 	const [summerTo, setSummerTo] = useState(settings.summerTo ?? "");
@@ -57,6 +58,7 @@ export function RentalSettingsForm({ settings }: { settings: RentalSettings }) {
 		saveMutation.mutate({
 			seasonalFilteringEnabled,
 			isRentalOpen,
+			sundayOpen,
 			seasonOverride,
 			summerFrom,
 			summerTo,
@@ -87,6 +89,22 @@ export function RentalSettingsForm({ settings }: { settings: RentalSettings }) {
 						checked={isRentalOpen}
 						onCheckedChange={setIsRentalOpen}
 						aria-label="Activer ou désactiver les locations"
+					/>
+				</Field>
+
+				<Field orientation="horizontal" className="items-start sm:items-center">
+					<FieldContent>
+						<FieldLabel>Ouvert le dimanche</FieldLabel>
+						<p className="text-sm text-muted-foreground">
+							Les dimanches sont normalement fermés. Ouvrez-les en forte saison
+							pour autoriser les retraits et retours ce jour-là ; une location
+							peut alors commencer ou s&apos;achever un dimanche.
+						</p>
+					</FieldContent>
+					<Switch
+						checked={sundayOpen}
+						onCheckedChange={setSundayOpen}
+						aria-label="Ouvrir le magasin le dimanche"
 					/>
 				</Field>
 

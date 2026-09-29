@@ -1,3 +1,11 @@
 [build]
 command = "vite build"
 publish = "dist/client"
+
+# Google attend `/sitemap.xml`. La route TanStack vit sous `/api/sitemap`
+# (un nom de fichier avec un point deviendrait `/sitemap/xml`) : on réécrit
+# l'URL de la sitemap vers la route serveur sans changer de statut.
+[[redirects]]
+from = "/sitemap.xml"
+to = "/api/sitemap"
+status = 200

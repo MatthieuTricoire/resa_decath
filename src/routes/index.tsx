@@ -1,14 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { storeCanonicalPath } from "#/config/store";
 
-export const Route = createFileRoute("/")({ component: Home });
-
-function Home() {
-	return (
-		<div className="p-8">
-			<h1 className="text-4xl font-bold">Welcome to TanStack Start</h1>
-			<p className="mt-4 text-lg">
-				Edit <code>src/routes/index.tsx</code> to get started.
-			</p>
-		</div>
-	);
-}
+/** `/` n'est pas une page : l'accueil public est canonique ailleurs. */
+export const Route = createFileRoute("/")({
+	beforeLoad: () => {
+		throw redirect({ to: storeCanonicalPath });
+	},
+});

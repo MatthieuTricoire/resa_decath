@@ -1,11 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "#/db";
 import * as schema from "#/db/schema";
 import { requireDashboardSession } from "#/features/auth/queries";
 import { evaluateItemAvailability } from "#/features/reservations/availability";
 import { getRentalSettingsRecord } from "#/features/settings/queries";
+import { makeUniqueSlug } from "#/lib/slug";
 
 export type VariantAttribute = {
 	name: string;
@@ -21,14 +22,15 @@ export type PriceOptionRow = {
 	isActive: boolean;
 };
 
-export type PaymentMode = "per_day" | "per_duration";
-
 export type VariantRow = {
 	id: string;
 	decathlonSku: string | null;
 	totalStock: number;
-	pricingMode: PaymentMode;
-	dailyPrice: string;
+	/**
+	 * Prix de la durée la plus courte, pour les listes qui n'ont qu'une ligne à
+	 * afficher. `null` si la variante n'a aucun tarif.
+	 */
+	shortestPrice: string | null;
 	itemName: string;
 	brand: string;
 	itemId: string;
@@ -39,7 +41,6 @@ export type VariantRow = {
 	availableFrom: string | null;
 	availableTo: string | null;
 	minDuration: number;
-	minDurationUnit: "half_day" | "day";
 	attributes: VariantAttribute[];
 	priceOptions: PriceOptionRow[];
 };
@@ -81,8 +82,6 @@ async function loadVariants(): Promise<VariantRow[]> {
 			id: schema.itemVariants.id,
 			decathlonSku: schema.itemVariants.decathlonSku,
 			totalStock: schema.itemVariants.totalStock,
-			pricingMode: schema.itemVariants.pricingMode,
-			dailyPrice: schema.itemVariants.dailyPrice,
 			itemName: schema.items.name,
 			brand: schema.items.brand,
 			itemId: schema.items.id,
@@ -93,7 +92,6 @@ async function loadVariants(): Promise<VariantRow[]> {
 			availableFrom: schema.items.availableFrom,
 			availableTo: schema.items.availableTo,
 			minDuration: schema.items.minDuration,
-			minDurationUnit: schema.items.minDurationUnit,
 			attributeName: schema.variantAttributes.name,
 			attributeValue: schema.variantAttributes.value,
 		})
@@ -143,8 +141,7 @@ async function loadVariants(): Promise<VariantRow[]> {
 				id: row.id,
 				decathlonSku: row.decathlonSku,
 				totalStock: row.totalStock,
-				pricingMode: row.pricingMode,
-				dailyPrice: row.dailyPrice,
+				shortestPrice: shortestOptionPrice(priceOptMap.get(row.id) ?? []),
 				itemName: row.itemName,
 				brand: row.brand,
 				itemId: row.itemId,
@@ -155,7 +152,6 @@ async function loadVariants(): Promise<VariantRow[]> {
 				availableFrom: row.availableFrom,
 				availableTo: row.availableTo,
 				minDuration: row.minDuration,
-				minDurationUnit: row.minDurationUnit,
 				attributes: [],
 				priceOptions: priceOptMap.get(row.id) ?? [],
 			});
@@ -228,6 +224,7 @@ export type ItemImage = {
 export type ItemDetail = {
 	id: string;
 	name: string;
+	slug: string;
 	description: string | null;
 	images: ItemImage[];
 	brand: string;
@@ -238,8 +235,33 @@ export type ItemDetail = {
 	availableFrom: string | null;
 	availableTo: string | null;
 	minDuration: number;
-	minDurationUnit: "half_day" | "day";
 };
+
+async function isItemSlugTaken(
+	slug: string,
+	excludeItemId?: string,
+): Promise<boolean> {
+	const rows = await db
+		.select({ id: schema.items.id })
+		.from(schema.items)
+		.where(
+			excludeItemId
+				? and(eq(schema.items.slug, slug), ne(schema.items.id, excludeItemId))
+				: eq(schema.items.slug, slug),
+		);
+	return rows.length > 0;
+}
+
+/** Slug d'URL unique, dérivé du slug saisi ou du nom du produit. */
+async function resolveItemSlug(
+	slug: string | undefined,
+	name: string,
+	excludeItemId?: string,
+): Promise<string> {
+	return makeUniqueSlug(slug?.trim() || name, (candidate) =>
+		isItemSlugTaken(candidate, excludeItemId),
+	);
+}
 
 export const getItem = createServerFn({ method: "GET" })
 	.inputValidator((id: string) => id)
@@ -248,6 +270,7 @@ export const getItem = createServerFn({ method: "GET" })
 			.select({
 				id: schema.items.id,
 				name: schema.items.name,
+				slug: schema.items.slug,
 				description: schema.items.description,
 				brand: schema.items.brand,
 				season: schema.items.season,
@@ -257,7 +280,6 @@ export const getItem = createServerFn({ method: "GET" })
 				availableFrom: schema.items.availableFrom,
 				availableTo: schema.items.availableTo,
 				minDuration: schema.items.minDuration,
-				minDurationUnit: schema.items.minDurationUnit,
 			})
 			.from(schema.items)
 			.leftJoin(
@@ -290,8 +312,6 @@ export const getItemVariants = createServerFn({ method: "GET" })
 				id: schema.itemVariants.id,
 				decathlonSku: schema.itemVariants.decathlonSku,
 				totalStock: schema.itemVariants.totalStock,
-				pricingMode: schema.itemVariants.pricingMode,
-				dailyPrice: schema.itemVariants.dailyPrice,
 				itemName: schema.items.name,
 				brand: schema.items.brand,
 				itemId: schema.items.id,
@@ -302,7 +322,6 @@ export const getItemVariants = createServerFn({ method: "GET" })
 				availableFrom: schema.items.availableFrom,
 				availableTo: schema.items.availableTo,
 				minDuration: schema.items.minDuration,
-				minDurationUnit: schema.items.minDurationUnit,
 				attributeName: schema.variantAttributes.name,
 				attributeValue: schema.variantAttributes.value,
 			})
@@ -352,8 +371,7 @@ export const getItemVariants = createServerFn({ method: "GET" })
 					id: row.id,
 					decathlonSku: row.decathlonSku,
 					totalStock: row.totalStock,
-					pricingMode: row.pricingMode,
-					dailyPrice: row.dailyPrice,
+					shortestPrice: shortestOptionPrice(priceOptMap.get(row.id) ?? []),
 					itemName: row.itemName,
 					brand: row.brand,
 					itemId: row.itemId,
@@ -364,7 +382,6 @@ export const getItemVariants = createServerFn({ method: "GET" })
 					availableFrom: row.availableFrom,
 					availableTo: row.availableTo,
 					minDuration: row.minDuration,
-					minDurationUnit: row.minDurationUnit,
 					attributes: [],
 					priceOptions: priceOptMap.get(row.id) ?? [],
 				});
@@ -380,9 +397,6 @@ export const getItemVariants = createServerFn({ method: "GET" })
 		return Array.from(map.values());
 	});
 
-const durationUnitSchema = z.enum(["half_day", "day"]);
-const pricingModeSchema = z.enum(["per_day", "per_duration"]);
-
 const priceOptionSchema = z.object({
 	label: z.string().min(1, "Le label est requis"),
 	duration: z.coerce.number().int().min(1),
@@ -390,28 +404,19 @@ const priceOptionSchema = z.object({
 	barcode: z.string().min(1, "Le code-barres est requis"),
 });
 
-// En mode "per_duration", le prix journalier est dérivé de l'option la plus courte.
-// En mode "per_day", c'est le prix saisi qui fait foi.
-function deriveDailyPrice(variant: {
-	pricingMode: PaymentMode;
-	dailyPrice?: number;
-	priceOptions?: Array<{ duration: number; price: number }>;
-}): string {
-	if (variant.pricingMode === "per_duration") {
-		const sorted = [...(variant.priceOptions ?? [])].sort(
-			(a, b) => a.duration - b.duration,
-		);
-		return (sorted[0]?.price ?? 0).toFixed(2);
-	}
-	return (variant.dailyPrice ?? 0).toFixed(2);
+/** Prix de l'option la plus courte, pour les affichages en une ligne. */
+function shortestOptionPrice(
+	priceOptions: Array<{ duration: number; price: string }>,
+): string | null {
+	if (priceOptions.length === 0) return null;
+	const sorted = [...priceOptions].sort((a, b) => a.duration - b.duration);
+	return sorted[0]?.price ?? null;
 }
 
 const createVariantSchema = z
 	.object({
 		sku: z.string().optional(),
 		totalStock: z.coerce.number().int().min(0),
-		pricingMode: pricingModeSchema.default("per_day"),
-		dailyPrice: z.coerce.number().min(0).optional(),
 		attributes: z.array(
 			z.object({
 				name: z.string().min(1),
@@ -421,26 +426,20 @@ const createVariantSchema = z
 		priceOptions: z.array(priceOptionSchema).optional(),
 	})
 	.superRefine((v, ctx) => {
-		if (v.pricingMode === "per_duration") {
-			if (!v.priceOptions || v.priceOptions.length === 0) {
-				ctx.addIssue({
-					code: "custom",
-					path: ["priceOptions"],
-					message:
-						"Au moins une option de prix est requise en mode « tarifs par durée »",
-				});
-			}
-		} else if (v.dailyPrice === undefined) {
+		// Un matériel sans aucune option de prix ne serait ni vendable en ligne
+		// ni encodable en caisse : la variante n'existe pas utilisable.
+		if (!v.priceOptions || v.priceOptions.length === 0) {
 			ctx.addIssue({
 				code: "custom",
-				path: ["dailyPrice"],
-				message: "Le prix journalier est requis en mode « prix à la journée »",
+				path: ["priceOptions"],
+				message: "Au moins une option de prix est requise",
 			});
 		}
 	});
 
 const createItemSchema = z.object({
 	name: z.string().min(1, "Le nom est requis"),
+	slug: z.string().optional(),
 	description: z.string().optional(),
 	brand: z.string().min(1, "La marque est requise"),
 	categoryId: z.string().min(1, "La catégorie est requise"),
@@ -449,7 +448,6 @@ const createItemSchema = z.object({
 	availableFrom: z.string().optional(),
 	availableTo: z.string().optional(),
 	minDuration: z.coerce.number().int().min(0).default(1),
-	minDurationUnit: durationUnitSchema.default("half_day"),
 	images: z
 		.array(
 			z.object({
@@ -472,6 +470,7 @@ export const createItem = createServerFn({ method: "POST" })
 			.insert(schema.items)
 			.values({
 				name: data.name,
+				slug: await resolveItemSlug(data.slug, data.name),
 				description: data.description ?? null,
 				brand: data.brand,
 				categoryId: data.categoryId,
@@ -480,7 +479,6 @@ export const createItem = createServerFn({ method: "POST" })
 				availableFrom: data.availableFrom || null,
 				availableTo: data.availableTo || null,
 				minDuration: data.minDuration,
-				minDurationUnit: data.minDurationUnit,
 			})
 			.returning();
 
@@ -502,8 +500,6 @@ export const createItem = createServerFn({ method: "POST" })
 					itemId: item.id,
 					decathlonSku: variant.sku || null,
 					totalStock: variant.totalStock,
-					pricingMode: variant.pricingMode,
-					dailyPrice: deriveDailyPrice(variant),
 				})
 				.returning();
 
@@ -554,8 +550,6 @@ const updateVariantSchema = z
 		id: z.string().optional(),
 		sku: z.string().optional(),
 		totalStock: z.coerce.number().int().min(0),
-		pricingMode: pricingModeSchema.default("per_day"),
-		dailyPrice: z.coerce.number().min(0).optional(),
 		attributes: z.array(
 			z.object({
 				name: z.string().min(1),
@@ -565,20 +559,13 @@ const updateVariantSchema = z
 		priceOptions: z.array(updateItemPriceOptionSchema).optional(),
 	})
 	.superRefine((v, ctx) => {
-		if (v.pricingMode === "per_duration") {
-			if (!v.priceOptions || v.priceOptions.length === 0) {
-				ctx.addIssue({
-					code: "custom",
-					path: ["priceOptions"],
-					message:
-						"Au moins une option de prix est requise en mode « tarifs par durée »",
-				});
-			}
-		} else if (v.dailyPrice === undefined) {
+		// Un matériel sans aucune option de prix ne serait ni vendable en ligne
+		// ni encodable en caisse : la variante n'existe pas utilisable.
+		if (!v.priceOptions || v.priceOptions.length === 0) {
 			ctx.addIssue({
 				code: "custom",
-				path: ["dailyPrice"],
-				message: "Le prix journalier est requis en mode « prix à la journée »",
+				path: ["priceOptions"],
+				message: "Au moins une option de prix est requise",
 			});
 		}
 	});
@@ -586,6 +573,7 @@ const updateVariantSchema = z
 const updateItemSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1, "Le nom est requis"),
+	slug: z.string().optional(),
 	description: z.string().optional(),
 	brand: z.string().min(1, "La marque est requise"),
 	categoryId: z.string().min(1, "La catégorie est requise"),
@@ -594,7 +582,6 @@ const updateItemSchema = z.object({
 	availableFrom: z.string().optional(),
 	availableTo: z.string().optional(),
 	minDuration: z.coerce.number().int().min(0).default(1),
-	minDurationUnit: durationUnitSchema.default("half_day"),
 	images: z
 		.array(
 			z.object({
@@ -616,6 +603,7 @@ export const updateItem = createServerFn({ method: "POST" })
 			.update(schema.items)
 			.set({
 				name: data.name,
+				slug: await resolveItemSlug(data.slug, data.name, data.id),
 				description: data.description ?? null,
 				brand: data.brand,
 				categoryId: data.categoryId,
@@ -624,7 +612,6 @@ export const updateItem = createServerFn({ method: "POST" })
 				availableFrom: data.availableFrom || null,
 				availableTo: data.availableTo || null,
 				minDuration: data.minDuration,
-				minDurationUnit: data.minDurationUnit,
 			})
 			.where(eq(schema.items.id, data.id));
 
@@ -656,8 +643,6 @@ export const updateItem = createServerFn({ method: "POST" })
 					.set({
 						decathlonSku: variant.sku || null,
 						totalStock: variant.totalStock,
-						pricingMode: variant.pricingMode,
-						dailyPrice: deriveDailyPrice(variant),
 					})
 					.where(eq(schema.itemVariants.id, variant.id));
 
@@ -729,8 +714,6 @@ export const updateItem = createServerFn({ method: "POST" })
 						itemId: data.id,
 						decathlonSku: variant.sku || null,
 						totalStock: variant.totalStock,
-						pricingMode: variant.pricingMode,
-						dailyPrice: deriveDailyPrice(variant),
 					})
 					.returning();
 

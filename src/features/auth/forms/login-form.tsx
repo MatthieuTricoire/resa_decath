@@ -66,7 +66,9 @@ export function LogInForm({
 			>
 				<FieldGroup>
 					<div className="flex flex-col items-center gap-1 text-center">
-						<h1 className="text-2xl font-bold">Se connecter</h1>
+						<h1 className="display-title text-3xl font-semibold">
+							Se connecter
+						</h1>
 						<p className="text-sm text-balance text-muted-foreground">
 							Entres ton mail en dessous pour te connecter à ton compte admin.
 						</p>

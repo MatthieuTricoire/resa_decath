@@ -1,6 +1,6 @@
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth";
-import { admin, emailOTP } from "better-auth/plugins";
+import { admin, emailOTP, magicLink } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { db } from "#/db";
 import * as schema from "#/db/schema";
@@ -33,6 +33,52 @@ export const auth = betterAuth({
 	},
 	plugins: [
 		admin(),
+
+		/**
+		 * Connexion client par lien cliquable, sans mot de passe.
+		 *
+		 * La ligne `user` existe déjà pour qui a réservé sur le site : à la
+		 * vérification du lien, Better Auth retrouve cette ligne par email et lui
+		 * accroche directement la session — sans exiger de ligne `account`, et sans
+		 * créer de doublon (l'email est unique). L'historique est donc visible
+		 * immédiatement, sans migration ni réconciliation de données.
+		 *
+		 * `storeToken: "hashed"` stocke une empreinte du jeton plutôt que le jeton
+		 * lui-même : une fuite de la table `verification` ne donnerait alors aucun
+		 * lien exploitable. Le défaut est `"plain"`.
+		 *
+		 * `disableSignUp` : un compte sans réservation n'a rien à montrer, et la
+		 * réservation publique crée déjà la ligne `user`. Sans cette option,
+		 * n'importe quelle adresse demandait créerait une ligne `user` sans avoir
+		 * jamais prouvé qu'elle lui appartenait.
+		 *
+		 * Le module d'email est importé dynamiquement, comme pour l'email de
+		 * réservation : le code du mail ne doit pas être chargé quand personne ne
+		 * demande de lien.
+		 */
+		magicLink({
+			storeToken: "hashed",
+			expiresIn: 900,
+			disableSignUp: true,
+			async sendMagicLink({ email, url }) {
+				const { canSendMagicLink, sendMagicLinkEmail } = await import(
+					"#/lib/email/magic-link"
+				);
+				// Du côté serveur : la ligne `verification` du plugin est déjà écrite
+				// et la réponse HTTP restera 200 quoi qu'il arrive, donc refuser
+				// l'envoi ici ne révèle rien au demandeur — c'est le point de coupure
+				// du gros du gaspillage (adresses inventées, re-sollicitation).
+				const decision = await canSendMagicLink(email);
+				if (!decision.ok) {
+					console.log(
+						`✉️ [LIEN MAGIQUE] Envoi ignoré pour ${email} (${decision.reason}) — quota préservé.`,
+					);
+					return;
+				}
+				await sendMagicLinkEmail({ to: email.trim(), url });
+			},
+		}),
+
 		emailOTP({
 			async sendVerificationOTP({ email, otp, type }) {
 				if (type === "sign-in") {

@@ -17,10 +17,10 @@ import { db } from "#/db";
 import * as schema from "#/db/schema";
 import { requireDashboardSession } from "#/features/auth/queries";
 import {
-	evaluateItemAvailability,
-	getReservationDurationDays,
+	STOCK_CONSUMING_STATUSES as activeStatuses,
+	availableQuantity,
 } from "#/features/reservations/availability";
-import { getRentalSettingsRecord } from "#/features/settings/queries";
+import { reserveEquipment } from "#/features/reservations/reserve.server";
 
 export type ReservationLineItem = {
 	id: string;
@@ -50,12 +50,6 @@ export type ReservationRow = {
 	isNoShow: number;
 	items: ReservationLineItem[];
 };
-
-const activeStatuses = [
-	"PENDING_VERIFICATION",
-	"CONFIRMED",
-	"COLLECTED",
-] as const;
 
 export const getReservations = createServerFn({ method: "GET" })
 	.inputValidator(
@@ -285,214 +279,12 @@ export const createReservation = createServerFn({ method: "POST" })
 	.inputValidator(createReservationSchema.parse)
 	.handler(async ({ data }) => {
 		await requireDashboardSession();
-		const pickup = new Date(data.pickupDate);
-		const returnD = new Date(data.returnDate);
-		const reservationDurationDays = getReservationDurationDays(pickup, returnD);
-		if (reservationDurationDays === null || reservationDurationDays < 1) {
-			throw new Error("Durée de location invalide");
-		}
-
-		const requestedVariantIds = [
-			...new Set(data.items.map((item) => item.variantId)),
-		];
-		const [settings, variants] = await Promise.all([
-			getRentalSettingsRecord(),
-			db
-				.select({
-					id: schema.itemVariants.id,
-					itemName: schema.items.name,
-					totalStock: schema.itemVariants.totalStock,
-					pricingMode: schema.itemVariants.pricingMode,
-					dailyPrice: schema.itemVariants.dailyPrice,
-					status: schema.itemVariants.status,
-					season: schema.items.season,
-					availableFrom: schema.items.availableFrom,
-					availableTo: schema.items.availableTo,
-					minDuration: schema.items.minDuration,
-					minDurationUnit: schema.items.minDurationUnit,
-				})
-				.from(schema.itemVariants)
-				.innerJoin(
-					schema.items,
-					eq(schema.itemVariants.itemId, schema.items.id),
-				)
-				.where(inArray(schema.itemVariants.id, requestedVariantIds)),
-		]);
-		if (variants.length !== requestedVariantIds.length) {
-			throw new Error("Une des variantes sélectionnées est introuvable");
-		}
-		const variantById = new Map(
-			variants.map((variant) => [variant.id, variant]),
-		);
-
-		for (const variant of variants) {
-			const availability = evaluateItemAvailability({
-				item: variant,
-				settings,
-				pickupDate: pickup,
-				returnDate: returnD,
-			});
-			if (availability.available) continue;
-			const message = {
-				rentals_closed: "Les locations sont actuellement fermées.",
-				variant_unavailable: `« ${variant.itemName} » n’est pas disponible à la location.`,
-				outside_item_period: `La période de disponibilité de « ${variant.itemName} » ne couvre pas toute la réservation.`,
-				below_minimum_duration: `La durée de location est trop courte pour « ${variant.itemName} ».`,
-				season_not_configured: "Le calendrier saisonnier n’est pas configuré.",
-				outside_active_season: `« ${variant.itemName} » n’est pas disponible pendant cette période.`,
-			}[availability.reason ?? "outside_active_season"];
-			throw new Error(message);
-		}
-
-		const itemsWithPrices = await Promise.all(
-			data.items.map(async (item) => {
-				const variant = variantById.get(item.variantId);
-				if (!variant) throw new Error("Variante introuvable");
-
-				let unitPrice: number;
-				let label: string;
-				if (variant.pricingMode === "per_day") {
-					if (item.priceOptionId) {
-						throw new Error(
-							`Cette variante est tarifée à la journée : ${item.variantId}`,
-						);
-					}
-					const daily = Number.parseFloat(variant.dailyPrice);
-					unitPrice = daily * reservationDurationDays;
-					label = `${reservationDurationDays} jour${
-						reservationDurationDays > 1 ? "s" : ""
-					} · ${daily.toFixed(2)} €/j`;
-				} else {
-					if (!item.priceOptionId) {
-						throw new Error(
-							`Cette variante exige une option de durée : ${item.variantId}`,
-						);
-					}
-					const [priceOption] = await db
-						.select()
-						.from(schema.priceOptions)
-						.where(
-							and(
-								eq(schema.priceOptions.id, item.priceOptionId),
-								eq(schema.priceOptions.variantId, item.variantId),
-							),
-						);
-					if (!priceOption || !priceOption.isActive) {
-						throw new Error(
-							`Option de prix introuvable ou inactive : ${item.priceOptionId}`,
-						);
-					}
-					if (priceOption.duration !== reservationDurationDays) {
-						throw new Error(
-							`L’option de prix sélectionnée ne correspond pas à la durée de ${reservationDurationDays} jour(s).`,
-						);
-					}
-					unitPrice = Number.parseFloat(priceOption.price);
-					label = priceOption.label;
-				}
-
-				return {
-					variantId: item.variantId,
-					priceOptionId: item.priceOptionId ?? null,
-					label,
-					quantity: item.quantity,
-					unitPrice,
-					priceAppliedAtReservation: String(unitPrice.toFixed(2)),
-				};
-			}),
-		);
-		const totalPrice = itemsWithPrices.reduce(
-			(total, item) => total + item.unitPrice * item.quantity,
-			0,
-		);
-
-		const activeStatuses = [
-			"PENDING_VERIFICATION",
-			"CONFIRMED",
-			"COLLECTED",
-		] as const;
-		const requestedQuantities = new Map<string, number>();
-		for (const item of data.items) {
-			requestedQuantities.set(
-				item.variantId,
-				(requestedQuantities.get(item.variantId) ?? 0) + item.quantity,
-			);
-		}
-
-		const expiration = new Date(pickup);
-		expiration.setHours(expiration.getHours() + 2);
-
-		return db.transaction(async (tx) => {
-			const lockedVariants = await tx
-				.select({
-					id: schema.itemVariants.id,
-					totalStock: schema.itemVariants.totalStock,
-				})
-				.from(schema.itemVariants)
-				.where(inArray(schema.itemVariants.id, requestedVariantIds))
-				.orderBy(asc(schema.itemVariants.id))
-				.for("update");
-			if (lockedVariants.length !== requestedVariantIds.length) {
-				throw new Error("Une des variantes sélectionnées est introuvable");
-			}
-			const lockedVariantById = new Map(
-				lockedVariants.map((variant) => [variant.id, variant]),
-			);
-
-			for (const [variantId, requestedQuantity] of requestedQuantities) {
-				const variant = variantById.get(variantId);
-				const lockedVariant = lockedVariantById.get(variantId);
-				if (!variant || !lockedVariant) throw new Error("Variante introuvable");
-				const [{ reservedQuantity }] = await tx
-					.select({
-						reservedQuantity: sql<number>`COALESCE(SUM(${schema.reservationItems.quantity}), 0)::int`,
-					})
-					.from(schema.reservationItems)
-					.innerJoin(
-						schema.reservations,
-						eq(schema.reservationItems.reservationId, schema.reservations.id),
-					)
-					.where(
-						and(
-							eq(schema.reservationItems.variantId, variantId),
-							inArray(schema.reservations.status, [...activeStatuses]),
-							lt(schema.reservations.pickupDate, returnD),
-							gt(schema.reservations.returnDate, pickup),
-						),
-					);
-
-				const available = lockedVariant.totalStock - Number(reservedQuantity);
-				if (requestedQuantity > available) {
-					throw new Error(
-						`Stock insuffisant pour « ${variant.itemName} » : ${requestedQuantity} demandé(s), ${Math.max(0, available)} disponible(s)${available >= 0 ? "" : ` (dont ${-available} en surréservation actuelle)`}`,
-					);
-				}
-			}
-
-			const [reservation] = await tx
-				.insert(schema.reservations)
-				.values({
-					userId: data.userId,
-					status: "CONFIRMED",
-					pickupDate: pickup,
-					returnDate: returnD,
-					expirationAtribute: expiration,
-					totalPrice: String(totalPrice.toFixed(2)),
-				})
-				.returning();
-
-			await tx.insert(schema.reservationItems).values(
-				itemsWithPrices.map((item) => ({
-					reservationId: reservation.id,
-					variantId: item.variantId,
-					priceOptionId: item.priceOptionId,
-					label: item.label,
-					quantity: item.quantity,
-					priceAppliedAtReservation: item.priceAppliedAtReservation,
-				})),
-			);
-
-			return reservation;
+		return reserveEquipment({
+			userId: data.userId,
+			pickupDate: new Date(data.pickupDate),
+			returnDate: new Date(data.returnDate),
+			items: data.items,
+			source: "STORE",
 		});
 	});
 
@@ -791,12 +583,6 @@ export const getAvailableStock = createServerFn({ method: "GET" })
 		const pickup = new Date(data.pickupDate);
 		const ret = new Date(data.returnDate);
 
-		const activeStatuses = [
-			"PENDING_VERIFICATION",
-			"CONFIRMED",
-			"COLLECTED",
-		] as const;
-
 		const [{ reservedQuantity }] = await db
 			.select({
 				reservedQuantity: sql<number>`COALESCE(SUM(${schema.reservationItems.quantity}), 0)::int`,
@@ -821,7 +607,7 @@ export const getAvailableStock = createServerFn({ method: "GET" })
 		return {
 			totalStock,
 			reservedQuantity: reserved,
-			availableQuantity: Math.max(0, totalStock - reserved),
+			availableQuantity: availableQuantity(totalStock, reserved),
 		};
 	});
 

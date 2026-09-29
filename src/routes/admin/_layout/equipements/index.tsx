@@ -316,13 +316,6 @@ function RouteComponent() {
 			id: "prices",
 			header: "Prix",
 			cell: ({ row }) => {
-				if (row.original.pricingMode === "per_day") {
-					return (
-						<span className="text-xs text-muted-foreground">
-							{formatPrice(row.original.dailyPrice)} / jour
-						</span>
-					);
-				}
 				const opts = row.original.priceOptions;
 				if (opts.length === 0)
 					return <span className="text-muted-foreground">—</span>;

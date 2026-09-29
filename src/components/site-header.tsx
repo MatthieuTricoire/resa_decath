@@ -20,7 +20,9 @@ export function SiteHeader({
 					orientation="vertical"
 					className="mx-2 data-[orientation=vertical]:h-4"
 				/>
-				<h1 className="min-w-0 truncate text-base font-medium">{title}</h1>
+				<h1 className="display-title min-w-0 truncate text-base font-semibold">
+					{title}
+				</h1>
 				{links && links.length > 0 && (
 					<nav className="ml-4 hidden items-center gap-1 md:flex">
 						{links.map((link) => (

@@ -16,6 +16,17 @@ const db = drizzle(pool, { schema });
 
 type Category = { id: string; name: string; slug: string };
 
+/** Slug d'URL dérivé du nom du produit (le seed ne dépend pas des alias). */
+function slugify(value: string): string {
+	return value
+		.normalize("NFD")
+		.replace(/[\u0300-\u036f]/g, "")
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "")
+		.slice(0, 160);
+}
+
 async function main() {
 	console.log("⏳ Début du peuplement de la base de données...");
 
@@ -169,8 +180,6 @@ async function main() {
 	type VariantDef = {
 		sku: string;
 		totalStock: number;
-		dailyPrice: string;
-		pricingMode?: "per_day" | "per_duration";
 		attributes: { name: string; value: string }[];
 		priceOptions: PriceOptionDef[];
 	};
@@ -185,8 +194,8 @@ async function main() {
 		images?: Array<{ url: string; alt: string }>;
 		availableFrom?: string;
 		availableTo?: string;
+		/** Durée minimale en journées entières. */
 		minDuration?: number;
-		minDurationUnit?: "half_day" | "day";
 		variants: VariantDef[];
 	};
 
@@ -199,7 +208,6 @@ async function main() {
 				"Idéal pour amortir les chutes en bloc outdoor. Sangles de transport confortables.",
 			brand: "Simond",
 			minDuration: 1,
-			minDurationUnit: "half_day",
 			images: [
 				{
 					url: "https://contents.mediadecathlon.com/p2584221/k$52b3b0c5e6c5b0c5e6c5b0c5e6c5b0c5/crashpad-simond-edge.jpg?format=auto&quality=70&f=650x0",
@@ -210,13 +218,38 @@ async function main() {
 				{
 					sku: "8547123",
 					totalStock: 4,
-					dailyPrice: "12.00",
-					pricingMode: "per_day",
 					attributes: [
 						{ name: "dimension", value: "120x100x12cm" },
 						{ name: "usage", value: "Bloc Extérieur" },
 					],
-					priceOptions: [],
+					// Ancien tarif à la journée (12 €/j) : chaque durée vendue porte
+					// désormais son prix et son code-barres, comme les autres articles.
+					priceOptions: [
+						{
+							label: "1 jour",
+							duration: 1,
+							price: "12.00",
+							barcode: "PO-00041",
+						},
+						{
+							label: "2 jours",
+							duration: 2,
+							price: "24.00",
+							barcode: "PO-00042",
+						},
+						{
+							label: "3 jours",
+							duration: 3,
+							price: "36.00",
+							barcode: "PO-00043",
+						},
+						{
+							label: "7 jours",
+							duration: 7,
+							price: "84.00",
+							barcode: "PO-00044",
+						},
+					],
 				},
 			],
 		},
@@ -229,7 +262,6 @@ async function main() {
 				{
 					sku: "8612345",
 					totalStock: 4,
-					dailyPrice: "6.00",
 					attributes: [{ name: "taille", value: "M" }],
 					priceOptions: [
 						{
@@ -243,7 +275,6 @@ async function main() {
 				{
 					sku: "8612346",
 					totalStock: 3,
-					dailyPrice: "6.00",
 					attributes: [{ name: "taille", value: "L" }],
 					priceOptions: [
 						{
@@ -265,7 +296,6 @@ async function main() {
 				{
 					sku: "8623456",
 					totalStock: 5,
-					dailyPrice: "4.00",
 					attributes: [],
 					priceOptions: [
 						{
@@ -287,7 +317,6 @@ async function main() {
 				{
 					sku: "8634567",
 					totalStock: 10,
-					dailyPrice: "2.00",
 					attributes: [],
 					priceOptions: [
 						{
@@ -312,7 +341,6 @@ async function main() {
 				{
 					sku: "8649512",
 					totalStock: 3,
-					dailyPrice: "10.00",
 					attributes: [
 						{ name: "volume", value: "40L" },
 						{ name: "taille_dos", value: "S" },
@@ -341,7 +369,6 @@ async function main() {
 				{
 					sku: "8649513",
 					totalStock: 5,
-					dailyPrice: "11.00",
 					attributes: [
 						{ name: "volume", value: "45L" },
 						{ name: "taille_dos", value: "L" },
@@ -366,7 +393,6 @@ async function main() {
 				{
 					sku: "8504123",
 					totalStock: 10,
-					dailyPrice: "3.00",
 					attributes: [],
 					priceOptions: [
 						{
@@ -388,7 +414,6 @@ async function main() {
 				{
 					sku: "8601234",
 					totalStock: 8,
-					dailyPrice: "2.50",
 					attributes: [],
 					priceOptions: [
 						{
@@ -411,7 +436,6 @@ async function main() {
 			availableFrom: "06-15",
 			availableTo: "09-30",
 			minDuration: 2,
-			minDurationUnit: "day",
 			images: [
 				{
 					url: "https://contents.mediadecathlon.com/p1234567/k$abc123/tente-quechua-2-secondes.jpg?format=auto&quality=70&f=650x0",
@@ -426,7 +450,6 @@ async function main() {
 				{
 					sku: "8512345",
 					totalStock: 3,
-					dailyPrice: "15.00",
 					attributes: [{ name: "places", value: "2" }],
 					priceOptions: [
 						{
@@ -446,7 +469,6 @@ async function main() {
 				{
 					sku: "8512346",
 					totalStock: 2,
-					dailyPrice: "20.00",
 					attributes: [{ name: "places", value: "3" }],
 					priceOptions: [
 						{
@@ -474,7 +496,6 @@ async function main() {
 				{
 					sku: "8523456",
 					totalStock: 6,
-					dailyPrice: "5.00",
 					attributes: [],
 					priceOptions: [
 						{
@@ -502,7 +523,6 @@ async function main() {
 				{
 					sku: "8534567",
 					totalStock: 6,
-					dailyPrice: "4.00",
 					attributes: [],
 					priceOptions: [
 						{
@@ -526,7 +546,6 @@ async function main() {
 				{
 					sku: "8712345",
 					totalStock: 4,
-					dailyPrice: "12.00",
 					attributes: [],
 					priceOptions: [
 						{
@@ -548,7 +567,6 @@ async function main() {
 				{
 					sku: "8723456",
 					totalStock: 5,
-					dailyPrice: "5.00",
 					attributes: [],
 					priceOptions: [
 						{
@@ -570,7 +588,6 @@ async function main() {
 				{
 					sku: "8734567",
 					totalStock: 8,
-					dailyPrice: "3.00",
 					attributes: [{ name: "taille", value: "M" }],
 					priceOptions: [
 						{
@@ -584,7 +601,6 @@ async function main() {
 				{
 					sku: "8734568",
 					totalStock: 8,
-					dailyPrice: "3.00",
 					attributes: [{ name: "taille", value: "L" }],
 					priceOptions: [
 						{
@@ -605,6 +621,7 @@ async function main() {
 			.values({
 				categoryId: item.categoryId,
 				name: item.name,
+				slug: slugify(item.name),
 				description: item.description,
 				brand: item.brand,
 				season: item.season ?? "all",
@@ -612,7 +629,6 @@ async function main() {
 				availableFrom: item.availableFrom ?? null,
 				availableTo: item.availableTo ?? null,
 				minDuration: item.minDuration ?? 1,
-				minDurationUnit: item.minDurationUnit ?? "half_day",
 			})
 			.returning();
 
@@ -623,8 +639,6 @@ async function main() {
 					itemId: insertedItem.id,
 					decathlonSku: variant.sku,
 					totalStock: variant.totalStock,
-					dailyPrice: variant.dailyPrice,
-					pricingMode: variant.pricingMode ?? "per_duration",
 				})
 				.returning();
 

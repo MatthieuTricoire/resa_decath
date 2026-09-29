@@ -1,5 +1,5 @@
 import { useStore } from "@tanstack/react-form";
-import { Field, FieldError, FieldLabel } from "../ui/field";
+import { Field, FieldDescription, FieldError, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { useFieldContext } from "./app-form-context";
@@ -8,10 +8,14 @@ export function TextField({
 	label,
 	placeholder,
 	type,
+	description,
+	onChange,
 }: {
 	label: string;
 	placeholder?: string;
+	description?: string;
 	type?: React.HTMLInputTypeAttribute;
+	onChange?: (value: string) => void;
 }) {
 	const field = useFieldContext<string>();
 	const errors = useStore(field.store, (state) => state.meta.errors);
@@ -29,10 +33,14 @@ export function TextField({
 				value={field.state.value}
 				placeholder={placeholder}
 				onBlur={field.handleBlur}
-				onChange={(e) => field.handleChange(e.target.value)}
+				onChange={(e) => {
+					field.handleChange(e.target.value);
+					onChange?.(e.target.value);
+				}}
 				aria-invalid={isInvalid}
 				autoComplete="off"
 			/>
+			{description ?? <FieldDescription>{description}</FieldDescription>}
 			{isInvalid && errors.length > 0 && <FieldError errors={[errors[0]]} />}
 		</Field>
 	);

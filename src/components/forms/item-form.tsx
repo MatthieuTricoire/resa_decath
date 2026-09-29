@@ -2,12 +2,14 @@ import { useStore } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, Image, Plus, Trash2, X } from "lucide-react";
+import { useState } from "react";
 import { BarcodeDisplay } from "#/components/barcode";
 import { QRCodeDisplay } from "#/components/qr-code";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card";
 import { Field, FieldLabel } from "#/components/ui/field";
+import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
 import {
 	Select,
@@ -22,6 +24,8 @@ import { getRentalDurations } from "#/features/durees/queries";
 import { queryKeys as dureeQueryKeys } from "#/features/durees/query-keys";
 import { getCategories } from "#/features/equipements/queries";
 import { queryKeys } from "#/features/equipements/query-keys";
+import { slugify } from "#/lib/slug";
+import { cn } from "#/lib/utils";
 import { useAppForm } from "./app-form";
 import { DateRangePicker } from "./date-range-picker";
 
@@ -43,9 +47,11 @@ export type ItemFormVariant = {
 	id?: string;
 	sku: string;
 	totalStock: number;
-	pricingMode: "per_day" | "per_duration";
-	dailyPrice: number;
 	attributes: Array<{ id?: string; name: string; value: string }>;
+	/**
+	 * Chaque durée vendue a son prix et son code-barres : une variante sans
+	 * option n'est ni vendable en ligne ni encodable en caisse.
+	 */
 	priceOptions: ItemFormPriceOption[];
 };
 
@@ -60,7 +66,8 @@ export type ItemFormValues = {
 	availableFrom: string;
 	availableTo: string;
 	minDuration: number;
-	minDurationUnit: "half_day" | "day";
+	/** Vide = le slug est dérivé du nom, côté serveur. */
+	slug: string;
 	variants: ItemFormVariant[];
 };
 
@@ -75,8 +82,6 @@ function defaultVariant(): ItemFormVariant {
 		id: crypto.randomUUID(),
 		sku: "",
 		totalStock: 1,
-		pricingMode: "per_day",
-		dailyPrice: 0,
 		attributes: [],
 		priceOptions: [],
 	};
@@ -94,7 +99,7 @@ function defaultValues(): ItemFormValues {
 		availableFrom: "",
 		availableTo: "",
 		minDuration: 1,
-		minDurationUnit: "half_day" as const,
+		slug: "",
 		variants: [defaultVariant()],
 	};
 }
@@ -114,23 +119,26 @@ export function ItemForm({
 		queryFn: () => getRentalDurations(),
 	});
 
+	/**
+	 * Le slug d'URL est celui que voit le client. Tant que l'admin ne le saisit
+	 * pas, on affiche ce que le serveur en déduira du nom : l'URL reste donc
+	 * lisible sans lui faire saisir un identifiant technique.
+	 */
+	const [slugIsManual, setSlugIsManual] = useState(false);
+
 	const form = useAppForm({
 		defaultValues: initialValues ?? defaultValues(),
 		onSubmit: async ({ value }) => {
-			const enriched = {
-				...value,
-				variants: value.variants.map((v) => ({
-					...v,
-					dailyPrice: v.pricingMode === "per_day" ? v.dailyPrice : 0,
-					priceOptions: v.pricingMode === "per_day" ? [] : v.priceOptions,
-				})),
-			};
-			await onSubmit(enriched);
+			await onSubmit(value);
 		},
 	});
 
 	const variants = useStore(form.store, (state) => state.values.variants);
 	const images = useStore(form.store, (state) => state.values.images);
+	const nameValue = useStore(form.store, (state) => state.values.name);
+	const slugValue = useStore(form.store, (state) => state.values.slug);
+	// Aperçu de l'URL tant que l'admin ne l'édite pas.
+	const slugPreview = slugIsManual ? slugValue : slugify(nameValue);
 
 	return (
 		<form
@@ -154,6 +162,47 @@ export function ItemForm({
 							/>
 						)}
 					</form.AppField>
+
+					<div className="space-y-1">
+						<form.Field name="slug">
+							{(field) => (
+								<Field>
+									<FieldLabel htmlFor={field.name}>Slug d&rsquo;URL</FieldLabel>
+									<Input
+										id={field.name}
+										// Tant que l'admin ne l'édite pas, on montre ce que le
+										// serveur déduira du nom plutôt qu'un champ vide.
+										value={slugIsManual ? field.state.value : slugPreview}
+										placeholder="genere-depuis-le-nom"
+										readOnly={!slugIsManual}
+										onBlur={field.handleBlur}
+										onChange={(e) => {
+											setSlugIsManual(true);
+											field.handleChange(e.target.value);
+										}}
+										autoComplete="off"
+										className={cn(
+											!slugIsManual && "bg-muted/40 text-muted-foreground",
+										)}
+									/>
+								</Field>
+							)}
+						</form.Field>
+						{!slugIsManual && (
+							<Button
+								type="button"
+								variant="link"
+								size="sm"
+								className="h-auto px-0 text-xs"
+								onClick={() => {
+									setSlugIsManual(true);
+									form.setFieldValue("slug", slugPreview);
+								}}
+							>
+								Personnaliser l&rsquo;URL
+							</Button>
+						)}
+					</div>
 
 					<form.AppField name="brand">
 						{(field) => (
@@ -349,244 +398,203 @@ export function ItemForm({
 									</form.AppField>
 								</div>
 
-								<form.Field name={`variants[${i}].pricingMode`}>
-									{(field) => (
-										<Field>
-											<FieldLabel>Tarification</FieldLabel>
-											<div className="flex items-center gap-6">
-												<Label className="flex items-center gap-2 cursor-pointer">
-													<input
-														type="radio"
-														name={field.name}
-														className="size-4"
-														checked={field.state.value === "per_day"}
-														onChange={() => field.handleChange("per_day")}
-													/>
-													Prix à la journée
-												</Label>
-												<Label className="flex items-center gap-2 cursor-pointer">
-													<input
-														type="radio"
-														name={field.name}
-														className="size-4"
-														checked={field.state.value === "per_duration"}
-														onChange={() => field.handleChange("per_duration")}
-													/>
-													Tarifs par durée
-												</Label>
-											</div>
-										</Field>
+								<div className="space-y-3">
+									<span className="text-sm font-medium">Options de prix</span>
+									<p className="text-xs text-muted-foreground">
+										Chaque durée vendue a son prix et son code-barres. Sans
+										option, la variante n&rsquo;est ni réservable en ligne ni
+										encodable en caisse.
+									</p>
+									{(durees ?? []).length === 0 ? (
+										<p className="text-sm text-muted-foreground italic">
+											Aucune durée définie. Ajoutez vos durées de location{" "}
+											<Link to="/admin/durees" className="underline">
+												ici
+											</Link>
+											.
+										</p>
+									) : (
+										<div className="flex flex-wrap items-center gap-1.5">
+											{(durees ?? [])
+												.filter(
+													(d) =>
+														!variants[i].priceOptions.some(
+															(o) => o.duration === d.days,
+														),
+												)
+												.map((d) => (
+													<Button
+														key={d.id}
+														type="button"
+														variant="outline"
+														size="sm"
+														onClick={() =>
+															form.pushFieldValue(
+																`variants[${i}].priceOptions`,
+																{
+																	id: crypto.randomUUID(),
+																	label: d.label,
+																	duration: d.days,
+																	price: 0,
+																	barcode: "",
+																},
+															)
+														}
+													>
+														<Plus /> {d.label}
+													</Button>
+												))}
+										</div>
 									)}
-								</form.Field>
 
-								{variants[i].pricingMode === "per_day" ? (
-									<div className="grid grid-cols-2 gap-4">
-										<form.AppField name={`variants[${i}].dailyPrice`}>
-											{(field) => (
-												<field.NumberField
-													label="Prix journalier (€) × nombre de jours"
-													placeholder="10.00"
-												/>
-											)}
-										</form.AppField>
-									</div>
-								) : (
-									<div className="space-y-3">
-										<span className="text-sm font-medium">Options de prix</span>
-
-										{(durees ?? []).length === 0 ? (
-											<p className="text-sm text-muted-foreground italic">
-												Aucune durée définie. Ajoutez vos durées de location{" "}
-												<Link to="/admin/durees" className="underline">
-													ici
-												</Link>
-												.
-											</p>
-										) : (
-											<div className="flex flex-wrap items-center gap-1.5">
-												{(durees ?? [])
-													.filter(
-														(d) =>
-															!variants[i].priceOptions.some(
-																(o) => o.duration === d.days,
-															),
-													)
-													.map((d) => (
+									{variants[i].priceOptions.length > 0 && (
+										<div className="flex flex-col gap-3">
+											{variants[i].priceOptions.map((opt, j) => {
+												const currentDays =
+													variants[i].priceOptions[j].duration;
+												const availableDurations = (durees ?? []).filter((d) =>
+													variants[i].priceOptions.every(
+														(o, oi) => oi === j || o.duration !== d.days,
+													),
+												);
+												const currentInList = availableDurations.some(
+													(d) => d.days === currentDays,
+												);
+												return (
+													<div
+														key={opt.id ?? j}
+														className="flex flex-wrap items-end gap-2 rounded-lg border p-3"
+													>
+														<div className="flex-1 min-w-[120px]">
+															<form.AppField
+																name={`variants[${i}].priceOptions[${j}].label`}
+															>
+																{(field) => (
+																	<field.TextField
+																		label="Label"
+																		placeholder="1 jour"
+																	/>
+																)}
+															</form.AppField>
+														</div>
+														<div className="w-36">
+															<form.Field
+																name={`variants[${i}].priceOptions[${j}].duration`}
+															>
+																{(field) => (
+																	<Field>
+																		<FieldLabel>Durée</FieldLabel>
+																		<Select
+																			value={String(field.state.value)}
+																			onValueChange={(v) => {
+																				const days = Number(v);
+																				field.handleChange(days);
+																				const found = (durees ?? []).find(
+																					(d) => d.days === days,
+																				);
+																				if (found) {
+																					form.setFieldValue(
+																						`variants[${i}].priceOptions[${j}].label`,
+																						found.label,
+																					);
+																				}
+																			}}
+																		>
+																			<SelectTrigger className="w-full">
+																				<SelectValue />
+																			</SelectTrigger>
+																			<SelectContent>
+																				<SelectGroup>
+																					<SelectLabel>
+																						Durées disponibles
+																					</SelectLabel>
+																					{availableDurations.map((d) => (
+																						<SelectItem
+																							key={d.id}
+																							value={String(d.days)}
+																						>
+																							{d.label}
+																						</SelectItem>
+																					))}
+																					{!currentInList && (
+																						<SelectItem
+																							value={String(currentDays)}
+																						>
+																							{`${currentDays} jour${currentDays > 1 ? "s" : ""} (retirée de la liste)`}
+																						</SelectItem>
+																					)}
+																				</SelectGroup>
+																			</SelectContent>
+																		</Select>
+																	</Field>
+																)}
+															</form.Field>
+														</div>
+														<div className="w-24">
+															<form.AppField
+																name={`variants[${i}].priceOptions[${j}].price`}
+															>
+																{(field) => (
+																	<field.NumberField
+																		label="Prix (€)"
+																		placeholder="0.00"
+																	/>
+																)}
+															</form.AppField>
+														</div>
+														<div className="w-28">
+															<form.AppField
+																name={`variants[${i}].priceOptions[${j}].barcode`}
+																validators={{
+																	onBlur: ({ value }) =>
+																		!value
+																			? "Le code-barres est requis"
+																			: undefined,
+																}}
+															>
+																{(field) => (
+																	<field.TextField
+																		label="Code-barres"
+																		placeholder="..."
+																	/>
+																)}
+															</form.AppField>
+														</div>
+														<div className="flex items-end gap-1 pb-1">
+															<QRCodeDisplay
+																value={
+																	variants[i].priceOptions[j].barcode || "aucun"
+																}
+																size={56}
+															/>
+															{variants[i].priceOptions[j].barcode && (
+																<BarcodeDisplay
+																	value={variants[i].priceOptions[j].barcode}
+																	height={32}
+																	barWidth={1}
+																/>
+															)}
+														</div>
 														<Button
-															key={d.id}
 															type="button"
-															variant="outline"
-															size="sm"
+															variant="ghost"
+															size="icon"
+															className="size-8 mb-0.5 shrink-0"
 															onClick={() =>
-																form.pushFieldValue(
+																form.removeFieldValue(
 																	`variants[${i}].priceOptions`,
-																	{
-																		id: crypto.randomUUID(),
-																		label: d.label,
-																		duration: d.days,
-																		price: 0,
-																		barcode: "",
-																	},
+																	j,
 																)
 															}
 														>
-															<Plus /> {d.label}
+															<X className="size-4" />
 														</Button>
-													))}
-											</div>
-										)}
-
-										{variants[i].priceOptions.length > 0 && (
-											<div className="flex flex-col gap-3">
-												{variants[i].priceOptions.map((opt, j) => {
-													const currentDays =
-														variants[i].priceOptions[j].duration;
-													const availableDurations = (durees ?? []).filter(
-														(d) =>
-															variants[i].priceOptions.every(
-																(o, oi) => oi === j || o.duration !== d.days,
-															),
-													);
-													const currentInList = availableDurations.some(
-														(d) => d.days === currentDays,
-													);
-													return (
-														<div
-															key={opt.id ?? j}
-															className="flex flex-wrap items-end gap-2 rounded-lg border p-3"
-														>
-															<div className="flex-1 min-w-[120px]">
-																<form.AppField
-																	name={`variants[${i}].priceOptions[${j}].label`}
-																>
-																	{(field) => (
-																		<field.TextField
-																			label="Label"
-																			placeholder="1 jour"
-																		/>
-																	)}
-																</form.AppField>
-															</div>
-															<div className="w-36">
-																<form.Field
-																	name={`variants[${i}].priceOptions[${j}].duration`}
-																>
-																	{(field) => (
-																		<Field>
-																			<FieldLabel>Durée</FieldLabel>
-																			<Select
-																				value={String(field.state.value)}
-																				onValueChange={(v) => {
-																					const days = Number(v);
-																					field.handleChange(days);
-																					const found = (durees ?? []).find(
-																						(d) => d.days === days,
-																					);
-																					if (found) {
-																						form.setFieldValue(
-																							`variants[${i}].priceOptions[${j}].label`,
-																							found.label,
-																						);
-																					}
-																				}}
-																			>
-																				<SelectTrigger className="w-full">
-																					<SelectValue />
-																				</SelectTrigger>
-																				<SelectContent>
-																					<SelectGroup>
-																						<SelectLabel>
-																							Durées disponibles
-																						</SelectLabel>
-																						{availableDurations.map((d) => (
-																							<SelectItem
-																								key={d.id}
-																								value={String(d.days)}
-																							>
-																								{d.label}
-																							</SelectItem>
-																						))}
-																						{!currentInList && (
-																							<SelectItem
-																								value={String(currentDays)}
-																							>
-																								{`${currentDays} jour${currentDays > 1 ? "s" : ""} (retirée de la liste)`}
-																							</SelectItem>
-																						)}
-																					</SelectGroup>
-																				</SelectContent>
-																			</Select>
-																		</Field>
-																	)}
-																</form.Field>
-															</div>
-															<div className="w-24">
-																<form.AppField
-																	name={`variants[${i}].priceOptions[${j}].price`}
-																>
-																	{(field) => (
-																		<field.NumberField
-																			label="Prix (€)"
-																			placeholder="0.00"
-																		/>
-																	)}
-																</form.AppField>
-															</div>
-															<div className="w-28">
-																<form.AppField
-																	name={`variants[${i}].priceOptions[${j}].barcode`}
-																	validators={{
-																		onBlur: ({ value }) =>
-																			!value
-																				? "Le code-barres est requis"
-																				: undefined,
-																	}}
-																>
-																	{(field) => (
-																		<field.TextField
-																			label="Code-barres"
-																			placeholder="..."
-																		/>
-																	)}
-																</form.AppField>
-															</div>
-															<div className="flex items-end gap-1 pb-1">
-																<QRCodeDisplay
-																	value={
-																		variants[i].priceOptions[j].barcode ||
-																		"aucun"
-																	}
-																	size={56}
-																/>
-																{variants[i].priceOptions[j].barcode && (
-																	<BarcodeDisplay
-																		value={variants[i].priceOptions[j].barcode}
-																		height={32}
-																		barWidth={1}
-																	/>
-																)}
-															</div>
-															<Button
-																type="button"
-																variant="ghost"
-																size="icon"
-																className="size-8 mb-0.5 shrink-0"
-																onClick={() =>
-																	form.removeFieldValue(
-																		`variants[${i}].priceOptions`,
-																		j,
-																	)
-																}
-															>
-																<X className="size-4" />
-															</Button>
-														</div>
-													);
-												})}
-											</div>
-										)}
-									</div>
-								)}
+													</div>
+												);
+											})}
+										</div>
+									)}
+								</div>
 
 								<div className="space-y-3">
 									<div className="flex items-center justify-between">
@@ -723,28 +731,6 @@ export function ItemForm({
 							<field.NumberField label="Durée minimum" placeholder="1" />
 						)}
 					</form.AppField>
-
-					<form.Field name="minDurationUnit">
-						{(field) => (
-							<Field>
-								<FieldLabel>Unité durée min.</FieldLabel>
-								<Select
-									value={field.state.value}
-									onValueChange={(v) =>
-										field.handleChange(v as "half_day" | "day")
-									}
-								>
-									<SelectTrigger className="w-full">
-										<SelectValue />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="half_day">½ journée</SelectItem>
-										<SelectItem value="day">Journée</SelectItem>
-									</SelectContent>
-								</Select>
-							</Field>
-						)}
-					</form.Field>
 				</CardContent>
 			</Card>
 

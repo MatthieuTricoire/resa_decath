@@ -30,7 +30,10 @@ function Calendar({
 		<DayPicker
 			showOutsideDays={showOutsideDays}
 			className={cn(
-				"group/calendar bg-background p-3 [--cell-size:--spacing(8)] [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent",
+				// 36 px par cellule : sous Apple le minimum confortable pour un
+				// pouce se situe autour de 40 px, mais 7 colonnes de 36 tiennent
+				// encore dans un popover ouvert sur un écran de 320 px.
+				"group/calendar bg-background p-3 [--cell-size:--spacing(9)] [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent",
 				String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
 				String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
 				className,

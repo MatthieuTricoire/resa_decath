@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
 	boolean,
 	decimal,
@@ -7,6 +7,7 @@ import {
 	pgTable,
 	text,
 	timestamp,
+	uniqueIndex,
 	uuid,
 	varchar,
 } from "drizzle-orm/pg-core";
@@ -79,13 +80,6 @@ export const itemStatusEnum = pgEnum("item_status", [
 
 export const seasonEnum = pgEnum("season", ["winter", "summer", "all"]);
 
-export const durationUnitEnum = pgEnum("duration_unit", ["half_day", "day"]);
-
-export const pricingModeEnum = pgEnum("pricing_mode", [
-	"per_day", // Prix à la journée : total = prix journalier x nb de jours
-	"per_duration", // Options fixes par durée (QR / code-barres par option)
-]);
-
 export const reservationStatusEnim = pgEnum("reservation_status", [
 	"PENDING_VERIFICATION",
 	"CONFIRMED",
@@ -93,6 +87,12 @@ export const reservationStatusEnim = pgEnum("reservation_status", [
 	"RETURNED",
 	"CANCELLED",
 	"EXPIRED",
+]);
+
+// Canal de création de la réservation : comptoir (staff) ou site public.
+export const reservationSourceEnum = pgEnum("reservation_source", [
+	"STORE",
+	"WEB",
 ]);
 
 // =============================
@@ -113,16 +113,15 @@ export const items = pgTable("items", {
 		.notNull()
 		.references(() => categories.id, { onDelete: "cascade" }),
 	name: varchar("name", { length: 255 }).notNull(), // ex: "Sac à dos Simond MH500",
+	slug: varchar("slug", { length: 160 }).notNull(), // SEO : /activite/<catégorie>/<slug-produit>
 	description: text("description"),
 	brand: varchar("brand", { length: 100 }).default("Decathlon").notNull(),
 	season: seasonEnum("season").notNull().default("all"),
 	decathlonUrl: varchar("decathlon_url", { length: 500 }),
 	availableFrom: varchar("available_from", { length: 5 }),
 	availableTo: varchar("available_to", { length: 5 }),
+	/** Durée minimale de location, en journées entières. */
 	minDuration: integer("min_duration").default(1).notNull(),
-	minDurationUnit: durationUnitEnum("min_duration_unit")
-		.default("half_day")
-		.notNull(),
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -135,10 +134,8 @@ export const itemVariants = pgTable("item_variants", {
 	decathlonSku: varchar("decathlon_sku", { length: 50 }).unique(), // ex: "8381168"
 	status: itemStatusEnum("status").default("AVAILABLE").notNull(),
 	totalStock: integer("total_stock").notNull().default(1), // Quantité totale de ce variant
-	pricingMode: pricingModeEnum("pricing_mode").default("per_day").notNull(),
-	dailyPrice: decimal("daily_price", { precision: 10, scale: 2 })
-		.notNull()
-		.default("0.00"), // Prix par jour (per_day)
+	// Le prix vit uniquement dans `price_options` : une durée vendue porte son
+	// prix et son code-barres, donc toute ligne de commande en référence un.
 });
 
 // Images du produit (plusieurs par item, ordre réglable)
@@ -163,19 +160,30 @@ export const variantAttributes = pgTable("variant_attributes", {
 });
 
 // Options de prix avec leur propre code-barres / QR code
-// Un QR code = un prix unique pour une variante donnée
-export const priceOptions = pgTable("price_options", {
-	id: uuid("id").defaultRandom().primaryKey(),
-	variantId: uuid("variant_id")
-		.references(() => itemVariants.id, { onDelete: "cascade" })
-		.notNull(),
-	label: varchar("label", { length: 100 }).notNull(), // ex: "1 jour", "2 jours", "3 jours"
-	duration: integer("duration").notNull(), // ex: 1, 2, 3, 5 (toujours en jours)
-	price: decimal("price", { precision: 10, scale: 2 }).notNull(),
-	barcode: varchar("barcode", { length: 50 }).unique().notNull(),
-	isActive: boolean("is_active").notNull().default(true),
-	createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+// Un QR code = un prix unique pour une variante donnée.
+// Le code-barres saisi ici est celui déjà enregistré dans la caisse du magasin :
+// le scanner en caisse remonte automatiquement le prix.
+export const priceOptions = pgTable(
+	"price_options",
+	{
+		id: uuid("id").defaultRandom().primaryKey(),
+		variantId: uuid("variant_id")
+			.references(() => itemVariants.id, { onDelete: "cascade" })
+			.notNull(),
+		label: varchar("label", { length: 100 }).notNull(), // ex: "1 jour", "2 jours", "3 jours"
+		duration: integer("duration").notNull(), // ex: 1, 2, 3, 5 (toujours en jours)
+		price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+		barcode: varchar("barcode", { length: 50 }).unique().notNull(),
+		isActive: boolean("is_active").notNull().default(true),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(table) => [
+		// Un seul prix actif par produit et par durée de location.
+		uniqueIndex("price_options_variant_duration_active_uq")
+			.on(table.variantId, table.duration)
+			.where(sql`${table.isActive} = true`),
+	],
+);
 
 // Durées de location globales, gérées par l'admin.
 // Sert de référence pour définir les options de prix "par durée" des variantes.
@@ -193,6 +201,9 @@ export const rentalSettings = pgTable("rental_settings", {
 		.notNull()
 		.default(false),
 	isRentalOpen: boolean("is_rental_open").notNull().default(true),
+	// Ouverture exceptionnelle du dimanche : le magasin est ouvert du lundi au
+	// samedi, et l'admin peut autoriser les dimanches (forte saison).
+	sundayOpen: boolean("sunday_open").notNull().default(false),
 	seasonOverride: text("season_override")
 		.$type<"auto" | "summer" | "winter">()
 		.notNull()
@@ -210,6 +221,8 @@ export const rentalSettings = pgTable("rental_settings", {
 
 export const reservations = pgTable("reservations", {
 	id: uuid("id").defaultRandom().primaryKey(),
+	// Référence lisible par un humain, communiquée au client et à la caisse.
+	reference: varchar("reference", { length: 20 }).notNull().unique(),
 	userId: text("user_id")
 		.references(() => user.id)
 		.notNull(),
@@ -217,6 +230,12 @@ export const reservations = pgTable("reservations", {
 	status: reservationStatusEnim("status")
 		.default("PENDING_VERIFICATION")
 		.notNull(),
+
+	source: reservationSourceEnum("source").default("STORE").notNull(),
+
+	// Jeton d'accès à la page de confirmation publique, sans session.
+	// Null sur les réservations créées avant la mise en ligne du site.
+	accessToken: varchar("access_token", { length: 64 }).unique(),
 
 	// Dates client
 	pickupDate: timestamp("pickup_date").notNull(), // Date & heure de retrait prévue

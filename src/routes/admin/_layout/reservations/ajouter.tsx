@@ -3,7 +3,10 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ReservationDateRangePicker } from "#/components/forms/reservation-date-range-picker";
+import {
+	type RentalWindowChange,
+	RentalWindowField,
+} from "#/components/forms/rental-window-field";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card";
@@ -32,12 +35,18 @@ import {
 	TableHeader,
 	TableRow,
 } from "#/components/ui/table";
+import { getRentalDurations } from "#/features/durees/queries";
+import { queryKeys as dureeQueryKeys } from "#/features/durees/query-keys";
 import {
 	getReservableVariants,
 	type VariantRow,
 } from "#/features/equipements/queries";
 import { queryKeys as equipmentQueryKeys } from "#/features/equipements/query-keys";
 import { getReservationDurationDays } from "#/features/reservations/availability";
+import {
+	blockedCheckoutDurations,
+	resolveCheckoutWindow,
+} from "#/features/reservations/checkout-window";
 import { validateClient } from "#/features/reservations/client-validation";
 import {
 	type CreateReservationInput,
@@ -45,12 +54,15 @@ import {
 	getAvailableStock,
 } from "#/features/reservations/queries";
 import { queryKeys as reservationQueryKeys } from "#/features/reservations/query-keys";
+import { getRentalSettings } from "#/features/settings/queries";
+import { queryKeys as settingsQueryKeys } from "#/features/settings/query-keys";
 import {
 	type CreateUserInput,
 	createUser,
 	getUsers,
 } from "#/features/users/queries";
 import { queryKeys } from "#/features/users/query-keys";
+import { todayInParis } from "#/lib/dates";
 
 export const Route = createFileRoute("/admin/_layout/reservations/ajouter")({
 	component: RouteComponent,
@@ -171,7 +183,6 @@ function RouteComponent() {
 	);
 
 	const selectedPriceOption = useMemo(() => {
-		if (selectedVariant?.pricingMode === "per_day") return null;
 		return (
 			selectedVariant?.priceOptions.find(
 				(o) => o.id === selectedPriceOptionId,
@@ -186,23 +197,80 @@ function RouteComponent() {
 		return getReservationDurationDays(pickup, retour);
 	}, [pickupDate, returnDate]);
 
-	const perDayPrice = useMemo(() => {
-		if (
-			selectedVariant?.pricingMode !== "per_day" ||
-			!computedDuration ||
-			!selectedVariant.dailyPrice
-		) {
-			return null;
-		}
-		return Number.parseFloat(selectedVariant.dailyPrice) * computedDuration;
-	}, [selectedVariant, computedDuration]);
+	// Mêmes règles que le site public : la règle du dimanche vient des réglages,
+	// les durées affichées de la table de référence des durées.
+	const { data: rentalSettings } = useQuery({
+		queryKey: settingsQueryKeys.settings.all,
+		queryFn: () => getRentalSettings(),
+		staleTime: 5 * 60 * 1000,
+	});
+	const { data: rentalDurations, isPending: durationsPending } = useQuery({
+		queryKey: dureeQueryKeys.durees.all,
+		queryFn: () => getRentalDurations(),
+		staleTime: 5 * 60 * 1000,
+	});
+	// Mémoïsé pour rester une référence stable : sans cela le mémo des durées
+	// bloquées se recalculerait à chaque rendu.
+	const openingDays = useMemo(
+		() =>
+			rentalSettings ? { sundayOpen: rentalSettings.sundayOpen } : undefined,
+		[rentalSettings],
+	);
+	const durationOptions = useMemo(
+		() => (rentalDurations ?? []).map((row) => row.days),
+		[rentalDurations],
+	);
 
+	/**
+	 * Durées que la caisse refuse d'appliquer, et pourquoi : le magasin fermé le
+	 * jour du retour, ou un matériel qui ne vend pas cette durée. La règle vit dans
+	 * `checkout-window`, testée ; la page ne fait que lui passer ce qu'elle a lu.
+	 */
+	const blockedDurations = useMemo(
+		() =>
+			blockedCheckoutDurations({
+				pickupDate,
+				durations: durationOptions,
+				settings: openingDays,
+				priceOptions: selectedVariant?.priceOptions,
+				minDuration: selectedVariant?.minDuration,
+			}),
+		[pickupDate, durationOptions, openingDays, selectedVariant],
+	);
+
+	/**
+	 * Pose la fenêtre et invalide la commande.
+	 *
+	 * Changer une date ou une durée change la période occupée : les articles
+	 * choisis, leur variant et leur tarif ne sont plus valables et repartent de zéro.
+	 * Une durée qui ne convient plus est remplacée par la plus proche servie, comme
+	 * sur le site ; si aucune ne convient, la fenêtre reste vide plutôt que de
+	 * proposer un retour impossible.
+	 */
+	const applyWindow = (change: RentalWindowChange) => {
+		// Cliquer une durée sans avoir choisi de date part d'aujourd'hui, comme sur
+		// le site : sinon le bouton resterait inerte et la saisie partirait de nulle
+		// part.
+		const nextPickup =
+			change.pickupDate ?? (change.durationDays ? todayInParis() : "");
+		const window = resolveCheckoutWindow({
+			pickupDate: nextPickup,
+			requestedDuration: change.durationDays,
+			durations: durationOptions,
+			settings: openingDays,
+		});
+		setPickupDate(nextPickup);
+		setReturnDate(window?.returnDate ?? "");
+		setLineItems([]);
+		setSelectedItemId("");
+		setSelectedVariantId("");
+		setSelectedPriceOptionId("");
+	};
+
+	// La durée de la fenêtre choisit l'option : l'admin ne peut pas facturer
+	// une durée que le catalogue ne couvre pas.
 	useEffect(() => {
-		if (
-			!selectedVariant ||
-			selectedVariant.pricingMode !== "per_duration" ||
-			!computedDuration
-		) {
+		if (!selectedVariant || !computedDuration) {
 			setSelectedPriceOptionId("");
 			return;
 		}
@@ -213,7 +281,7 @@ function RouteComponent() {
 	}, [selectedVariant, computedDuration]);
 
 	const filteredPriceOptions = useMemo(() => {
-		if (selectedVariant?.pricingMode !== "per_duration") return [];
+		if (!selectedVariant) return [];
 		if (!computedDuration) return selectedVariant.priceOptions;
 		return selectedVariant.priceOptions.filter(
 			(o) => o.duration === computedDuration,
@@ -303,39 +371,20 @@ function RouteComponent() {
 			filteredVariants.length,
 		);
 
-		if (selectedVariant.pricingMode === "per_day") {
-			if (!computedDuration || perDayPrice === null) return;
-			setLineItems((prev) => [
-				...prev,
-				{
-					key: crypto.randomUUID(),
-					variantId: selectedVariant.id,
-					priceOptionId: null,
-					quantity,
-					itemName: selectedVariant.itemName,
-					variantLabel,
-					priceOptionLabel: `${computedDuration} jour${
-						computedDuration > 1 ? "s" : ""
-					} · ${Number.parseFloat(selectedVariant.dailyPrice).toFixed(2)} €/j`,
-					unitPrice: perDayPrice.toFixed(2),
-				},
-			]);
-		} else {
-			if (!selectedPriceOption) return;
-			setLineItems((prev) => [
-				...prev,
-				{
-					key: crypto.randomUUID(),
-					variantId: selectedVariant.id,
-					priceOptionId: selectedPriceOption.id,
-					quantity,
-					itemName: selectedVariant.itemName,
-					variantLabel,
-					priceOptionLabel: selectedPriceOption.label,
-					unitPrice: selectedPriceOption.price,
-				},
-			]);
-		}
+		if (!selectedPriceOption) return;
+		setLineItems((prev) => [
+			...prev,
+			{
+				key: crypto.randomUUID(),
+				variantId: selectedVariant.id,
+				priceOptionId: selectedPriceOption.id,
+				quantity,
+				itemName: selectedVariant.itemName,
+				variantLabel,
+				priceOptionLabel: selectedPriceOption.label,
+				unitPrice: selectedPriceOption.price,
+			},
+		]);
 		setSelectedItemId("");
 		setSelectedVariantId("");
 		setSelectedPriceOptionId("");
@@ -467,141 +516,152 @@ function RouteComponent() {
 				<h2 className="text-lg font-semibold">Créer une réservation</h2>
 			</div>
 
-			<Card>
-				<CardHeader>
-					<CardTitle>Client *</CardTitle>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					<div className="flex gap-2">
-						<Button
-							type="button"
-							variant={clientMode === "existing" ? "default" : "outline"}
-							size="sm"
-							onClick={() => setClientMode("existing")}
-						>
-							Client existant
-						</Button>
-						<Button
-							type="button"
-							variant={clientMode === "new" ? "default" : "outline"}
-							size="sm"
-							onClick={() => setClientMode("new")}
-						>
-							Nouveau client
-						</Button>
-					</div>
-
-					{clientMode === "existing" ? (
-						<Field>
-							<FieldLabel>Sélectionner un client *</FieldLabel>
-							<Combobox
-								items={users ?? []}
-								value={selectedUserId}
-								onValueChange={handleSelect}
+			{/* Le client et la période forment les deux premières étapes de la saisie :
+			    sur un grand écran elles se lisent ensemble, ce qui remonte le tableau
+			    des articles dans la fenêtre. 2/1 plutôt que 50/50 : le mode « nouveau
+			    client » garde deux colonnes de champs confortables, les dates se
+			    contentent d'un bouton et de quatre pastilles. En dessous de `xl`, les
+			    deux cartes s'empilent comme avant. La grille les étire à la même
+			    hauteur par défaut, sans classe supplémentaire. */}
+			<div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+				<Card>
+					<CardHeader>
+						<CardTitle>Client *</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<div className="flex gap-2">
+							<Button
+								type="button"
+								variant={clientMode === "existing" ? "default" : "outline"}
+								size="sm"
+								onClick={() => setClientMode("existing")}
 							>
-								<ComboboxInput
-									placeholder="Rechercher un client..."
-									value={searchClient}
-									onChange={(e) => setSearchClient(e.target.value)}
-									aria-invalid={!clientValidation.valid}
-								/>
-								<ComboboxContent>
-									<ComboboxEmpty>Aucun client trouvé</ComboboxEmpty>
-									<ComboboxList>
-										{(user) => (
-											<ComboboxItem key={user.id} value={user.id}>
-												{user.name} — {user.email}
-											</ComboboxItem>
-										)}
-									</ComboboxList>
-								</ComboboxContent>
-							</Combobox>
-						</Field>
-					) : (
-						<div className="grid grid-cols-2 gap-4">
-							<Field>
-								<FieldLabel htmlFor="new-client-name">Nom *</FieldLabel>
-								<Input
-									id="new-client-name"
-									name="name"
-									autoComplete="name"
-									required
-									value={newName}
-									onChange={(e) => setNewName(e.target.value)}
-									placeholder="Prénom et nom"
-								/>
-							</Field>
-							<Field>
-								<FieldLabel htmlFor="new-client-email">Email *</FieldLabel>
-								<Input
-									id="new-client-email"
-									name="email"
-									autoComplete="email"
-									type="email"
-									required
-									aria-invalid={Boolean(emailError)}
-									value={newEmail}
-									onChange={(e) => setNewEmail(e.target.value)}
-									placeholder="client@example.com"
-								/>
-								{emailError && (
-									<FieldDescription>{emailError}</FieldDescription>
-								)}
-							</Field>
-							<Field>
-								<FieldLabel htmlFor="new-client-phone">Téléphone *</FieldLabel>
-								<Input
-									id="new-client-phone"
-									name="phone"
-									autoComplete="tel"
-									type="tel"
-									required
-									value={newPhone}
-									onChange={(e) => setNewPhone(e.target.value)}
-									placeholder="06 12 34 56 78"
-								/>
-							</Field>
-							<Field>
-								<FieldLabel>Carte Decathlon</FieldLabel>
-								<Input
-									value={newLoyaltyCard}
-									onChange={(e) => setNewLoyaltyCard(e.target.value)}
-									placeholder="Optionnel"
-								/>
-							</Field>
+								Client existant
+							</Button>
+							<Button
+								type="button"
+								variant={clientMode === "new" ? "default" : "outline"}
+								size="sm"
+								onClick={() => setClientMode("new")}
+							>
+								Nouveau client
+							</Button>
 						</div>
-					)}
 
-					{!clientValidation.valid && (
-						<FieldDescription>{clientHint}</FieldDescription>
-					)}
-				</CardContent>
-			</Card>
+						{clientMode === "existing" ? (
+							<Field>
+								<FieldLabel>Sélectionner un client *</FieldLabel>
+								<Combobox
+									items={users ?? []}
+									value={selectedUserId}
+									onValueChange={handleSelect}
+								>
+									<ComboboxInput
+										placeholder="Rechercher un client..."
+										value={searchClient}
+										onChange={(e) => setSearchClient(e.target.value)}
+										aria-invalid={!clientValidation.valid}
+									/>
+									<ComboboxContent>
+										<ComboboxEmpty>Aucun client trouvé</ComboboxEmpty>
+										<ComboboxList>
+											{(user) => (
+												<ComboboxItem key={user.id} value={user.id}>
+													{user.name} — {user.email}
+												</ComboboxItem>
+											)}
+										</ComboboxList>
+									</ComboboxContent>
+								</Combobox>
+							</Field>
+						) : (
+							<div className="grid grid-cols-2 gap-4">
+								<Field>
+									<FieldLabel htmlFor="new-client-name">Nom *</FieldLabel>
+									<Input
+										id="new-client-name"
+										name="name"
+										autoComplete="name"
+										required
+										value={newName}
+										onChange={(e) => setNewName(e.target.value)}
+										placeholder="Prénom et nom"
+									/>
+								</Field>
+								<Field>
+									<FieldLabel htmlFor="new-client-email">Email *</FieldLabel>
+									<Input
+										id="new-client-email"
+										name="email"
+										autoComplete="email"
+										type="email"
+										required
+										aria-invalid={Boolean(emailError)}
+										value={newEmail}
+										onChange={(e) => setNewEmail(e.target.value)}
+										placeholder="client@example.com"
+									/>
+									{emailError && (
+										<FieldDescription>{emailError}</FieldDescription>
+									)}
+								</Field>
+								<Field>
+									<FieldLabel htmlFor="new-client-phone">
+										Téléphone *
+									</FieldLabel>
+									<Input
+										id="new-client-phone"
+										name="phone"
+										autoComplete="tel"
+										type="tel"
+										required
+										value={newPhone}
+										onChange={(e) => setNewPhone(e.target.value)}
+										placeholder="06 12 34 56 78"
+									/>
+								</Field>
+								<Field>
+									<FieldLabel>Carte Decathlon</FieldLabel>
+									<Input
+										value={newLoyaltyCard}
+										onChange={(e) => setNewLoyaltyCard(e.target.value)}
+										placeholder="Optionnel"
+									/>
+								</Field>
+							</div>
+						)}
 
-			<Card>
-				<CardHeader>
-					<CardTitle>Dates</CardTitle>
-				</CardHeader>
-				<CardContent className="space-y-2">
-					<ReservationDateRangePicker
-						valueFrom={pickupDate}
-						valueTo={returnDate}
-						onChange={(from, to) => {
-							setPickupDate(from);
-							setReturnDate(to);
-							setLineItems([]);
-							setSelectedItemId("");
-							setSelectedVariantId("");
-							setSelectedPriceOptionId("");
-						}}
-					/>
-					{computedDuration && (
-						<p className="text-sm text-muted-foreground">
-							Durée : {computedDuration} jour{computedDuration > 1 ? "s" : ""}
-						</p>
-					)}
-				</CardContent>
-			</Card>
+						{!clientValidation.valid && (
+							<FieldDescription>{clientHint}</FieldDescription>
+						)}
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader>
+						<CardTitle>Dates</CardTitle>
+					</CardHeader>
+					<CardContent>
+						{/* Même saisie que sur le site : une date de départ puis une durée. Le
+						    retour s'en déduit, et il ne peut pas tomber un jour de fermeture.
+						    Pas de titre visible ici : la carte porte déjà « Dates », la légende
+						    ne sert alors plus que de nom accessible du groupe. */}
+						<RentalWindowField
+							pickupDate={pickupDate || null}
+							returnDate={returnDate || null}
+							durations={durationOptions}
+							settings={openingDays}
+							blockedDurations={blockedDurations}
+							isPending={durationsPending}
+							emptyMessage="Aucune durée n’est configurée. Ajoutez-en depuis les réglages du catalogue."
+							onChange={applyWindow}
+							onClear={() =>
+								applyWindow({ pickupDate: null, durationDays: null })
+							}
+						/>
+					</CardContent>
+				</Card>
+			</div>
 
 			<Card>
 				<CardHeader className="flex flex-row items-center justify-between">
@@ -613,7 +673,7 @@ function RouteComponent() {
 				<CardContent className="space-y-4">
 					{!reservableDates && (
 						<p className="text-sm text-muted-foreground">
-							Renseignez les dates de retrait et de retour pour afficher les
+							Choisissez une date de départ puis une durée pour afficher les
 							articles disponibles pendant toute la période.
 						</p>
 					)}
@@ -696,52 +756,38 @@ function RouteComponent() {
 							</Field>
 						</div>
 						<div>
-							{selectedVariant?.pricingMode === "per_day" ? (
-								<Field>
-									<FieldLabel>Prix (à la journée)</FieldLabel>
-									<Input
-										readOnly
-										value={
-											perDayPrice
-												? `Durée ${computedDuration}j · ${formatPrice(
-														perDayPrice.toFixed(2),
-													)}`
-												: "Renseignez les dates"
-										}
-									/>
-								</Field>
-							) : (
-								<Field>
-									<FieldLabel>Durée / Prix</FieldLabel>
-									<Select
-										value={selectedPriceOptionId}
-										onValueChange={setSelectedPriceOptionId}
-										disabled={
-											!selectedVariantId || filteredPriceOptions.length === 0
-										}
-									>
-										<SelectTrigger>
-											<SelectValue
-												placeholder={
-													!selectedVariantId
-														? "D'abord choisir une variante"
-														: filteredPriceOptions.length === 0 &&
-																computedDuration
-															? `Aucun tarif ${computedDuration}j`
-															: "Choisir..."
-												}
-											/>
-										</SelectTrigger>
-										<SelectContent>
-											{filteredPriceOptions.map((o) => (
-												<SelectItem key={o.id} value={o.id}>
-													{o.label} — {formatPrice(o.price)}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</Field>
-							)}
+							<Field>
+								{/* La durée est déjà choisie plus haut : il ne reste qu'un palier
+								    tarifaire, parmi ceux qui couvrent cette durée. */}
+								<FieldLabel>Prix</FieldLabel>
+								<Select
+									value={selectedPriceOptionId}
+									onValueChange={setSelectedPriceOptionId}
+									disabled={
+										!selectedVariantId || filteredPriceOptions.length === 0
+									}
+								>
+									<SelectTrigger>
+										<SelectValue
+											placeholder={
+												!selectedVariantId
+													? "D'abord choisir une variante"
+													: filteredPriceOptions.length === 0 &&
+															computedDuration
+														? `Aucun tarif ${computedDuration}j`
+														: "Choisir..."
+											}
+										/>
+									</SelectTrigger>
+									<SelectContent>
+										{filteredPriceOptions.map((o) => (
+											<SelectItem key={o.id} value={o.id}>
+												{o.label} — {formatPrice(o.price)}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</Field>
 						</div>
 						<div>
 							<Field>
@@ -781,10 +827,7 @@ function RouteComponent() {
 							disabled={
 								!selectedVariant ||
 								(stockQuery.data && quantity > effectiveAvailable) ||
-								(selectedVariant.pricingMode === "per_duration" &&
-									!selectedPriceOption) ||
-								(selectedVariant.pricingMode === "per_day" &&
-									(!computedDuration || !perDayPrice))
+								!selectedPriceOption
 							}
 						>
 							<Plus />

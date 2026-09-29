@@ -183,10 +183,7 @@ function RouteComponent() {
 							</div>
 							<div className="text-muted-foreground">Durée minimum</div>
 							<div>
-								{item.minDuration}{" "}
-								{item.minDurationUnit === "half_day"
-									? "½ journée"
-									: "journée(s)"}
+								{item.minDuration} journée{item.minDuration > 1 ? "s" : ""}
 							</div>
 						</CardContent>
 					</Card>
@@ -254,11 +251,7 @@ function RouteComponent() {
 												</TableCell>
 												<TableCell>{v.totalStock}</TableCell>
 												<TableCell>
-													{v.pricingMode === "per_day" ? (
-														<span className="text-xs text-muted-foreground whitespace-nowrap">
-															{formatPrice(v.dailyPrice)} / jour
-														</span>
-													) : v.priceOptions.length > 0 ? (
+													{v.priceOptions.length > 0 ? (
 														<div className="flex flex-col gap-2">
 															{v.priceOptions.map((opt) => (
 																<div

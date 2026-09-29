@@ -1,4 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Mountain } from "lucide-react";
+import { store, storeCanonicalPath } from "#/config/store";
 import { LogInForm } from "#/features/auth/forms/login-form";
 
 export const Route = createFileRoute("/admin/login")({
@@ -9,6 +11,18 @@ function RouteComponent() {
 	return (
 		<div className="grid min-h-svh lg:grid-cols-2">
 			<div className="flex flex-col gap-4 p-6 md:p-10">
+				<Link
+					to={storeCanonicalPath}
+					className="flex w-fit items-center gap-2 no-underline"
+				>
+					<Mountain
+						className="size-5 text-primary dark:text-[#9aa7f5]"
+						aria-hidden="true"
+					/>
+					<span className="display-title text-base font-semibold text-primary dark:text-[#9aa7f5]">
+						{store.name}
+					</span>
+				</Link>
 				<div className="flex flex-1 items-center justify-center">
 					<div className="w-full max-w-xs">
 						<LogInForm />

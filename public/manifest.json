@@ -1,6 +1,7 @@
 {
-  "short_name": "TanStack App",
-  "name": "Create TanStack App Sample",
+  "short_name": "Décathlon Mountain",
+  "name": "Décathlon Mountain Laruns",
+  "description": "Location de matériel de montagne à Laruns : escalade, randonnée, bivouac et via ferrata. Réservation en ligne, retrait en magasin.",
   "icons": [
     {
       "src": "favicon.ico",
@@ -18,8 +19,9 @@
       "sizes": "512x512"
     }
   ],
-  "start_url": ".",
+  "start_url": "/location-materiel-laruns",
+  "id": "/location-materiel-laruns",
   "display": "standalone",
-  "theme_color": "#000000",
+  "theme_color": "#1f2937",
   "background_color": "#ffffff"
 }

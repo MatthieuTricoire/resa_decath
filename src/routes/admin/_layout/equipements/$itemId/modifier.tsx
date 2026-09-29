@@ -77,6 +77,7 @@ function RouteComponent() {
 
 	const initialValues: ItemFormValues = {
 		name: item.name,
+		slug: item.slug,
 		description: item.description ?? "",
 		brand: item.brand,
 		categoryId: item.categoryId,
@@ -90,13 +91,10 @@ function RouteComponent() {
 		availableFrom: item.availableFrom ?? "",
 		availableTo: item.availableTo ?? "",
 		minDuration: item.minDuration,
-		minDurationUnit: item.minDurationUnit,
 		variants: (variants ?? []).map((v) => ({
 			id: v.id,
 			sku: v.decathlonSku ?? "",
 			totalStock: v.totalStock,
-			pricingMode: v.pricingMode,
-			dailyPrice: parseFloat(v.dailyPrice),
 			attributes: v.attributes.map((a) => ({
 				name: a.name,
 				value: a.value,

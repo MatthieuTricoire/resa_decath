@@ -1,3 +1,16 @@
 # https://www.robotstxt.org/robotstxt.html
+# Site public de Décathlon Mountain Laruns.
 User-agent: *
-Disallow:
+
+# Pages privées (comptes, panier, réservation, admin) : inutile de demander
+# à Google d'y dépenser du crawl budget, les liens y mènent rarement. Le
+# `noindex` HTML reste en place pour les URLs encore découvertes ailleurs.
+Disallow: /admin
+Disallow: /api/
+Disallow: /mon-compte
+Disallow: /connexion
+Disallow: /panier
+Disallow: /reservation
+
+# Catalogue public : la sitemap répertoire les pages indexables.
+Sitemap: https://www.decathlon-mountain-laruns.fr/sitemap.xml

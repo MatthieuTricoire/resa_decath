@@ -10,6 +10,8 @@ import {
 	IconStack3,
 	IconUsers,
 } from "@tabler/icons-react";
+import { Link } from "@tanstack/react-router";
+import { Mountain } from "lucide-react";
 import { NavMain } from "#/components/nav-main.tsx";
 import { NavSecondary } from "#/components/nav-secondary.tsx";
 import { NavUser } from "#/components/nav-user.tsx";
@@ -21,6 +23,7 @@ import {
 	SidebarMenu,
 	SidebarMenuItem,
 } from "#/components/ui/sidebar.tsx";
+import { store } from "#/config/store";
 
 const data = {
 	navMain: [
@@ -124,7 +127,18 @@ export function AppSidebar({
 			<SidebarHeader>
 				<SidebarMenu>
 					<SidebarMenuItem>
-						<span className="text-base font-semibold px-3">Résa Decath</span>
+						<Link
+							to="/admin"
+							className="flex items-center gap-2 px-3 no-underline"
+						>
+							<Mountain
+								className="size-5 text-primary dark:text-[#9aa7f5]"
+								aria-hidden="true"
+							/>
+							<span className="display-title text-base font-semibold text-primary dark:text-[#9aa7f5]">
+								{store.name}
+							</span>
+						</Link>
 					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarHeader>
