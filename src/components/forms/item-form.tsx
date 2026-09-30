@@ -2,7 +2,7 @@ import { useStore } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, Image, Plus, Trash2, X } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { BarcodeDisplay } from "#/components/barcode";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
@@ -132,8 +132,19 @@ export function ItemForm({
 	 */
 	const [slugIsManual, setSlugIsManual] = useState(false);
 
+	/**
+	 * Une variante neuve reçoit un identifiant aléatoire : reconstruire ces
+	 * valeurs à chaque rendu rend `defaultValues` différent à chaque fois, et
+	 * `FormApi.update()` réécrit alors l'état du formulaire en boucle
+	 * (« Maximum update depth exceeded »). On fige donc l'identité de l'objet.
+	 */
+	const defaultFormValues = useMemo(
+		() => initialValues ?? defaultValues(),
+		[initialValues],
+	);
+
 	const form = useAppForm({
-		defaultValues: initialValues ?? defaultValues(),
+		defaultValues: defaultFormValues,
 		onSubmit: async ({ value }) => {
 			await onSubmit(value);
 		},
