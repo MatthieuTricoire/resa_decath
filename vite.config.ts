@@ -7,12 +7,15 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
 	resolve: { tsconfigPaths: true },
+	ssr: {
+		noExternal: ["better-auth", "@better-auth", "kysely"],
+	},
 	optimizeDeps: {
 		exclude: ["kysely", "@better-auth/kysely-adapter"],
 	},
 	build: {
 		rolldownOptions: {
-			external: [/^@sentry\//, /^kysely$/, /^@better-auth\/kysely-adapter$/],
+			external: [/^@sentry\//],
 		},
 	},
 	plugins: [devtools(), tailwindcss(), tanstackStart(), nitro(), viteReact()],
