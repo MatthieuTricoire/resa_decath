@@ -10,7 +10,7 @@
  * fait échouer bruyamment l'appel si un composant tente l'appel.
  *
  * Le garde-fou `npm run check:bundle` vérifie après build qu'aucun de ces
- * marqueurs n'est réapparu dans `dist/client`.
+ * marqueurs n'est réapparu dans `.output/public`.
  */
 import { createServerOnlyFn } from "@tanstack/react-start";
 import { and, asc, eq, gt, inArray, lt, sql } from "drizzle-orm";

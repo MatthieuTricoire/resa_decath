@@ -14,3 +14,8 @@ todos.json
 
 # Local Netlify folder
 .netlify
+
+# Sortie du preset Vercel (Build Output API, générée à la volée par Nitro)
+.vercel/output
+.vercel/.projects.json
+.vercel/project.json

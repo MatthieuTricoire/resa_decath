@@ -12,16 +12,23 @@
  *
  * Tourné automatiquement après `npm run build` (hook `postbuild`).
  */
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-const CLIENT_DIR = "dist/client";
+/**
+ * Dossiers où le client est écrit par le build.
+ * Avec le plugin `nitro()`, le public part dans `.output/public` (preset
+ * `node-server` : dev, VPS). Sur Vercel, le preset `vercel` ajoute
+ * `.vercel/output/static` : on accepte les deux pour que `postbuild` passe
+ * quel que soit l'hébergeur.
+ */
+const CLIENT_CANDIDATES = [".output/public", ".vercel/output/static"];
 
 /**
  * Marqueurs interdits dans le bundle client, et ce qu'ils trahissent.
  *
- * Chacun a été vérifié absent de `dist/client` et présent de `dist/server` :
- * un marqueur qui ne se déclenche jamais ne protège de rien.
+ * Chacun a été vérifié absent de `.output/public` et présent de
+ * `.output/server` : un marqueur qui ne se déclenche jamais ne protège de rien.
  *
  * Volontairement exclus, alors qu'ils semblent évidents :
  *   - `"code128"` : nos propres composants lisent `images.code128`, et seule la
@@ -70,9 +77,16 @@ function humanSize(bytes: number): string {
 	return `${(bytes / 1024 / 1024).toFixed(1)} Mo`;
 }
 
-try {
-	statSync(CLIENT_DIR);
-} catch {
+function resolveClientDir(): string {
+	for (const candidate of CLIENT_CANDIDATES) {
+		if (existsSync(candidate)) return candidate;
+	}
+	return CLIENT_CANDIDATES[0];
+}
+
+const CLIENT_DIR = resolveClientDir();
+
+if (!existsSync(CLIENT_DIR)) {
 	console.error(
 		`✗ ${CLIENT_DIR} est absent. Lance d'abord \`npm run build\` (ce script se lance tout seul après le build).`,
 	);

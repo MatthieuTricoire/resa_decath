@@ -8,7 +8,7 @@
  * Ces fonctions sont aussi enveloppées dans `createServerOnlyFn` : si une page
  * tente un jour de les appeler, ça échoue bruyamment au lieu de renvoyer du
  * code serveur au navigateur. `npm run check:bundle` vérifie après build
- * qu'aucun marqueur Node n'est réapparu dans `dist/client`.
+ * qu'aucun marqueur Node n'est réapparu dans `.output/public`.
  */
 import { createServerOnlyFn } from "@tanstack/react-start";
 import { and, eq, inArray } from "drizzle-orm";
