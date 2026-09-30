@@ -29,6 +29,7 @@ import {
 	productDurationSupport,
 	supportsDuration,
 } from "#/features/reservations/pricing";
+import { PUBLIC_PAGE_CACHE_CONTROL } from "#/lib/cache-control";
 import { earliestPickupDateInParis, rentalDurationLabel } from "#/lib/dates";
 import { breadcrumbJsonLd, buildPageHead, productJsonLd } from "#/lib/seo";
 import { cn } from "#/lib/utils";
@@ -59,6 +60,7 @@ export const Route = createFileRoute(
 		});
 		return { product, activity };
 	},
+	headers: () => ({ "Cache-Control": PUBLIC_PAGE_CACHE_CONTROL }),
 	head: ({ loaderData, params }) => {
 		const product = loaderData?.product;
 		if (!product) {

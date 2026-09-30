@@ -283,13 +283,12 @@ export function AttributeDefinitionsForm() {
 												variant="ghost"
 												size="icon"
 												className="size-10 text-destructive sm:size-8"
-												disabled={isUsed || deleteDefinitionMutation.isPending}
+												disabled={deleteDefinitionMutation.isPending}
 												onClick={() => {
-													if (
-														window.confirm(
-															`Supprimer l'attribut « ${definition.name} » ?`,
-														)
-													) {
+													const message = isUsed
+														? `« ${definition.name} » est encore utilisé par ${definition.usageCount} variante${definition.usageCount > 1 ? "s" : ""}. Les valeurs resteront affichées sur les fiches existantes, mais ne seront plus proposées à la saisie. Supprimer quand même ?`
+														: `Supprimer l'attribut « ${definition.name} » ?`;
+													if (window.confirm(message)) {
 														deleteDefinitionMutation.mutate(definition.id);
 													}
 												}}
@@ -467,13 +466,12 @@ function DefinitionValues({
 											variant="ghost"
 											size="icon"
 											className="size-7 text-destructive"
-											disabled={isValueUsed || deleteValueMutation.isPending}
+											disabled={deleteValueMutation.isPending}
 											onClick={() => {
-												if (
-													window.confirm(
-														`Supprimer la valeur « ${value.value} » ?`,
-													)
-												) {
+												const message = isValueUsed
+													? `« ${value.value} » est encore utilisée par ${value.usageCount} variante${value.usageCount > 1 ? "s" : ""}. Elle restera affichée sur les fiches existantes, mais ne sera plus proposée à la saisie. Supprimer quand même ?`
+													: `Supprimer la valeur « ${value.value} » ?`;
+												if (window.confirm(message)) {
 													deleteValueMutation.mutate(value.id);
 												}
 											}}

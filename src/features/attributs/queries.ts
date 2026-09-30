@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, asc, count, eq, inArray, max } from "drizzle-orm";
+import { and, asc, eq, inArray, max } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "#/db";
 import * as schema from "#/db/schema";
@@ -167,22 +167,15 @@ export const deleteAttributeDefinition = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		await requireDashboardSession();
 		await db.transaction(async (tx) => {
-			const [definition] = await tx
-				.select({ name: schema.attributeDefinitions.name })
+			const [existing] = await tx
+				.select({ id: schema.attributeDefinitions.id })
 				.from(schema.attributeDefinitions)
 				.where(eq(schema.attributeDefinitions.id, data));
-			if (!definition) throw new Error("Attribut introuvable");
+			if (!existing) throw new Error("Attribut introuvable");
 
-			const [usage] = await tx
-				.select({ value: count(schema.variantAttributes.id) })
-				.from(schema.variantAttributes)
-				.where(eq(schema.variantAttributes.name, definition.name));
-			if ((usage?.value ?? 0) > 0) {
-				throw new Error(
-					`Impossible de supprimer « ${definition.name} » : utilisé par ${usage?.value} variante(s).`,
-				);
-			}
-
+			// `variant_attributes` est un instantané texte : supprimer la
+			// définition ne touche pas aux fiches existantes. Elle sort juste de
+			// la liste proposée à la saisie, l'admin ayant confirmé cet effet.
 			await tx
 				.delete(schema.attributeDefinitions)
 				.where(eq(schema.attributeDefinitions.id, data));
@@ -295,36 +288,13 @@ export const deleteAttributeValue = createServerFn({ method: "POST" })
 		await requireDashboardSession();
 		await db.transaction(async (tx) => {
 			const [existing] = await tx
-				.select({
-					id: schema.attributeValues.id,
-					value: schema.attributeValues.value,
-					definitionId: schema.attributeValues.definitionId,
-				})
+				.select({ id: schema.attributeValues.id })
 				.from(schema.attributeValues)
 				.where(eq(schema.attributeValues.id, data));
 			if (!existing) throw new Error("Valeur introuvable");
 
-			const [definition] = await tx
-				.select({ name: schema.attributeDefinitions.name })
-				.from(schema.attributeDefinitions)
-				.where(eq(schema.attributeDefinitions.id, existing.definitionId));
-			if (!definition) throw new Error("Attribut introuvable");
-
-			const [usage] = await tx
-				.select({ value: count(schema.variantAttributes.id) })
-				.from(schema.variantAttributes)
-				.where(
-					and(
-						eq(schema.variantAttributes.name, definition.name),
-						eq(schema.variantAttributes.value, existing.value),
-					),
-				);
-			if ((usage?.value ?? 0) > 0) {
-				throw new Error(
-					`Impossible de supprimer « ${existing.value} » : utilisée par ${usage?.value} variante(s).`,
-				);
-			}
-
+			// Idem `deleteAttributeDefinition` : les fiches existantes gardent
+			// leur valeur en texte, elle n'est simplement plus proposée à l'ajout.
 			await tx
 				.delete(schema.attributeValues)
 				.where(eq(schema.attributeValues.id, data));

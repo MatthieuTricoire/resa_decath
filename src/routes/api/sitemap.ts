@@ -20,7 +20,8 @@ import { absoluteUrl } from "#/lib/seo";
  * Le chemin technique est `/api/sitemap` : le mapper de routes de TanStack
  * traduit un point en séparateur (`sitemap.xml.ts` donnerait `/sitemap/xml`),
  * donc le fichier ne peut pas épeler lui-même `/sitemap.xml`. En production,
- * Netlify réécrit `/sitemap.xml` vers cette route — voir `netlify.toml`.
+ * `robots.txt` pointe vers `/sitemap.xml`, réécrit côté hébergeur (rewrite
+ * `vercel.json` sur Vercel, règle Caddy/Cloudflare en VPS) vers cette route.
  */
 export const Route = createFileRoute("/api/sitemap")({
 	server: {

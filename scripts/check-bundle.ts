@@ -125,7 +125,7 @@ const STATIC_REQUIRED: Array<{
 		needles: [
 			{
 				needle: "Sitemap: https://www.decathlon-mountain-laruns.fr/sitemap.xml",
-				label: "URL publique de la sitemap (réécrite par Netlify)",
+				label: "URL publique de la sitemap (réécrite par l'hébergeur)",
 			},
 			{
 				needle: "Disallow: /admin",
@@ -169,7 +169,7 @@ if (staticProblems.length > 0) {
 		console.error(`  ${problem}`);
 	}
 	console.error(
-		"\nVérifie `public/` et les routes de réécriture dans `netlify.toml`.\n",
+		"\nVérifie `public/` et la réécriture `/sitemap.xml` → `/api/sitemap` (vercel.json sur Vercel, Caddy/Cloudflare en VPS).\n",
 	);
 	process.exit(1);
 }

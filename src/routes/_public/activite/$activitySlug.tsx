@@ -31,6 +31,7 @@ import {
 	priceForDuration,
 	supportsDuration,
 } from "#/features/reservations/pricing";
+import { PUBLIC_PAGE_CACHE_CONTROL } from "#/lib/cache-control";
 import { rentalDurationLabel } from "#/lib/dates";
 import { breadcrumbJsonLd, buildPageHead, itemListJsonLd } from "#/lib/seo";
 import { cn } from "#/lib/utils";
@@ -52,6 +53,7 @@ export const Route = createFileRoute("/_public/activite/$activitySlug")({
 		});
 		return { activity, products };
 	},
+	headers: () => ({ "Cache-Control": PUBLIC_PAGE_CACHE_CONTROL }),
 	head: ({ loaderData, matches }) => {
 		if (!loaderData?.activity) {
 			return buildPageHead({

@@ -30,8 +30,29 @@ export const DEFAULT_RENTAL_SETTINGS: RentalSettings = {
 	updatedAt: "",
 };
 
+/**
+ * Cache process des réglages, actif uniquement en production (un seul process
+ * derrière Vercel/Coolify). `rental_settings` est relu par chaque page du
+ * catalogue public : sans cache, ~3 lectures par chargement d'accueil. En dev
+ * et en test on lit toujours frais pour que les changements soient immédiats.
+ */
+let settingsCache: { value: RentalSettings; fetchedAt: number } | null = null;
+const SETTINGS_CACHE_TTL_MS = 5_000;
+
+export function invalidateRentalSettingsCache() {
+	settingsCache = null;
+}
+
 export const getRentalSettingsRecord = createServerOnlyFn(
 	async (): Promise<RentalSettings> => {
+		if (
+			process.env.NODE_ENV === "production" &&
+			settingsCache &&
+			Date.now() - settingsCache.fetchedAt < SETTINGS_CACHE_TTL_MS
+		) {
+			return settingsCache.value;
+		}
+
 		const [row] = await db
 			.select()
 			.from(schema.rentalSettings)
@@ -40,10 +61,16 @@ export const getRentalSettingsRecord = createServerOnlyFn(
 
 		if (!row) return DEFAULT_RENTAL_SETTINGS;
 
-		return {
+		const value: RentalSettings = {
 			...row,
 			updatedAt: row.updatedAt.toISOString(),
 		};
+
+		if (process.env.NODE_ENV === "production") {
+			settingsCache = { value, fetchedAt: Date.now() };
+		}
+
+		return value;
 	},
 );
 
@@ -115,6 +142,8 @@ export const updateRentalSettings = createServerFn({ method: "POST" })
 				},
 			})
 			.returning();
+
+		invalidateRentalSettingsCache();
 
 		return {
 			...row,

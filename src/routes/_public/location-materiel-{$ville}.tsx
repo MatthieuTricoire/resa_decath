@@ -23,6 +23,7 @@ import {
 	getPublicRentalDurations,
 	getPublicStoreSchedule,
 } from "#/features/equipements/public-queries";
+import { PUBLIC_PAGE_CACHE_CONTROL } from "#/lib/cache-control";
 import {
 	buildPageHead,
 	type FaqEntry,
@@ -65,25 +66,28 @@ export const Route = createFileRoute("/_public/location-materiel-{$ville}")({
 		if (params.ville !== store.citySlug) {
 			throw notFound();
 		}
-		void queryClient.prefetchQuery({
-			queryKey: ["public", "activities"],
-			queryFn: () => getPublicActivities(),
-		});
-		// Le sélecteur de dates est en haut de page : ses durées doivent être
-		// dans le HTML initial, pas seulement après hydratation.
-		void queryClient.prefetchQuery({
-			queryKey: ["public", "rental-durations"],
-			queryFn: () => getPublicRentalDurations(),
-		});
-		// `head` a besoin de la valeur pour le JSON-LD, et le composant pour les
-		// horaires affichés : `ensureQueryData` remplit le cache et rend la donnée,
-		// là où `prefetchQuery` ne renverrait rien.
+		// Les trois lectures publiques partent ensemble : un seul aller-retour
+		// serveur au lieu d'une chaîne. Les prefetch tolèrent un échec (le
+		// composant re-fetch côté client), mais le sélecteur de dates a besoin de
+		// ses durées dans le HTML initial, et `head` de celles des horaires :
+		// `ensureQueryData` attend lui la valeur.
+		await Promise.allSettled([
+			queryClient.prefetchQuery({
+				queryKey: ["public", "activities"],
+				queryFn: () => getPublicActivities(),
+			}),
+			queryClient.prefetchQuery({
+				queryKey: ["public", "rental-durations"],
+				queryFn: () => getPublicRentalDurations(),
+			}),
+		]);
 		const { sundayOpen } = await queryClient.ensureQueryData({
 			queryKey: ["public", "store-schedule"],
 			queryFn: () => getPublicStoreSchedule(),
 		});
 		return { sundayOpen };
 	},
+	headers: () => ({ "Cache-Control": PUBLIC_PAGE_CACHE_CONTROL }),
 	head: ({ loaderData }) =>
 		buildPageHead({
 			meta: {
