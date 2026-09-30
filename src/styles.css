@@ -165,6 +165,21 @@ body,
   min-height: 100%;
 }
 
+/* Gouttière de scrollbar toujours réservée : le contenu ne saute plus
+   horizontalement entre une page courte (/connexion) et une page longue
+   (accueil, fiche produit). */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* Safari < 18.2 ne connaît pas scrollbar-gutter : on force la barre pour
+   conserver la même largeur de contenu. */
+@supports not (scrollbar-gutter: stable) {
+  html {
+    overflow-y: scroll;
+  }
+}
+
 /* Défilement doux vers l’ancre « Louer du matériel » (étape 1). Désactivé si
    l’utilisateur demande moins d’animation. */
 @media (prefers-reduced-motion: no-preference) {
