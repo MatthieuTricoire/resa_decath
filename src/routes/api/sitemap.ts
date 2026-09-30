@@ -34,7 +34,7 @@ export const Route = createFileRoute("/api/sitemap")({
 					},
 				];
 
-				const activities = await getPublicActivities();
+				const { activities } = await getPublicActivities();
 				for (const activity of activities) {
 					urls.push({
 						loc: absoluteUrl(`/activite/${activity.slug}`),

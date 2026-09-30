@@ -19,7 +19,7 @@ export type RentalSettings = {
 };
 
 export const DEFAULT_RENTAL_SETTINGS: RentalSettings = {
-	seasonalFilteringEnabled: false,
+	seasonalFilteringEnabled: true,
 	isRentalOpen: true,
 	sundayOpen: false,
 	seasonOverride: "auto",

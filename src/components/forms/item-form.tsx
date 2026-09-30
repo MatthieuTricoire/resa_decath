@@ -4,7 +4,6 @@ import { Link } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, Image, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { BarcodeDisplay } from "#/components/barcode";
-import { QRCodeDisplay } from "#/components/qr-code";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card";
@@ -20,6 +19,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "#/components/ui/select";
+import { getAttributeDefinitions } from "#/features/attributs/queries";
+import { queryKeys as attributQueryKeys } from "#/features/attributs/query-keys";
 import { getRentalDurations } from "#/features/durees/queries";
 import { queryKeys as dureeQueryKeys } from "#/features/durees/query-keys";
 import { getCategories } from "#/features/equipements/queries";
@@ -117,6 +118,11 @@ export function ItemForm({
 	const { data: durees } = useQuery({
 		queryKey: dureeQueryKeys.durees.all,
 		queryFn: () => getRentalDurations(),
+	});
+
+	const { data: attributeDefinitions } = useQuery({
+		queryKey: attributQueryKeys.attributs.all,
+		queryFn: () => getAttributeDefinitions(),
 	});
 
 	/**
@@ -463,123 +469,119 @@ export function ItemForm({
 												return (
 													<div
 														key={opt.id ?? j}
-														className="flex flex-wrap items-end gap-2 rounded-lg border p-3"
+														className="flex items-center gap-2"
 													>
-														<div className="flex-1 min-w-[120px]">
-															<form.AppField
-																name={`variants[${i}].priceOptions[${j}].label`}
-															>
-																{(field) => (
-																	<field.TextField
-																		label="Label"
-																		placeholder="1 jour"
-																	/>
-																)}
-															</form.AppField>
-														</div>
-														<div className="w-36">
-															<form.Field
-																name={`variants[${i}].priceOptions[${j}].duration`}
-															>
-																{(field) => (
-																	<Field>
-																		<FieldLabel>Durée</FieldLabel>
-																		<Select
-																			value={String(field.state.value)}
-																			onValueChange={(v) => {
-																				const days = Number(v);
-																				field.handleChange(days);
-																				const found = (durees ?? []).find(
-																					(d) => d.days === days,
-																				);
-																				if (found) {
-																					form.setFieldValue(
-																						`variants[${i}].priceOptions[${j}].label`,
-																						found.label,
+														<div className="flex flex-1 flex-wrap items-end gap-2 rounded-lg border p-3">
+															<div className="flex-1 min-w-[120px]">
+																<form.AppField
+																	name={`variants[${i}].priceOptions[${j}].label`}
+																>
+																	{(field) => (
+																		<field.TextField
+																			label="Label"
+																			placeholder="1 jour"
+																		/>
+																	)}
+																</form.AppField>
+															</div>
+															<div className="w-36">
+																<form.Field
+																	name={`variants[${i}].priceOptions[${j}].duration`}
+																>
+																	{(field) => (
+																		<Field>
+																			<FieldLabel>Durée</FieldLabel>
+																			<Select
+																				value={String(field.state.value)}
+																				onValueChange={(v) => {
+																					const days = Number(v);
+																					field.handleChange(days);
+																					const found = (durees ?? []).find(
+																						(d) => d.days === days,
 																					);
-																				}
-																			}}
-																		>
-																			<SelectTrigger className="w-full">
-																				<SelectValue />
-																			</SelectTrigger>
-																			<SelectContent>
-																				<SelectGroup>
-																					<SelectLabel>
-																						Durées disponibles
-																					</SelectLabel>
-																					{availableDurations.map((d) => (
-																						<SelectItem
-																							key={d.id}
-																							value={String(d.days)}
-																						>
-																							{d.label}
-																						</SelectItem>
-																					))}
-																					{!currentInList && (
-																						<SelectItem
-																							value={String(currentDays)}
-																						>
-																							{`${currentDays} jour${currentDays > 1 ? "s" : ""} (retirée de la liste)`}
-																						</SelectItem>
-																					)}
-																				</SelectGroup>
-																			</SelectContent>
-																		</Select>
-																	</Field>
-																)}
-															</form.Field>
-														</div>
-														<div className="w-24">
-															<form.AppField
-																name={`variants[${i}].priceOptions[${j}].price`}
-															>
-																{(field) => (
-																	<field.NumberField
-																		label="Prix (€)"
-																		placeholder="0.00"
+																					if (found) {
+																						form.setFieldValue(
+																							`variants[${i}].priceOptions[${j}].label`,
+																							found.label,
+																						);
+																					}
+																				}}
+																			>
+																				<SelectTrigger className="w-full">
+																					<SelectValue />
+																				</SelectTrigger>
+																				<SelectContent>
+																					<SelectGroup>
+																						<SelectLabel>
+																							Durées disponibles
+																						</SelectLabel>
+																						{availableDurations.map((d) => (
+																							<SelectItem
+																								key={d.id}
+																								value={String(d.days)}
+																							>
+																								{d.label}
+																							</SelectItem>
+																						))}
+																						{!currentInList && (
+																							<SelectItem
+																								value={String(currentDays)}
+																							>
+																								{`${currentDays} jour${currentDays > 1 ? "s" : ""} (retirée de la liste)`}
+																							</SelectItem>
+																						)}
+																					</SelectGroup>
+																				</SelectContent>
+																			</Select>
+																		</Field>
+																	)}
+																</form.Field>
+															</div>
+															<div className="w-24">
+																<form.AppField
+																	name={`variants[${i}].priceOptions[${j}].price`}
+																>
+																	{(field) => (
+																		<field.NumberField
+																			label="Prix (€)"
+																			placeholder="0.00"
+																		/>
+																	)}
+																</form.AppField>
+															</div>
+															<div className="w-28">
+																<form.AppField
+																	name={`variants[${i}].priceOptions[${j}].barcode`}
+																	validators={{
+																		onBlur: ({ value }) =>
+																			!value
+																				? "Le code-barres est requis"
+																				: undefined,
+																	}}
+																>
+																	{(field) => (
+																		<field.TextField
+																			label="Code-barres"
+																			placeholder="..."
+																		/>
+																	)}
+																</form.AppField>
+															</div>
+															<div className="flex items-end gap-1 pb-1">
+																{variants[i].priceOptions[j].barcode && (
+																	<BarcodeDisplay
+																		value={variants[i].priceOptions[j].barcode}
+																		height={32}
+																		barWidth={1}
 																	/>
 																)}
-															</form.AppField>
-														</div>
-														<div className="w-28">
-															<form.AppField
-																name={`variants[${i}].priceOptions[${j}].barcode`}
-																validators={{
-																	onBlur: ({ value }) =>
-																		!value
-																			? "Le code-barres est requis"
-																			: undefined,
-																}}
-															>
-																{(field) => (
-																	<field.TextField
-																		label="Code-barres"
-																		placeholder="..."
-																	/>
-																)}
-															</form.AppField>
-														</div>
-														<div className="flex items-end gap-1 pb-1">
-															<QRCodeDisplay
-																value={
-																	variants[i].priceOptions[j].barcode || "aucun"
-																}
-																size={56}
-															/>
-															{variants[i].priceOptions[j].barcode && (
-																<BarcodeDisplay
-																	value={variants[i].priceOptions[j].barcode}
-																	height={32}
-																	barWidth={1}
-																/>
-															)}
+															</div>
 														</div>
 														<Button
 															type="button"
 															variant="ghost"
 															size="icon"
-															className="size-8 mb-0.5 shrink-0"
+															className="size-8 shrink-0"
 															onClick={() =>
 																form.removeFieldValue(
 																	`variants[${i}].priceOptions`,
@@ -587,7 +589,7 @@ export function ItemForm({
 																)
 															}
 														>
-															<X className="size-4" />
+															<Trash2 className="size-4" />
 														</Button>
 													</div>
 												);
@@ -617,53 +619,165 @@ export function ItemForm({
 										</Button>
 									</div>
 
+									{(attributeDefinitions ?? []).length === 0 ? (
+										<p className="text-sm text-muted-foreground italic">
+											Aucun attribut défini. Ajoutez vos attributs{" "}
+											<Link
+												to="/admin/reglages"
+												hash="attributs"
+												className="underline"
+											>
+												ici
+											</Link>
+											.
+										</p>
+									) : null}
+
 									{variants[i].attributes.length > 0 && (
 										<div className="flex flex-col gap-2">
-											{variants[i].attributes.map((attr, j) => (
-												<div
-													key={attr.id ?? j}
-													className="flex items-end gap-2"
-												>
-													<div className="flex-1">
-														<form.AppField
-															name={`variants[${i}].attributes[${j}].name`}
-														>
-															{(field) => (
-																<field.TextField
-																	label="Nom"
-																	placeholder="Taille"
-																/>
-															)}
-														</form.AppField>
-													</div>
-													<div className="flex-1">
-														<form.AppField
-															name={`variants[${i}].attributes[${j}].value`}
-														>
-															{(field) => (
-																<field.TextField
-																	label="Valeur"
-																	placeholder="M"
-																/>
-															)}
-														</form.AppField>
-													</div>
-													<Button
-														type="button"
-														variant="ghost"
-														size="icon"
-														className="size-8 mb-0.5 shrink-0"
-														onClick={() =>
-															form.removeFieldValue(
-																`variants[${i}].attributes`,
-																j,
-															)
-														}
+											{variants[i].attributes.map((attr, j) => {
+												const usedNames = new Set(
+													variants[i].attributes
+														.filter((_, ai) => ai !== j)
+														.map((a) => a.name)
+														.filter(Boolean),
+												);
+												const availableDefinitions = (
+													attributeDefinitions ?? []
+												).filter((d) => !usedNames.has(d.name));
+												const nameInList = availableDefinitions.some(
+													(d) => d.name === attr.name,
+												);
+												const selectedDef = (attributeDefinitions ?? []).find(
+													(d) => d.name === attr.name,
+												);
+												const valueInList =
+													!!selectedDef &&
+													selectedDef.values.some(
+														(value) => value.value === attr.value,
+													);
+												return (
+													<div
+														key={attr.id ?? j}
+														className="flex items-center gap-2"
 													>
-														<X className="size-4" />
-													</Button>
-												</div>
-											))}
+														<div className="flex flex-1 items-end gap-2 rounded-lg border p-3">
+															<div className="flex-1">
+																<form.Field
+																	name={`variants[${i}].attributes[${j}].name`}
+																>
+																	{(field) => (
+																		<Field>
+																			<FieldLabel>Nom</FieldLabel>
+																			<Select
+																				value={field.state.value}
+																				onValueChange={(name) => {
+																					field.handleChange(name);
+																					form.setFieldValue(
+																						`variants[${i}].attributes[${j}].value`,
+																						"",
+																					);
+																				}}
+																			>
+																				<SelectTrigger className="w-full">
+																					<SelectValue placeholder="Sélectionner" />
+																				</SelectTrigger>
+																				<SelectContent>
+																					<SelectGroup>
+																						<SelectLabel>
+																							Attributs disponibles
+																						</SelectLabel>
+																						{availableDefinitions.map((d) => (
+																							<SelectItem
+																								key={d.id}
+																								value={d.name}
+																							>
+																								{d.name}
+																							</SelectItem>
+																						))}
+																						{attr.name && !nameInList && (
+																							<SelectItem value={attr.name}>
+																								{attr.name} (retirée de la
+																								liste)
+																							</SelectItem>
+																						)}
+																					</SelectGroup>
+																				</SelectContent>
+																			</Select>
+																		</Field>
+																	)}
+																</form.Field>
+															</div>
+															<div className="flex-1">
+																<form.Field
+																	name={`variants[${i}].attributes[${j}].value`}
+																>
+																	{(field) => (
+																		<Field>
+																			<FieldLabel>Valeur</FieldLabel>
+																			<Select
+																				value={field.state.value}
+																				onValueChange={(value) =>
+																					field.handleChange(value)
+																				}
+																			>
+																				<SelectTrigger className="w-full">
+																					<SelectValue
+																						placeholder={
+																							selectedDef
+																								? "Sélectionner"
+																								: "Choisir un attribut"
+																						}
+																					/>
+																				</SelectTrigger>
+																				<SelectContent>
+																					<SelectGroup>
+																						<SelectLabel>
+																							Valeurs de « {attr.name} »
+																						</SelectLabel>
+																						{(selectedDef?.values ?? []).map(
+																							(value) => (
+																								<SelectItem
+																									key={value.id}
+																									value={value.value}
+																								>
+																									{value.value}
+																								</SelectItem>
+																							),
+																						)}
+																						{attr.value &&
+																							selectedDef &&
+																							!valueInList && (
+																								<SelectItem value={attr.value}>
+																									{attr.value} (retirée de la
+																									liste)
+																								</SelectItem>
+																							)}
+																					</SelectGroup>
+																				</SelectContent>
+																			</Select>
+																		</Field>
+																	)}
+																</form.Field>
+															</div>
+														</div>
+														<Button
+															type="button"
+															variant="ghost"
+															size="icon"
+															className="size-8 shrink-0"
+															onClick={() =>
+																form.removeFieldValue(
+																	`variants[${i}].attributes`,
+																	j,
+																)
+															}
+														>
+															<Trash2 className="size-4" />
+														</Button>
+													</div>
+												);
+											})}
 										</div>
 									)}
 								</div>

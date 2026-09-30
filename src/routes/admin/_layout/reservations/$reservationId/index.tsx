@@ -5,7 +5,6 @@ import { fr as frLocale } from "date-fns/locale";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { BarcodeDisplay } from "#/components/barcode";
-import { QRCodeDisplay } from "#/components/qr-code";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card";
@@ -238,9 +237,6 @@ function RouteComponent() {
 									<TableCell>{item.quantity}</TableCell>
 									<TableCell className="text-sm font-medium">
 										{formatPrice(item.unitPrice)}
-									</TableCell>
-									<TableCell>
-										<QRCodeDisplay value={item.priceOptionBarcode} size={36} />
 									</TableCell>
 									<TableCell>
 										<BarcodeDisplay

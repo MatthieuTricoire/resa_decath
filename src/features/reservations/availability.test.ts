@@ -6,6 +6,7 @@ import {
 	getActiveSeasonsForRange,
 	getReservationDurationDays,
 	getSeasonalAvailability,
+	isItemOutOfSeason,
 	type RentalAvailabilitySettings,
 	stockShortage,
 } from "./availability";
@@ -255,6 +256,85 @@ describe("getSeasonalAvailability", () => {
 		expect(
 			getSeasonalAvailability({ season: "all" }, settings, at("2026-07-10")),
 		).toBe("available");
+	});
+});
+
+describe("isItemOutOfSeason", () => {
+	it("masque un article de la saison opposée à la date donnée", () => {
+		expect(
+			isItemOutOfSeason(
+				{ season: "summer" },
+				configuredSettings,
+				at("2026-01-10"),
+			),
+		).toBe(true);
+		expect(
+			isItemOutOfSeason(
+				{ season: "winter" },
+				configuredSettings,
+				at("2026-07-10"),
+			),
+		).toBe(true);
+	});
+
+	it("garde un article de la saison active", () => {
+		expect(
+			isItemOutOfSeason(
+				{ season: "summer" },
+				configuredSettings,
+				at("2026-07-10"),
+			),
+		).toBe(false);
+		expect(
+			isItemOutOfSeason(
+				{ season: "winter" },
+				configuredSettings,
+				at("2026-01-10"),
+			),
+		).toBe(false);
+	});
+
+	it("ne masque jamais un article toutes saisons", () => {
+		expect(
+			isItemOutOfSeason(
+				{ season: "all" },
+				configuredSettings,
+				at("2026-01-10"),
+			),
+		).toBe(false);
+	});
+
+	it("ne masque rien quand le filtrage est désactivé", () => {
+		const settings = { ...configuredSettings, seasonalFilteringEnabled: false };
+		expect(
+			isItemOutOfSeason({ season: "summer" }, settings, at("2026-01-10")),
+		).toBe(false);
+	});
+
+	it("ne masque rien tant qu'aucune plage saisonnière n'est configurée", () => {
+		const settings = {
+			...configuredSettings,
+			summerFrom: null,
+			summerTo: null,
+			winterFrom: null,
+			winterTo: null,
+		};
+		expect(
+			isItemOutOfSeason({ season: "summer" }, settings, at("2026-01-10")),
+		).toBe(false);
+	});
+
+	it("respecte la saison forcée", () => {
+		const settings = {
+			...configuredSettings,
+			seasonOverride: "summer" as const,
+		};
+		expect(
+			isItemOutOfSeason({ season: "winter" }, settings, at("2026-01-10")),
+		).toBe(true);
+		expect(
+			isItemOutOfSeason({ season: "summer" }, settings, at("2026-01-10")),
+		).toBe(false);
 	});
 });
 

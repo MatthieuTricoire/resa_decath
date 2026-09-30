@@ -37,7 +37,7 @@ function PublicLayout() {
 	return (
 		<CartPersistenceProvider>
 			<div className="flex min-h-screen flex-col">
-				<PublicHeader activities={activities ?? []} />
+				<PublicHeader activities={activities?.activities ?? []} />
 				<main className="flex-1">
 					<Outlet />
 				</main>

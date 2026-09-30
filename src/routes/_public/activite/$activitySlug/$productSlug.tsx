@@ -17,7 +17,7 @@ import { store, storeCanonicalPath } from "#/config/store";
 import {
 	describeVariantAttributes,
 	getPublicActivity,
-	getPublicProduct,
+	getPublicProductInSeason,
 	getPublicStoreSchedule,
 	getPublicWindowQuotes,
 	type PublicVariant,
@@ -29,7 +29,7 @@ import {
 	productDurationSupport,
 	supportsDuration,
 } from "#/features/reservations/pricing";
-import { rentalDurationLabel, todayInParis } from "#/lib/dates";
+import { earliestPickupDateInParis, rentalDurationLabel } from "#/lib/dates";
 import { breadcrumbJsonLd, buildPageHead, productJsonLd } from "#/lib/seo";
 import { cn } from "#/lib/utils";
 import {
@@ -48,7 +48,7 @@ export const Route = createFileRoute(
 	loader: async ({ context: { queryClient }, params }) => {
 		const product = await queryClient.ensureQueryData({
 			queryKey: ["public", "product", params.productSlug],
-			queryFn: () => getPublicProduct({ data: params.productSlug }),
+			queryFn: () => getPublicProductInSeason({ data: params.productSlug }),
 		});
 		if (!product) throw notFound();
 		// L'URL doit correspondre à la catégorie réelle du matériel.
@@ -235,7 +235,9 @@ function ProductPage() {
 	// La fenêtre est celle de toute la commande : on prévient avant de la
 	// changer sous les pieds d'un panier déjà rempli.
 	const switchDuration = (nextDuration: number) => {
-		const pickup = pickupDate ?? todayInParis();
+		// Date la plus proche servie côté public : aujourd'hui avant 15h, sinon
+		// demain — jamais une fenêtre du jour même une fois la coupure passée.
+		const pickup = pickupDate ?? earliestPickupDateInParis();
 		// Le repli peut décaler la durée demandée : l'avertir reste le bon
 		// comportement, l'ordre des articles est de toute façon recalculé.
 		if (cartCount > 0) {

@@ -46,6 +46,41 @@ export function todayInParis(): string {
 	return toParisDateKey(new Date());
 }
 
+/**
+ * Dernière heure pour un retrait le jour même : après, le site public refuse une
+ * location qui démarre aujourd'hui. La caisse backoffice garde la main, seul le
+ * parcours public est concerné.
+ */
+export const LAST_SAME_DAY_PICKUP_HOUR = 15;
+
+/**
+ * Est-il plus de `LAST_SAME_DAY_PICKUP_HOUR` à Paris ? L'heure est lue dans le
+ * fuseau « Europe/Paris », jamais celui de la machine qui exécute le code.
+ */
+export function isPastSameDayPickupCutoffInParis(
+	now: Date = new Date(),
+): boolean {
+	const parts = new Intl.DateTimeFormat("en-GB", {
+		timeZone: "Europe/Paris",
+		hour: "2-digit",
+		hourCycle: "h23",
+	}).formatToParts(now);
+	const hour = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
+	return hour >= LAST_SAME_DAY_PICKUP_HOUR;
+}
+
+/**
+ * Date de retrait la plus proche autorisée côté public : aujourd'hui avant la
+ * coupure, sinon demain. Chaque appelant du parcours public s'en sert comme
+ * borne basse, pour que le calendrier et la sauvegarde de panier appliquent la
+ * même règle que le serveur.
+ */
+export function earliestPickupDateInParis(now: Date = new Date()): string {
+	const today = toParisDateKey(now);
+	if (!isPastSameDayPickupCutoffInParis(now)) return today;
+	return addDaysToDateKey(today, 1) ?? today;
+}
+
 export function addDaysToDateKey(value: string, days: number): string | null {
 	const date = dateKeyToUtcNoon(value);
 	if (!date) return null;

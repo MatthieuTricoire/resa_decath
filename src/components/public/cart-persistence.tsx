@@ -7,7 +7,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { getPublicCartIdentities } from "#/features/equipements/public-queries";
-import { todayInParis } from "#/lib/dates";
+import { earliestPickupDateInParis } from "#/lib/dates";
 import {
 	type PublicCartState,
 	publicCartStore,
@@ -94,7 +94,9 @@ export function CartPersistenceProvider({ children }: { children: ReactNode }) {
 				pickupDate: null,
 				returnDate: null,
 			},
-			todayInParis(),
+			// La borne basse suit le garde-fou du jour même : après 15h, une
+			// fenêtre persistée sur aujourd'hui est traitée comme périmée.
+			earliestPickupDateInParis(),
 		);
 		if (restored.lines.length > 0 || restored.pickupDate) {
 			publicCartStore.setState(() => restored);

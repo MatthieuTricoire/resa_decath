@@ -34,6 +34,8 @@ async function main() {
 	await db.delete(schema.reservations);
 	await db.delete(schema.priceOptions);
 	await db.delete(schema.variantAttributes);
+	await db.delete(schema.attributeValues);
+	await db.delete(schema.attributeDefinitions);
 	await db.delete(schema.itemVariants);
 	await db.delete(schema.items);
 	await db.delete(schema.categories);
@@ -50,6 +52,37 @@ async function main() {
 		{ label: "2 jours", days: 2, sortOrder: 1 },
 		{ label: "3 jours", days: 3, sortOrder: 2 },
 		{ label: "7 jours", days: 7, sortOrder: 3 },
+	]);
+
+	// --- Attributs de variantes (config globale) ---
+	const attributeDefs = await db
+		.insert(schema.attributeDefinitions)
+		.values([
+			{ name: "taille", sortOrder: 0 },
+			{ name: "taille_dos", sortOrder: 1 },
+			{ name: "volume", sortOrder: 2 },
+			{ name: "places", sortOrder: 3 },
+		])
+		.returning({
+			id: schema.attributeDefinitions.id,
+			name: schema.attributeDefinitions.name,
+		});
+	const attrIdByName = new Map(attributeDefs.map((d) => [d.name, d.id]));
+	const attrId = (name: string) => {
+		const id = attrIdByName.get(name);
+		if (!id) throw new Error(`Définition d'attribut manquante : ${name}`);
+		return id;
+	};
+
+	await db.insert(schema.attributeValues).values([
+		{ definitionId: attrId("taille"), value: "M", sortOrder: 0 },
+		{ definitionId: attrId("taille"), value: "L", sortOrder: 1 },
+		{ definitionId: attrId("taille_dos"), value: "S", sortOrder: 0 },
+		{ definitionId: attrId("taille_dos"), value: "L", sortOrder: 1 },
+		{ definitionId: attrId("volume"), value: "40L", sortOrder: 0 },
+		{ definitionId: attrId("volume"), value: "45L", sortOrder: 1 },
+		{ definitionId: attrId("places"), value: "2", sortOrder: 0 },
+		{ definitionId: attrId("places"), value: "3", sortOrder: 1 },
 	]);
 
 	// --- Admin ---
@@ -152,13 +185,14 @@ async function main() {
 
 	// --- Catégories ---
 	console.log("📦 Insertion du catalogue matériel...");
-	const [catEscalade, catRando, catBivouac, catVia] = await db
+	const [catEscalade, catRando, catBivouac, catVia, catHiver] = await db
 		.insert(schema.categories)
 		.values([
 			{ name: "Escalade & Bloc", slug: "escalade-bloc" },
 			{ name: "Randonnée", slug: "randonnee" },
 			{ name: "Bivouac", slug: "bivouac" },
 			{ name: "Via Ferrata", slug: "via-ferrata" },
+			{ name: "Raquettes & Luge", slug: "raquettes-luge" },
 		])
 		.returning();
 
@@ -167,6 +201,7 @@ async function main() {
 		rando: catRando,
 		bivouac: catBivouac,
 		via: catVia,
+		hiver: catHiver,
 	};
 
 	// --- Articles ---
@@ -207,6 +242,7 @@ async function main() {
 			description:
 				"Idéal pour amortir les chutes en bloc outdoor. Sangles de transport confortables.",
 			brand: "Simond",
+			season: "summer",
 			minDuration: 1,
 			images: [
 				{
@@ -258,6 +294,7 @@ async function main() {
 			name: "Baudrier Simond Edge",
 			description: "Baudrier d'escalade polyvalent, tailles S/M/L",
 			brand: "Simond",
+			season: "summer",
 			variants: [
 				{
 					sku: "8612345",
@@ -292,6 +329,7 @@ async function main() {
 			name: "Casque Simond Sense",
 			description: "Casque d'escalade ultraléger",
 			brand: "Simond",
+			season: "summer",
 			variants: [
 				{
 					sku: "8623456",
@@ -313,6 +351,7 @@ async function main() {
 			name: "Set de mousquetons Simond",
 			description: "Lot de 5 mousquetons à vis",
 			brand: "Simond",
+			season: "summer",
 			variants: [
 				{
 					sku: "8634567",
@@ -433,6 +472,7 @@ async function main() {
 			name: "Tente Quechua 2 Secondes",
 			description: "Tente à déploiement rapide, facile à monter",
 			brand: "Quechua",
+			season: "summer",
 			availableFrom: "06-15",
 			availableTo: "09-30",
 			minDuration: 2,
@@ -492,6 +532,7 @@ async function main() {
 			name: "Sac de couchage Forclaz MT100",
 			description: "Sac de couchage confort 10°C, synthétique",
 			brand: "Forclaz",
+			season: "summer",
 			variants: [
 				{
 					sku: "8523456",
@@ -542,6 +583,7 @@ async function main() {
 			name: "Kit via ferrata Simond Vertige",
 			description: "Kit complet avec absorbeur d'énergie et mousquetons",
 			brand: "Simond",
+			season: "summer",
 			variants: [
 				{
 					sku: "8712345",
@@ -563,6 +605,7 @@ async function main() {
 			name: "Casque Simond Cliff",
 			description: "Casque spécial via ferrata avec lampe frontale",
 			brand: "Simond",
+			season: "summer",
 			variants: [
 				{
 					sku: "8723456",
@@ -584,6 +627,7 @@ async function main() {
 			name: "Gants via ferrata Simond",
 			description: "Gants renforcés paume cuir",
 			brand: "Simond",
+			season: "summer",
 			variants: [
 				{
 					sku: "8734567",
@@ -608,6 +652,52 @@ async function main() {
 							duration: 1,
 							price: "3.00",
 							barcode: "PO-00037",
+						},
+					],
+				},
+			],
+		},
+
+		// RAQUETTES & LUGE (hiver)
+		{
+			categoryId: cats.hiver.id,
+			name: "Raquettes à neige Newfeel 500",
+			description: "Raquettes à neige avec fixations universelles, paires",
+			brand: "Newfeel",
+			season: "winter",
+			variants: [
+				{
+					sku: "8812345",
+					totalStock: 6,
+					attributes: [{ name: "taille", value: "M" }],
+					priceOptions: [
+						{
+							label: "1 jour",
+							duration: 1,
+							price: "8.00",
+							barcode: "PO-00051",
+						},
+					],
+				},
+			],
+		},
+		{
+			categoryId: cats.hiver.id,
+			name: "Luge Forclaz Ride",
+			description: "Luge en plastique renforcé avec poignées",
+			brand: "Forclaz",
+			season: "winter",
+			variants: [
+				{
+					sku: "8823456",
+					totalStock: 8,
+					attributes: [],
+					priceOptions: [
+						{
+							label: "1 jour",
+							duration: 1,
+							price: "5.00",
+							barcode: "PO-00053",
 						},
 					],
 				},

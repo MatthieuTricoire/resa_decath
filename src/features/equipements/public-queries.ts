@@ -7,7 +7,9 @@ import * as schema from "#/db/schema";
 import {
 	availableQuantity,
 	evaluateItemAvailability,
+	isItemOutOfSeason,
 	type RentalAvailabilitySettings,
+	type RentalSeason,
 	STOCK_CONSUMING_STATUSES,
 	stockShortage,
 } from "#/features/reservations/availability";
@@ -126,6 +128,16 @@ export type PublicActivity = {
 	itemCount: number;
 };
 
+/**
+ * Activité revenue du catalogue : la catégorie ne contient que du matériel de la
+ * saison opposée. L'accueil la signale dans un encart « de retour… ».
+ */
+export type PublicActivitySeasonNote = {
+	name: string;
+	/** Saison de retour : celle du matériel de la catégorie, opposée à l'active. */
+	returnSeason: Exclude<RentalSeason, "all">;
+};
+
 type ProductRow = {
 	id: string;
 	name: string;
@@ -138,6 +150,7 @@ type ProductRow = {
 	minDuration: number;
 	availableFrom: string | null;
 	availableTo: string | null;
+	season: RentalSeason;
 };
 
 type ProductBundle = {
@@ -181,6 +194,7 @@ async function loadProductBundles(
 			minDuration: schema.items.minDuration,
 			availableFrom: schema.items.availableFrom,
 			availableTo: schema.items.availableTo,
+			season: schema.items.season,
 		})
 		.from(schema.items)
 		.innerJoin(
@@ -335,17 +349,70 @@ function isCatalogVisible(bundle: ProductBundle): boolean {
 	return bundle.variants.some((variant) => variant.bookable);
 }
 
+/** Un bundle hors saison pour la date courante, selon les réglages. */
+function isOutOfSeasonBundle(
+	bundle: ProductBundle,
+	settings: RentalAvailabilitySettings,
+): boolean {
+	return isItemOutOfSeason({ season: bundle.product.season }, settings);
+}
+
+/** `getPublicProduct`, sans la vérification de saison : la page fiche. */
+function bundleToPublicProduct(bundle: ProductBundle): PublicProduct {
+	return {
+		...toSummary(bundle),
+		activitySlug: bundle.product.categorySlug,
+		description: bundle.product.description,
+		images: bundle.images,
+		variants: bundle.variants,
+		minDuration: bundle.product.minDuration,
+		availableFrom: bundle.product.availableFrom,
+		availableTo: bundle.product.availableTo,
+	};
+}
+
 const categorySlugSchema = z.string().min(1);
 const productSlugSchema = z.string().min(1);
 
 export const getPublicActivities = createServerFn({ method: "GET" }).handler(
-	async (): Promise<PublicActivity[]> => {
+	async (): Promise<{
+		activities: PublicActivity[];
+		hidden: PublicActivitySeasonNote[];
+	}> => {
+		const settings = await getRentalSettingsRecord();
 		const bundles = (await loadProductBundles(undefined)).filter(
 			isCatalogVisible,
 		);
-		const activities = new Map<string, PublicActivity>();
+
+		// Une catégorie est masquée quand tout son matériel est hors saison. On
+		// compte d'abord ce qui reste visible de chaque catégorie, pour n'écarter
+		// que les catégories à zéro produit réservable ce jour-là.
+		const visibleCount = new Map<string, number>();
+		const hiddenCount = new Map<string, number>();
+		const seasonByCategory = new Map<string, RentalSeason>();
 		for (const bundle of bundles) {
+			const { categorySlug, season } = bundle.product;
+			if (isOutOfSeasonBundle(bundle, settings)) {
+				hiddenCount.set(categorySlug, (hiddenCount.get(categorySlug) ?? 0) + 1);
+				seasonByCategory.set(categorySlug, season);
+			} else {
+				visibleCount.set(
+					categorySlug,
+					(visibleCount.get(categorySlug) ?? 0) + 1,
+				);
+			}
+		}
+
+		const activities = new Map<string, PublicActivity>();
+		const hidden: PublicActivitySeasonNote[] = [];
+		for (const bundle of bundles) {
+			// Le compteur de la carte n'annonce que le matériel réservable
+			// aujourd'hui : un article hors saison d'une catégorie mixte ne doit
+			// pas gonfler le badge.
+			if (isOutOfSeasonBundle(bundle, settings)) continue;
 			const { categorySlug, categoryName } = bundle.product;
+			// On n'annonce une catégorie qu'une fois : `itemCount` est posé au
+			// premier bundle, les suivants se contentent d'incrémenter.
 			const current = activities.get(categorySlug);
 			if (current) {
 				current.itemCount += 1;
@@ -359,18 +426,38 @@ export const getPublicActivities = createServerFn({ method: "GET" }).handler(
 				itemCount: 1,
 			});
 		}
-		return [...activities.values()].sort((a, b) =>
-			a.name.localeCompare(b.name, "fr"),
-		);
+		for (const categorySlug of hiddenCount.keys()) {
+			if ((visibleCount.get(categorySlug) ?? 0) > 0) continue;
+			const bundle = bundles.find(
+				(candidate) => candidate.product.categorySlug === categorySlug,
+			);
+			const season = seasonByCategory.get(categorySlug);
+			if (!bundle || !season || season === "all") continue;
+			hidden.push({
+				name: bundle.product.categoryName,
+				returnSeason: season,
+			});
+		}
+
+		return {
+			activities: [...activities.values()].sort((a, b) =>
+				a.name.localeCompare(b.name, "fr"),
+			),
+			hidden,
+		};
 	},
 );
 
 export const getPublicActivity = createServerFn({ method: "GET" })
 	.inputValidator((slug: string) => categorySlugSchema.parse(slug))
 	.handler(async ({ data }): Promise<PublicActivity | null> => {
+		const settings = await getRentalSettingsRecord();
 		const bundles = (
 			await loadProductBundles(eq(schema.categories.slug, data))
-		).filter(isCatalogVisible);
+		).filter(
+			(bundle) =>
+				isCatalogVisible(bundle) && !isOutOfSeasonBundle(bundle, settings),
+		);
 		const first = bundles[0];
 		if (!first) return null;
 		return {
@@ -387,9 +474,13 @@ export const getPublicActivity = createServerFn({ method: "GET" })
 export const getPublicActivityProducts = createServerFn({ method: "GET" })
 	.inputValidator((slug: string) => categorySlugSchema.parse(slug))
 	.handler(async ({ data }): Promise<PublicProductSummary[]> => {
+		const settings = await getRentalSettingsRecord();
 		const bundles = (
 			await loadProductBundles(eq(schema.categories.slug, data))
-		).filter(isCatalogVisible);
+		).filter(
+			(bundle) =>
+				isCatalogVisible(bundle) && !isOutOfSeasonBundle(bundle, settings),
+		);
 		return bundles.map(toSummary);
 	});
 
@@ -398,16 +489,27 @@ export const getPublicProduct = createServerFn({ method: "GET" })
 	.handler(async ({ data }): Promise<PublicProduct | null> => {
 		const bundle = (await loadProductBundles(eq(schema.items.slug, data)))[0];
 		if (!bundle) return null;
-		return {
-			...toSummary(bundle),
-			activitySlug: bundle.product.categorySlug,
-			description: bundle.product.description,
-			images: bundle.images,
-			variants: bundle.variants,
-			minDuration: bundle.product.minDuration,
-			availableFrom: bundle.product.availableFrom,
-			availableTo: bundle.product.availableTo,
-		};
+		return bundleToPublicProduct(bundle);
+	});
+
+/**
+ * Fiche produit, filtrée par la saison courante : la page du matériel d'été
+ * renvoie `null` en hiver, comme une fiche d'un produit disparu.
+ *
+ * Ce filtre ne s'applique qu'à la navigation. `getPublicProduct` reste sans
+ * saison pour la réservation et la réconciliation de panier : c'est le devis
+ * qui y refuse le matériel hors saison avec son message propre, plus utile
+ * qu'un « introuvable » au moment de payer.
+ */
+export const getPublicProductInSeason = createServerFn({ method: "GET" })
+	.inputValidator((slug: string) => productSlugSchema.parse(slug))
+	.handler(async ({ data }): Promise<PublicProduct | null> => {
+		const bundle = (await loadProductBundles(eq(schema.items.slug, data)))[0];
+		if (!bundle) return null;
+		if (isOutOfSeasonBundle(bundle, await getRentalSettingsRecord())) {
+			return null;
+		}
+		return bundleToPublicProduct(bundle);
 	});
 
 /* -------------------------------------------------------------------------- */
@@ -428,9 +530,14 @@ export const getPublicRentalDurations = createServerFn({
 }).handler(async (): Promise<number[]> => {
 	// Requêtes volontairement light : ni images ni attributs, cet endpoint est
 	// sur le chemin critique de l'accueil.
-	const [productRows, variantRows, optionRows] = await Promise.all([
+	const [settings, productRows, variantRows, optionRows] = await Promise.all([
+		getRentalSettingsRecord(),
 		db
-			.select({ id: schema.items.id, minDuration: schema.items.minDuration })
+			.select({
+				id: schema.items.id,
+				minDuration: schema.items.minDuration,
+				season: schema.items.season,
+			})
 			.from(schema.items),
 		db
 			.select({
@@ -471,6 +578,9 @@ export const getPublicRentalDurations = createServerFn({
 
 	const durations = new Set<number>();
 	for (const product of productRows) {
+		// Une durée servie uniquement par du matériel hors saison ne doit pas
+		// rester proposée : elle ne mènerait à aucune commande possible.
+		if (isItemOutOfSeason({ season: product.season }, settings)) continue;
 		const support = productDurationSupport({
 			priceOptions: priceOptionsByItem.get(product.id) ?? [],
 			minDuration: product.minDuration,

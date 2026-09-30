@@ -159,6 +159,35 @@ export const variantAttributes = pgTable("variant_attributes", {
 	value: varchar("value", { length: 100 }).notNull(), // ex: "42", "20L", "M"
 });
 
+// Noms d'attributs configurables par l'admin (globaux, comme les durées).
+// `variant_attributes` stocke une copie texte ; ces définitions n'existent que
+// pour garantir une saisie cohérente dans le formulaire produit.
+export const attributeDefinitions = pgTable("attribute_definitions", {
+	id: uuid("id").defaultRandom().primaryKey(),
+	name: varchar("name", { length: 50 }).notNull().unique(), // ex: "Taille", "Volume", "Places"
+	sortOrder: integer("sort_order").notNull().default(0),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Valeurs autorisées pour chaque définition.
+export const attributeValues = pgTable(
+	"attribute_values",
+	{
+		id: uuid("id").defaultRandom().primaryKey(),
+		definitionId: uuid("definition_id")
+			.references(() => attributeDefinitions.id, { onDelete: "cascade" })
+			.notNull(),
+		value: varchar("value", { length: 100 }).notNull(), // ex: "M", "40L", "2"
+		sortOrder: integer("sort_order").notNull().default(0),
+	},
+	(table) => [
+		uniqueIndex("attribute_values_definition_value_uq").on(
+			table.definitionId,
+			table.value,
+		),
+	],
+);
+
 // Options de prix avec leur propre code-barres / QR code
 // Un QR code = un prix unique pour une variante donnée.
 // Le code-barres saisi ici est celui déjà enregistré dans la caisse du magasin :
@@ -199,7 +228,7 @@ export const rentalSettings = pgTable("rental_settings", {
 	id: integer("id").primaryKey().default(1),
 	seasonalFilteringEnabled: boolean("seasonal_filtering_enabled")
 		.notNull()
-		.default(false),
+		.default(true),
 	isRentalOpen: boolean("is_rental_open").notNull().default(true),
 	// Ouverture exceptionnelle du dimanche : le magasin est ouvert du lundi au
 	// samedi, et l'admin peut autoriser les dimanches (forte saison).
@@ -299,6 +328,25 @@ export const variantAttributesRelations = relations(
 		variant: one(itemVariants, {
 			fields: [variantAttributes.variantId],
 			references: [itemVariants.id],
+		}),
+	}),
+);
+
+// Une définition d'attribut a plusieurs valeurs autorisées.
+export const attributeDefinitionsRelations = relations(
+	attributeDefinitions,
+	({ many }) => ({
+		values: many(attributeValues),
+	}),
+);
+
+// Une valeur d'attribut appartient à une seule définition.
+export const attributeValuesRelations = relations(
+	attributeValues,
+	({ one }) => ({
+		definition: one(attributeDefinitions, {
+			fields: [attributeValues.definitionId],
+			references: [attributeDefinitions.id],
 		}),
 	}),
 );

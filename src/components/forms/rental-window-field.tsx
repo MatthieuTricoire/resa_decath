@@ -77,6 +77,12 @@ export type RentalWindowFieldProps = {
 	 * le champ porte déjà un titre, pour ne pas le répéter.
 	 */
 	heading?: string;
+	/**
+	 * Premier jour sélectionnable, bornes incluses. Transmis tel quel au
+	 * calendrier ; absent, il s'agit d'aujourd'hui à Paris (voir
+	 * `RentalStartDatePicker`), ce que la caisse conserve.
+	 */
+	minDateKey?: string;
 	/** Précision sous les contrôles. */
 	hint?: string;
 	className?: string;
@@ -94,6 +100,7 @@ export function RentalWindowField({
 	emptyMessage,
 	heading,
 	hint,
+	minDateKey,
 	className,
 }: RentalWindowFieldProps) {
 	const currentDuration =
@@ -133,6 +140,7 @@ export function RentalWindowField({
 						value={pickupDate}
 						label="Date de départ"
 						isUnavailableDate={isUnavailableDate}
+						minDateKey={minDateKey}
 						onChange={(next) =>
 							onChange({
 								pickupDate: next,

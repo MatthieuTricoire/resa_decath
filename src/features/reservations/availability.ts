@@ -279,6 +279,23 @@ export function getSeasonalAvailability(
 	return active.seasons.includes(item.season) ? "available" : "out_of_season";
 }
 
+/**
+ * L'article est-il catégoriquement à contretemps pour la date donnée ?
+ *
+ * Sert à masquer une catégorie ou un produit du catalogue public hors saison.
+ * Contrairement à `getSeasonalAvailability`, il ne répond « oui » que devant un
+ * verdict certain : filtrage absent (`not_filtered`) ou plages non configurées
+ * (`not_configured`) ne masquent **rien** — un catalogue basculé dans le noir
+ * parce que l'admin n'a pas saisi ses dates serait pire qu'un matériel visible.
+ */
+export function isItemOutOfSeason(
+	item: Pick<AvailabilityItem, "season">,
+	settings: RentalAvailabilitySettings,
+	date?: Date,
+): boolean {
+	return getSeasonalAvailability(item, settings, date) === "out_of_season";
+}
+
 export function evaluateItemAvailability({
 	item,
 	settings,

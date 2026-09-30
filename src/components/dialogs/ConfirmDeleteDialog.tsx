@@ -37,7 +37,7 @@ export function ConfirmDeleteDialog() {
 						Annuler
 					</Button>
 					<Button variant="destructive" onClick={handleConfirm}>
-						Supprimer
+						{data?.confirmLabel ?? "Supprimer"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

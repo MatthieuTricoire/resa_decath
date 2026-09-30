@@ -12,7 +12,7 @@ import {
 	withWithdrawalCodes,
 } from "#/features/reservations/public-queries.server";
 import { reserveEquipment } from "#/features/reservations/reserve.server";
-import { todayInParis } from "#/lib/dates";
+import { earliestPickupDateInParis, todayInParis } from "#/lib/dates";
 import { generateReservationAccessToken } from "#/lib/reservation-reference";
 
 /**
@@ -64,6 +64,10 @@ const reserveInputSchema = z
 	.refine(
 		(data) => data.pickupDate >= todayInParis(),
 		"La date de retrait ne peut pas être dans le passé",
+	)
+	.refine(
+		(data) => data.pickupDate >= earliestPickupDateInParis(),
+		"Trop tard pour un retrait le jour même : la location est possible à partir de demain.",
 	);
 
 export type ReserveInput = z.infer<typeof reserveInputSchema>;

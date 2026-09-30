@@ -7,6 +7,7 @@ import {
 	MapPin,
 	ShieldCheck,
 } from "lucide-react";
+import { Fragment } from "react";
 import { RentalWindowSelector } from "#/components/public/rental-window-selector";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
@@ -109,6 +110,24 @@ function HomePage() {
 		queryKey: ["public", "activities"],
 		queryFn: () => getPublicActivities(),
 	});
+	const activityList = activities.data?.activities ?? [];
+	// Catégories masquées par la saison, groupées par saison de retour : la
+	// copie rend « de retour cet été » / « de retour cet hiver ».
+	const hiddenBySeason: { winter: string[]; summer: string[] } = {
+		winter: [],
+		summer: [],
+	};
+	for (const note of activities.data?.hidden ?? []) {
+		hiddenBySeason[note.returnSeason].push(note.name);
+	}
+	const hiddenParts = [
+		hiddenBySeason.winter.length > 0
+			? `${hiddenBySeason.winter.join(", ")} de retour cet hiver`
+			: "",
+		hiddenBySeason.summer.length > 0
+			? `${hiddenBySeason.summer.join(", ")} de retour cet été`
+			: "",
+	].filter(Boolean);
 	// Le loader a déjà rempli le cache pour le sélecteur de dates : on relit la
 	// même clé plutôt que d'en référencer une seconde fois le serveur.
 	const { sundayOpen } = Route.useLoaderData();
@@ -183,7 +202,7 @@ function HomePage() {
 				</div>
 
 				<div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-					{(activities.data ?? []).map((activity) => {
+					{activityList.map((activity) => {
 						const copy = getActivityCopy(activity.slug, activity.name);
 						return (
 							<Link
@@ -212,6 +231,23 @@ function HomePage() {
 						);
 					})}
 				</div>
+
+				{hiddenParts.length > 0 && (
+					<div className="mt-6 flex items-start gap-2 rounded-2xl border border-[var(--line)] bg-white/70 px-4 py-3 text-sm text-[var(--sea-ink-soft)]">
+						<CalendarDays
+							className="mt-0.5 size-4 shrink-0"
+							aria-hidden="true"
+						/>
+						<p className="font-semibold">
+							{hiddenParts.map((part, index) => (
+								<Fragment key={part}>
+									{index > 0 ? " · " : null}
+									{part}
+								</Fragment>
+							))}
+						</p>
+					</div>
+				)}
 			</section>
 
 			<section className="page-wrap py-10">

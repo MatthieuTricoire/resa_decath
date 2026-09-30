@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays } from "lucide-react";
+import { useCallback, useEffect } from "react";
 import {
 	type RentalWindowChange,
 	RentalWindowField,
@@ -14,6 +15,7 @@ import {
 } from "#/features/reservations/opening-days";
 import {
 	countRentalDays,
+	earliestPickupDateInParis,
 	rentalDurationLabel,
 	todayInParis,
 } from "#/lib/dates";
@@ -62,6 +64,13 @@ export function RentalWindowSelector({
 
 	const durationDays =
 		pickupDate && returnDate ? countRentalDays(pickupDate, returnDate) : 0;
+	// Date de retrait la plus proche : aujourd'hui avant 15h, sinon demain. Elle
+	// borne le calendrier, sert de repli quand aucune date n'est choisie, et
+	// évite de repartir sur une fenêtre du jour même une fois la coupure passée.
+	const earliestPickupDate = earliestPickupDateInParis();
+	// La coupure du jour même est dépassée : on prévient que la location ne
+	// démarre plus aujourd'hui.
+	const sameDayCutoffPassed = earliestPickupDate > todayInParis();
 	const available = durations.data ?? [];
 	const settings = schedule.data;
 	// Tant que le catalogue ou les horaires n'ont pas répondu, aucune durée ne
@@ -89,29 +98,43 @@ export function RentalWindowSelector({
 	 * conservée si elle convient encore, sinon on se rabat sur la plus proche
 	 * durée valide, pour ne jamais laisser une fenêtre impossible à rendre.
 	 */
-	const applyWindow = (nextPickup: string, requestedDuration: number) => {
-		if (!settings || available.length === 0) {
-			setPublicCartWindow({
-				pickupDate: nextPickup,
-				durationDays: requestedDuration,
-			});
-			return;
+	const applyWindow = useCallback(
+		(nextPickup: string, requestedDuration: number) => {
+			if (!settings || available.length === 0) {
+				setPublicCartWindow({
+					pickupDate: nextPickup,
+					durationDays: requestedDuration,
+				});
+				return;
+			}
+			const duration =
+				resolveDuration({
+					pickupDate: nextPickup,
+					requestedDuration,
+					durations: available,
+					settings,
+				}) ?? 0;
+			setPublicCartWindow({ pickupDate: nextPickup, durationDays: duration });
+		},
+		[settings, available],
+	);
+
+	// Une fenêtre encore posée sur le jour même une fois la coupure passée —
+	// choisie le matin, ou restaurée avant 15h — repart de la date la plus
+	// proche autorisée, pour ne jamais laisser le calendrier revendiquer un
+	// retrait que le serveur refuserait.
+	useEffect(() => {
+		if (pickupDate && pickupDate < earliestPickupDate) {
+			applyWindow(earliestPickupDate, durationDays);
 		}
-		const duration =
-			resolveDuration({
-				pickupDate: nextPickup,
-				requestedDuration,
-				durations: available,
-				settings,
-			}) ?? 0;
-		setPublicCartWindow({ pickupDate: nextPickup, durationDays: duration });
-	};
+	}, [pickupDate, durationDays, earliestPickupDate, applyWindow]);
 
 	const handleChange = (change: RentalWindowChange) => {
-		// Sans date, on part d'aujourd'hui ; sans durée, on propose la plus courte
-		// servie. Un changement de date conserve la durée en cours.
+		// Sans date, on part de la date la plus proche servie (aujourd'hui avant
+		// 15h, sinon demain) ; sans durée, on propose la plus courte servie. Un
+		// changement de date conserve la durée en cours.
 		applyWindow(
-			change.pickupDate ?? todayInParis(),
+			change.pickupDate ?? earliestPickupDate,
 			change.durationDays ?? available[0] ?? 1,
 		);
 	};
@@ -127,8 +150,17 @@ export function RentalWindowSelector({
 				settings={settings}
 				blockedDurations={blockedDurations}
 				isPending={durations.isPending}
+				minDateKey={earliestPickupDate}
 				onChange={handleChange}
 			/>
+
+			{sameDayCutoffPassed && (
+				<p className="mt-3 flex items-start gap-2 rounded-xl border border-[var(--line)] bg-white/70 p-3 text-sm">
+					<CalendarDays className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+					15h passées : la location ne démarre plus le jour même. Le retrait est
+					possible à partir de demain.
+				</p>
+			)}
 
 			{hasClosedDuration && (
 				<p className="mt-3 flex items-start gap-2 rounded-xl border border-[var(--line)] bg-white/70 p-3 text-sm">

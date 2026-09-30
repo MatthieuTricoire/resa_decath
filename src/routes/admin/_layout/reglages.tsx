@@ -1,5 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SiteHeader } from "#/components/site-header";
+import { AttributeDefinitionsForm } from "#/features/attributs/attribute-definitions-form";
+import { getAttributeDefinitions } from "#/features/attributs/queries";
+import { queryKeys as attributsQueryKeys } from "#/features/attributs/query-keys";
 import { BillingSettingsForm } from "#/features/billing/billing-settings-form";
 import { getBillingSettings } from "#/features/billing/queries";
 import { queryKeys as billingQueryKeys } from "#/features/billing/query-keys";
@@ -25,6 +28,10 @@ export const Route = createFileRoute("/admin/_layout/reglages")({
 			queryClient.prefetchQuery({
 				queryKey: billingQueryKeys.billing.settings,
 				queryFn: () => getBillingSettings(),
+			}),
+			queryClient.prefetchQuery({
+				queryKey: attributsQueryKeys.attributs.all,
+				queryFn: () => getAttributeDefinitions(),
 			}),
 		]);
 		return { settings };
@@ -56,6 +63,10 @@ function RouteComponent() {
 
 					<section id="durees" className="scroll-mt-6">
 						<RentalDurationsForm />
+					</section>
+
+					<section id="attributs" className="scroll-mt-6">
+						<AttributeDefinitionsForm />
 					</section>
 
 					<section

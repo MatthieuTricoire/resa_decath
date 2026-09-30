@@ -42,6 +42,15 @@ type RentalStartDatePickerProps = {
 	 * aujourd'hui ».
 	 */
 	isUnavailableDate?: (dateKey: string) => boolean;
+	/**
+	 * Clé de date `YYYY-MM-DD` du premier jour sélectionnable, bornes incluses.
+	 *
+	 * Par défaut : aujourd'hui à Paris. Le site public passe
+	 * `earliestPickupDateInParis()` pour interdire le jour même après 15h ;
+	 * la caisse laisse le défaut, le retrait le jour même y restant possible en
+	 * boutique.
+	 */
+	minDateKey?: string;
 	/** Libellé du bouton quand aucune date n'est choisie. */
 	placeholder?: string;
 	/** Décale le popover pour éviter qu'il ne dépasse de l'écran. */
@@ -55,6 +64,7 @@ export function RentalStartDatePicker({
 	value,
 	onChange,
 	isUnavailableDate,
+	minDateKey,
 	placeholder = "Choisir une date",
 	align = "start",
 	label = "Date de départ",
@@ -67,6 +77,7 @@ export function RentalStartDatePicker({
 		() => dateKeyToUtcNoon(todayInParis()) ?? new Date(),
 		[],
 	);
+	const minDay = minDateKey ? (dateKeyToUtcNoon(minDateKey) ?? today) : today;
 	const selected =
 		value && isValidDateKey(value)
 			? (dateKeyToUtcNoon(value) ?? undefined)
@@ -108,7 +119,7 @@ export function RentalStartDatePicker({
 						}}
 						defaultMonth={selected ?? today}
 						disabled={[
-							{ before: today },
+							{ before: minDay },
 							(date: Date) => isUnavailable(toParisDateKey(date)),
 						]}
 						numberOfMonths={1}

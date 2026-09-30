@@ -1,10 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { fr as frLocale } from "date-fns/locale";
-import { ArrowLeft, Edit, ImageIcon } from "lucide-react";
+import { ArrowLeft, CircleOff, Edit, ImageIcon } from "lucide-react";
+import { toast } from "sonner";
 import { BarcodeDisplay } from "#/components/barcode";
-import { QRCodeDisplay } from "#/components/qr-code";
+import { ConfirmDeleteDialog } from "#/components/dialogs/ConfirmDeleteDialog";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card";
@@ -19,9 +20,12 @@ import {
 import {
 	getItem,
 	getItemVariants,
+	reactivateItem,
+	retireItem,
 	type VariantRow,
 } from "#/features/equipements/queries";
 import { queryKeys } from "#/features/equipements/query-keys";
+import { openDialog } from "#/stores/dialog.store";
 
 const formatPrice = (val: string | null) => {
 	if (!val) return "—";
@@ -66,6 +70,7 @@ export const Route = createFileRoute("/admin/_layout/equipements/$itemId/")({
 
 function RouteComponent() {
 	const { itemId } = Route.useParams();
+	const queryClient = useQueryClient();
 
 	const { data: item, isPending: itemPending } = useQuery({
 		queryKey: queryKeys.items.detail(itemId),
@@ -87,6 +92,59 @@ function RouteComponent() {
 		);
 	}
 
+	// Retiré = toutes les variantes en RETIRED (le formulaire de modification ne
+	// gère pas le statut : c'est cette action qui pilote la visibilité publique).
+	const isRetired =
+		variants != null &&
+		variants.length > 0 &&
+		variants.every((v) => v.status === "RETIRED");
+
+	const invalidateItem = () => {
+		queryClient.invalidateQueries({ queryKey: queryKeys.variants.all });
+		queryClient.invalidateQueries({ queryKey: queryKeys.items.detail(itemId) });
+		queryClient.invalidateQueries({
+			queryKey: queryKeys.variants.byItem(itemId),
+		});
+	};
+
+	const handleRetire = () =>
+		openDialog("confirmDelete", {
+			title: "Retirer du catalogue",
+			description: `« ${item.name} » ne sera plus proposé à la location sur le site. L'historique des réservations et les statistiques sont conservés.`,
+			confirmLabel: "Retirer",
+			onConfirm: async () => {
+				try {
+					await retireItem({ data: itemId });
+					invalidateItem();
+					toast.success("Article retiré du catalogue.");
+				} catch (err) {
+					const message =
+						err instanceof Error
+							? err.message
+							: typeof err === "object" && err !== null && "message" in err
+								? String(err.message)
+								: "Erreur inconnue";
+					toast.error(`Erreur : ${message}`);
+				}
+			},
+		});
+
+	const handleReactivate = async () => {
+		try {
+			await reactivateItem({ data: itemId });
+			invalidateItem();
+			toast.success("Article remis en location.");
+		} catch (err) {
+			const message =
+				err instanceof Error
+					? err.message
+					: typeof err === "object" && err !== null && "message" in err
+						? String(err.message)
+						: "Erreur inconnue";
+			toast.error(`Erreur : ${message}`);
+		}
+	};
+
 	return (
 		<div className="flex flex-col gap-6">
 			<div className="flex items-center justify-between">
@@ -99,12 +157,35 @@ function RouteComponent() {
 					<h2 className="text-lg font-semibold">{item.name}</h2>
 					<Badge variant="outline">{item.categoryName}</Badge>
 				</div>
-				<Button variant="outline" size="sm" asChild>
-					<Link to="/admin/equipements/$itemId/modifier" params={{ itemId }}>
-						<Edit />
-						Modifier
-					</Link>
-				</Button>
+				<div className="flex items-center gap-2">
+					{isRetired ? (
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={handleReactivate}
+							disabled={variantsPending}
+						>
+							<CircleOff className="size-4" />
+							Remettre en location
+						</Button>
+					) : (
+						<Button
+							variant="destructive"
+							size="sm"
+							onClick={handleRetire}
+							disabled={variantsPending}
+						>
+							<CircleOff className="size-4" />
+							Retirer du catalogue
+						</Button>
+					)}
+					<Button variant="outline" size="sm" asChild>
+						<Link to="/admin/equipements/$itemId/modifier" params={{ itemId }}>
+							<Edit />
+							Modifier
+						</Link>
+					</Button>
+				</div>
 			</div>
 
 			<div className="grid grid-cols-3 gap-6">
@@ -266,10 +347,6 @@ function RouteComponent() {
 																			{formatPrice(opt.price)}
 																		</div>
 																	</div>
-																	<QRCodeDisplay
-																		value={opt.barcode}
-																		size={36}
-																	/>
 																	<BarcodeDisplay
 																		value={opt.barcode}
 																		height={22}
@@ -324,6 +401,7 @@ function RouteComponent() {
 					</Card>
 				</div>
 			</div>
+			<ConfirmDeleteDialog />
 		</div>
 	);
 }

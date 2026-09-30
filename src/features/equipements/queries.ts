@@ -4,7 +4,10 @@ import { z } from "zod";
 import { db } from "#/db";
 import * as schema from "#/db/schema";
 import { requireDashboardSession } from "#/features/auth/queries";
-import { evaluateItemAvailability } from "#/features/reservations/availability";
+import {
+	evaluateItemAvailability,
+	STOCK_CONSUMING_STATUSES,
+} from "#/features/reservations/availability";
 import { getRentalSettingsRecord } from "#/features/settings/queries";
 import { makeUniqueSlug } from "#/lib/slug";
 
@@ -785,6 +788,83 @@ export const updateItem = createServerFn({ method: "POST" })
 				}
 			}
 		}
+
+		return { success: true };
+	});
+
+async function variantIdsOfItem(itemId: string): Promise<string[]> {
+	return (
+		await db
+			.select({ id: schema.itemVariants.id })
+			.from(schema.itemVariants)
+			.where(eq(schema.itemVariants.itemId, itemId))
+	).map((row) => row.id);
+}
+
+const itemIdSchema = z.string().min(1);
+
+/**
+ * Sort définitivement un article du catalogue public : toutes ses variantes
+ * passent en `RETIRED`. L'historique des réservations et les statistiques
+ * restent intacts (rien n'est supprimé en base).
+ *
+ * Bloqué tant qu'une réservation en cours consomme l'une des variantes : le
+ * retrait n'a de sens que sur un matériel rendu, jamais au milieu d'une
+ * location active.
+ */
+export const retireItem = createServerFn({ method: "POST" })
+	.inputValidator((itemId: string) => itemIdSchema.parse(itemId))
+	.handler(async ({ data: itemId }) => {
+		const variantIds = await variantIdsOfItem(itemId);
+		if (variantIds.length === 0) {
+			throw new Error("Article introuvable.");
+		}
+
+		const activeLines = await db
+			.select({ variantId: schema.reservationItems.variantId })
+			.from(schema.reservationItems)
+			.innerJoin(
+				schema.reservations,
+				eq(schema.reservationItems.reservationId, schema.reservations.id),
+			)
+			.where(
+				and(
+					inArray(schema.reservationItems.variantId, variantIds),
+					inArray(schema.reservations.status, [...STOCK_CONSUMING_STATUSES]),
+				),
+			);
+
+		if (activeLines.length > 0) {
+			throw new Error(
+				"Location en cours : il reste des réservations actives sur cet article.",
+			);
+		}
+
+		await db
+			.update(schema.itemVariants)
+			.set({ status: "RETIRED" })
+			.where(inArray(schema.itemVariants.id, variantIds));
+
+		return { success: true };
+	});
+
+/**
+ * Remet en location un article retiré. Simplification assumée : les variantes
+ * passent toutes en `AVAILABLE`, même celles qui étaient encore en maintenance
+ * au moment du retrait.
+ */
+export const reactivateItem = createServerFn({ method: "POST" })
+	.inputValidator((itemId: string) => itemIdSchema.parse(itemId))
+	.handler(async ({ data: itemId }) => {
+		const variantIds = await variantIdsOfItem(itemId);
+		if (variantIds.length === 0) {
+			throw new Error("Article introuvable.");
+		}
+
+		await db
+			.update(schema.itemVariants)
+			.set({ status: "AVAILABLE" })
+			.where(inArray(schema.itemVariants.id, variantIds));
 
 		return { success: true };
 	});

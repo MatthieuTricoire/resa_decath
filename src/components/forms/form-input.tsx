@@ -40,7 +40,7 @@ export function TextField({
 				aria-invalid={isInvalid}
 				autoComplete="off"
 			/>
-			{description ?? <FieldDescription>{description}</FieldDescription>}
+			{description ? <FieldDescription>{description}</FieldDescription> : null}
 			{isInvalid && errors.length > 0 && <FieldError errors={[errors[0]]} />}
 		</Field>
 	);

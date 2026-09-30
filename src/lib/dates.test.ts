@@ -6,8 +6,10 @@ import {
 	dateKeyRangeFromDates,
 	dateKeyRangeToDates,
 	dateKeyToUtcNoon,
+	earliestPickupDateInParis,
 	formatLongDate,
 	formatRentalWindow,
+	isPastSameDayPickupCutoffInParis,
 	isValidDateKey,
 	rentalDurationLabel,
 	todayInParis,
@@ -108,6 +110,62 @@ describe("formatLongDate", () => {
 describe("todayInParis", () => {
 	it("renvoie une clé valide", () => {
 		expect(isValidDateKey(todayInParis())).toBe(true);
+	});
+});
+
+describe("isPastSameDayPickupCutoffInParis", () => {
+	it("précise l'heure du fuseau de Paris, pas celle de la machine", () => {
+		// « en-GB », `hourCycle: "h23"` : 15h Paris est une borne, pas une heure
+		// locale arbitraire.
+		expect(
+			isPastSameDayPickupCutoffInParis(new Date("2026-07-01T12:30:00Z")),
+		).toBe(false);
+	});
+
+	it("est faux avant 15h à Paris", () => {
+		// 14:30 en été (UTC+2), 14:59 en hiver (UTC+1).
+		expect(
+			isPastSameDayPickupCutoffInParis(new Date("2026-07-01T12:30:00Z")),
+		).toBe(false);
+		expect(
+			isPastSameDayPickupCutoffInParis(new Date("2026-01-15T13:59:00Z")),
+		).toBe(false);
+	});
+
+	it("est vrai à partir de 15h à Paris", () => {
+		// 15:00 pile (été et hiver), puis tard le soir.
+		expect(
+			isPastSameDayPickupCutoffInParis(new Date("2026-07-01T13:00:00Z")),
+		).toBe(true);
+		expect(
+			isPastSameDayPickupCutoffInParis(new Date("2026-01-15T14:00:00Z")),
+		).toBe(true);
+		expect(
+			isPastSameDayPickupCutoffInParis(new Date("2026-07-01T19:00:00Z")),
+		).toBe(true);
+	});
+});
+
+describe("earliestPickupDateInParis", () => {
+	it("renvoie aujourd'hui avant la coupure", () => {
+		expect(earliestPickupDateInParis(new Date("2026-07-01T10:00:00Z"))).toBe(
+			"2026-07-01",
+		);
+	});
+
+	it("renvoie demain dès la coupure passée", () => {
+		expect(earliestPickupDateInParis(new Date("2026-07-01T13:00:00Z"))).toBe(
+			"2026-07-02",
+		);
+		expect(earliestPickupDateInParis(new Date("2026-01-15T23:30:00Z"))).toBe(
+			"2026-01-16",
+		);
+	});
+
+	it("repart du jour même juste après minuit", () => {
+		expect(earliestPickupDateInParis(new Date("2026-07-02T00:00:00Z"))).toBe(
+			"2026-07-02",
+		);
 	});
 });
 

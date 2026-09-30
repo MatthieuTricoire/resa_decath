@@ -3,6 +3,8 @@ import { createStore } from "@tanstack/react-store";
 export type ConfirmDeleteData = {
 	title: string;
 	description: string;
+	/** Libellé du bouton de confirmation ; « Supprimer » par défaut. */
+	confirmLabel?: string;
 	onConfirm: () => void | Promise<void>;
 };
 
