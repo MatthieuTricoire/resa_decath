@@ -121,6 +121,10 @@ function ActivityPage() {
 					.length
 			: catalog.length;
 
+	// Le catalogue sans dates n'est pas une erreur, juste un état : les tarifs
+	// dépendent de la durée, donc rien ne peut être annoncé avant. L'encart reste
+	// un avertissement ambre plutôt qu'une alerte rouge : un visiteur qui n'a pas
+	// encore choisi ses dates ne vient pas d'échouer.
 	return (
 		<div className="page-wrap py-12">
 			<Button
@@ -150,11 +154,13 @@ function ActivityPage() {
 					{rentalDurationLabel(durationDays).toLowerCase()}.
 				</p>
 			) : (
-				<Alert className="mt-10 border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-50">
+				<Alert className="mt-10 border-amber-200 bg-amber-50 text-amber-900 md:mx-auto md:w-2/3 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-50">
 					<AlertTriangleIcon aria-hidden="true" />
 					<AlertTitle>Choisissez vos dates</AlertTitle>
 					<AlertDescription className="text-amber-900 dark:text-amber-50">
-						pour voir les tarifs par durée.
+						Afin de vous proposer les produits disponibles pour vos dates ainsi
+						que le prix adapté à votre durée de location, veuillez saisir les
+						dates pour lesquelles vous souhaitez louer du matériel.
 					</AlertDescription>
 					<AlertAction>
 						<Button

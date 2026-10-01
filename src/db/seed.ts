@@ -6,6 +6,7 @@ import { generateId } from "better-auth";
 import { hashPassword } from "better-auth/crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
+import { DEFAULT_STORE_HOURS } from "#/features/store-hours/types";
 import * as schema from "./schema";
 
 const connectionString =
@@ -40,11 +41,30 @@ async function main() {
 	await db.delete(schema.items);
 	await db.delete(schema.categories);
 	await db.delete(schema.rentalDurations);
+	await db.delete(schema.storeHours);
 	await db.delete(schema.session);
 	await db.delete(schema.account);
 	await db.delete(schema.user);
 
 	console.log("🧹 Base de données nettoyée.");
+
+	// --- Horaires d'ouverture ---
+	// La semaine de référence du magasin : deux créneaux du lundi au samedi, et le
+	// dimanche fermé mais avec ses horaires conservés (8h45–13h). Les garder
+	// permet de le rouvrir en forte saison avec un simple interrupteur, sans
+	// ressaisie. `DEFAULT_STORE_HOURS` porte exactement ces valeurs : la lecture
+	// retombe dessus si la table est vide, donc les deux ne doivent pas diverger.
+	await db.insert(schema.storeHours).values(
+		DEFAULT_STORE_HOURS.map((day) => ({
+			day: day.day,
+			label: day.label,
+			isOpen: day.isOpen,
+			morningFrom: day.slots[0]?.opens ?? null,
+			morningTo: day.slots[0]?.closes ?? null,
+			afternoonFrom: day.slots[1]?.opens ?? null,
+			afternoonTo: day.slots[1]?.closes ?? null,
+		})),
+	);
 
 	// --- Durées de location ---
 	await db.insert(schema.rentalDurations).values([

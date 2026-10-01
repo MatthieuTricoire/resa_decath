@@ -33,12 +33,13 @@ import { setPublicCartWindow, usePublicCart } from "#/stores/public-cart.store";
  * une commande qu'aucun prix ne couvre. Le retour est calculé à partir de la
  * durée, une commande n'ayant qu'une seule période.
  *
- * S'y ajoute la règle d'ouverture : le magasin est fermé le dimanche sauf
- * exception configurée, et l'on ne peut ni retirer ni rendre du matériel ce
- * jour-là. Une durée dont le retour tomberait un dimanche fermé est donc
- * grisée plutôt que proposée. Les jours situés **entre** le retrait et le retour
- * restent libres : du samedi au lundi reste la location du week-end, seul le
- * comptoir est fermé le dimanche.
+ * S'y ajoute la règle d'ouverture : les jours ouverts sont ceux que l'admin a
+ * paramétrés (le dimanche est fermé hors forte saison, mais ce n'est plus le seul
+ * jour variable), et l'on ne peut ni retirer ni rendre du matériel un jour fermé.
+ * Une durée dont le retour tomberait un jour fermé est donc grisée plutôt que
+ * proposée. Les jours situés **entre** le retrait et le retour restent libres : du
+ * samedi au lundi reste la location du week-end, seul le comptoir est fermé le
+ * dimanche.
  */
 export function RentalWindowSelector({
 	className,
@@ -166,9 +167,9 @@ export function RentalWindowSelector({
 				<p className="mt-3 flex items-start gap-2 rounded-xl border border-[var(--line)] bg-white/70 p-3 text-sm">
 					<CalendarDays className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
 					{blockedDurations.length === 1
-						? "Une durée se termine un dimanche, jour de fermeture du magasin : elle est grisée."
-						: "Certaines durées se terminent un dimanche, jour de fermeture du magasin : elles sont grisées."}{" "}
-					La location peut malgré tout couvrir un dimanche, seule la date de
+						? "Une durée se termine un jour de fermeture du magasin : elle est grisée."
+						: "Certaines durées se terminent un jour de fermeture du magasin : elles sont grisées."}{" "}
+					La location peut malgré tout couvrir un jour fermé, seule la date de
 					retour doit tomber un jour d’ouverture.
 				</p>
 			)}

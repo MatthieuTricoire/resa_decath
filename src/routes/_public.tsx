@@ -18,8 +18,9 @@ export const Route = createFileRoute("/_public")({
 			queryKey: ["public", "activities"],
 			queryFn: () => getPublicActivities(),
 		});
-		// Le pied de page affiche l'ouverture du dimanche : la charger avec le
-		// layout évite qu'il affiche « fermé » le temps de l'hydratation.
+		// Le pied de page et la page ville affichent les horaires : les charger avec le
+		// layout évite qu'ils affichent la semaine de référence le temps de
+		// l'hydratation.
 		await queryClient.prefetchQuery({
 			queryKey: ["public", "store-schedule"],
 			queryFn: () => getPublicStoreSchedule(),

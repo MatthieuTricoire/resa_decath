@@ -1,8 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { MapPin, Phone } from "lucide-react";
-import { store, storeCanonicalPath } from "#/config/store";
+import {
+	store,
+	storeCanonicalPath,
+	storeOpeningHoursText,
+} from "#/config/store";
 import { getPublicStoreSchedule } from "#/features/equipements/public-queries";
+import { DEFAULT_STORE_HOURS } from "#/features/store-hours/types";
 
 /** Pied de page public : NAP, horaires, mention paiement et lien équipe. */
 export function PublicFooter() {
@@ -65,16 +70,23 @@ export function PublicFooter() {
 
 				<div className="space-y-3 text-sm">
 					<p className="island-kicker">Horaires</p>
-					<ul className="space-y-1 text-[var(--sea-ink-soft)]">
-						<li>Lundi – samedi : 9h – 19h</li>
-						{/* Le dimanche est la seule ouverture variable : la lire plutôt que
-						    l'écrire, sinon le pied de page ment dès que l'admin ouvre les
-						    dimanches. La donnée est préchargée par la layout publique, donc
-						    déjà dans le HTML initial. */}
-						<li>
-							Dimanche : {schedule.data?.sundayOpen ? "9h – 19h" : "fermé"}
-						</li>
-					</ul>
+					{/* Horaires lus, jamais écrits ici : le pied de page, la page ville et
+					    le JSON-LD consomment la même donnée, donc ajouter une fermeture
+					    de midi dans l'admin les met tous les trois à jour. La layout
+					    publique la précharge, donc elle est déjà dans le HTML initial. */}
+					<dl className="space-y-1 text-[var(--sea-ink-soft)]">
+						{storeOpeningHoursText(
+							schedule.data?.hours ?? DEFAULT_STORE_HOURS,
+						).map((day) => (
+							<div
+								key={day.day}
+								className="flex justify-between gap-4 sm:justify-start sm:gap-3"
+							>
+								<dt className="sm:w-24 sm:shrink-0">{day.day}</dt>
+								<dd className="text-right sm:text-left">{day.hours}</dd>
+							</div>
+						))}
+					</dl>
 					<p className="text-[var(--sea-ink-soft)]">{store.paymentNotice}</p>
 				</div>
 			</div>

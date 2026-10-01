@@ -214,6 +214,34 @@ export const priceOptions = pgTable(
 	],
 );
 
+// Horaires d'ouverture du magasin : une ligne par jour, 0 = dimanche.
+//
+// `day` est la clé primaire et non un simple numéro d'ordre : il doit rester
+// stable, parce que les calendriers de réservation et le JSON-LD le reprennent
+// tel quel et qu'une réindexation ferait basculer les jours les uns sur les
+// autres.
+//
+// `is_open` est la seule information qui décide d'une réservation. Les colonnes
+// de créneaux décrivent *quand*, jamais *si* : un jour fermé garde ses horaires
+// (8h45–13h le dimanche) pour être rouvert en forte saison sans ressaisie. La
+// validation côté serveur refuse en revanche d'enregistrer un jour ouvert sans
+// au moins un créneau, faute de quoi le site afficherait un magasin ouvert dont
+// personne ne sait quand il ouvre.
+//
+// Les créneaux sont deux colonnes plutôt qu'un tableau : l'application raisonne
+// en journées entières. L'après-midi vide signifie « fermé le midi », un créneau
+// unique signifie journée continue.
+export const storeHours = pgTable("store_hours", {
+	day: integer("day").primaryKey(), // 0 = dimanche … 6 = samedi
+	label: varchar("label", { length: 20 }).notNull(), // ex: "Lundi"
+	isOpen: boolean("is_open").notNull().default(true),
+	morningFrom: varchar("morning_from", { length: 5 }), // "09:00", null si fermé
+	morningTo: varchar("morning_to", { length: 5 }), // "12:30", null si fermé
+	afternoonFrom: varchar("afternoon_from", { length: 5 }), // "14:30", null = fermé le midi
+	afternoonTo: varchar("afternoon_to", { length: 5 }), // "19:00", null = fermé le midi
+	updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // Durées de location globales, gérées par l'admin.
 // Sert de référence pour définir les options de prix "par durée" des variantes.
 export const rentalDurations = pgTable("rental_durations", {
@@ -230,9 +258,9 @@ export const rentalSettings = pgTable("rental_settings", {
 		.notNull()
 		.default(true),
 	isRentalOpen: boolean("is_rental_open").notNull().default(true),
-	// Ouverture exceptionnelle du dimanche : le magasin est ouvert du lundi au
-	// samedi, et l'admin peut autoriser les dimanches (forte saison).
-	sundayOpen: boolean("sunday_open").notNull().default(false),
+	// Les jours d'ouverture ne sont pas ici mais dans `store_hours` : c'est la
+	// seule table qui décrit quand le magasin est ouvert, pour que le calendrier
+	// de réservation, le pied de page et le JSON-LD lisent la même chose.
 	seasonOverride: text("season_override")
 		.$type<"auto" | "summer" | "winter">()
 		.notNull()

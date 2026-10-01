@@ -4,6 +4,7 @@ import {
 	store,
 	storeCanonicalPath,
 } from "#/config/store";
+import { DEFAULT_STORE_HOURS } from "#/features/store-hours/types";
 import {
 	absoluteUrl,
 	breadcrumbJsonLd,
@@ -103,14 +104,48 @@ describe("storeJsonLd", () => {
 		expect(ld.sameAs).toEqual([]);
 	});
 
-	it("n'annonce que les jours réellement ouverts", () => {
-		// Horaires sans ouverture dominicale : six jours, pas de dimanche.
-		const specification = storeJsonLd(getStoreOpeningHoursSpecification(false))
-			.openingHoursSpecification as Array<{ dayOfWeek: string }>;
+	it("n'annonce que les jours réellement ouverts, un créneau par entrée", () => {
+		// Semaine de référence : dimanche fermé, et deux créneaux pour les six
+		// autres jours. Douze entrées, donc, et aucune pour le Sunday.
+		const specification = storeJsonLd(
+			getStoreOpeningHoursSpecification(DEFAULT_STORE_HOURS),
+		).openingHoursSpecification as Array<{ dayOfWeek: string }>;
 		expect(
 			specification.some((hour) => hour.dayOfWeek.includes("Sunday")),
 		).toBe(false);
-		expect(specification.length).toBe(6);
+		expect(specification.length).toBe(12);
+	});
+
+	it("publie la fermeture de midi, qu'une entrée unique ne pourrait pas dire", () => {
+		const monday = DEFAULT_STORE_HOURS.find((day) => day.day === 1);
+		const specification = storeJsonLd(
+			getStoreOpeningHoursSpecification([...(monday ? [monday] : [])]),
+		).openingHoursSpecification as Array<{ opens: string; closes: string }>;
+		expect(specification).toEqual([
+			{
+				"@type": "openingHoursSpecification",
+				dayOfWeek: expect.stringContaining("Monday"),
+				opens: "09:00",
+				closes: "12:30",
+			},
+			{
+				"@type": "openingHoursSpecification",
+				dayOfWeek: expect.stringContaining("Monday"),
+				opens: "14:30",
+				closes: "19:00",
+			},
+		]);
+	});
+
+	it("ignore les horaires conservés d'un jour fermé", () => {
+		// Le dimanche porte 8h45–13h en base pour pouvoir être rouvert vite, mais
+		// rien de tout cela ne doit être publié tant que le jour est fermé.
+		const sunday = DEFAULT_STORE_HOURS.find((day) => day.day === 0);
+		expect(sunday?.slots.length).toBeGreaterThan(0);
+		const specification = storeJsonLd(
+			getStoreOpeningHoursSpecification(sunday ? [sunday] : []),
+		).openingHoursSpecification as unknown[];
+		expect(specification).toEqual([]);
 	});
 });
 

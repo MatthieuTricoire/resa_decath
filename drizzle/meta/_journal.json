@@ -15,6 +15,13 @@
       "when": 1784814202467,
       "tag": "0001_lyrical_major_mapleleaf",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790845174136,
+      "tag": "0002_store_hours_and_missing_tables",
+      "breakpoints": true
     }
   ]
 }

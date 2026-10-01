@@ -21,6 +21,11 @@ import {
 	quoteVariantForDuration,
 } from "#/features/reservations/pricing";
 import { getRentalSettingsRecord } from "#/features/settings/queries";
+import { getStoreHoursRecord } from "#/features/store-hours/queries";
+import {
+	openDaysFromHours,
+	type StoreHours,
+} from "#/features/store-hours/types";
 import { countRentalDays, dateKeyToUtcNoon } from "#/lib/dates";
 
 /**
@@ -594,18 +599,29 @@ export const getPublicRentalDurations = createServerFn({
 });
 
 /**
- * Jours d'ouverture du magasin, pour les calendriers et les horaires publics.
+ * Jours d'ouverture et horaires du magasin, pour les calendriers et l'affichage
+ * public.
  *
- * Une seule donnée suffit : l'ouverture du dimanche, les autres jours étant
- * toujours ouverts. Le serveur la relit pour chaque réservation, ce endpoint
- * sert donc uniquement à proposer des dates et des durées déjà valides plutôt
- * qu'à autoriser quoi que ce soit.
+ * Les deux voyagent ensemble parce qu'ils sortent de la même lecture et parce
+ * qu'ils doivent raconter la même histoire : un calendrier qui refuse une date et
+ * un tableau d'horaires qui ouvre le même jour se contredisent à l'écran, et le
+ * visiteur n'a aucun moyen de savoir lequel croire. Une seule donnée suffit
+ * désormais : la liste des jours ouverts, tous les jours étant paramétrables.
+ *
+ * Le serveur relit ces horaires pour chaque réservation ; cet endpoint sert donc
+ * uniquement à proposer des dates et des durées déjà valides, et à afficher l'info,
+ * pas à autoriser quoi que ce soit.
  */
+export type PublicStoreSchedule = OpeningDaysSettings & {
+	/** Les sept jours, du lundi au dimanche, pour l'affichage des horaires. */
+	hours: StoreHours;
+};
+
 export const getPublicStoreSchedule = createServerFn({
 	method: "GET",
-}).handler(async (): Promise<OpeningDaysSettings> => {
-	const settings = await getRentalSettingsRecord();
-	return { sundayOpen: settings.sundayOpen };
+}).handler(async (): Promise<PublicStoreSchedule> => {
+	const hours = await getStoreHoursRecord();
+	return { openDays: openDaysFromHours(hours), hours };
 });
 
 /**

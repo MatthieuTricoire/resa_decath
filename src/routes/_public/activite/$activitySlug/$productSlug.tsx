@@ -226,8 +226,8 @@ function ProductPage() {
 		hasWindow && product.bookable && !product.durations.includes(durationDays);
 	const cartCount = usePublicCart(cartItemCount);
 
-	// Jours d'ouverture : une durée proposée ici peut se terminer un dimanche
-	// fermé, auquel cas on rabat sur la durée vendable la plus proche.
+	// Jours d'ouverture : une durée proposée ici peut se terminer un jour de
+	// fermeture, auquel cas on rabat sur la durée vendable la plus proche.
 	const schedule = useQuery({
 		queryKey: ["public", "store-schedule"],
 		queryFn: () => getPublicStoreSchedule(),

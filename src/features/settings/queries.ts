@@ -5,11 +5,16 @@ import { db } from "#/db";
 import * as schema from "#/db/schema";
 import { requireDashboardSession } from "#/features/auth/queries";
 
+/**
+ * Règles de disponibilité, hors horaires.
+ *
+ * Les jours d'ouverture ne sont pas ici : ils vivent dans `store_hours`
+ * (`features/store-hours`), parce qu'ils décident d'une réservation au même
+ * titre que ces règles et ont besoin de bien plus qu'un booléen.
+ */
 export type RentalSettings = {
 	seasonalFilteringEnabled: boolean;
 	isRentalOpen: boolean;
-	/** Ouverture du dimanche, pour les retraits et retours de ce jour-là. */
-	sundayOpen: boolean;
 	seasonOverride: "auto" | "summer" | "winter";
 	summerFrom: string | null;
 	summerTo: string | null;
@@ -21,7 +26,6 @@ export type RentalSettings = {
 export const DEFAULT_RENTAL_SETTINGS: RentalSettings = {
 	seasonalFilteringEnabled: true,
 	isRentalOpen: true,
-	sundayOpen: false,
 	seasonOverride: "auto",
 	summerFrom: null,
 	summerTo: null,
@@ -96,7 +100,6 @@ const monthDaySchema = z.string().refine((value) => {
 const updateRentalSettingsSchema = z.object({
 	seasonalFilteringEnabled: z.boolean(),
 	isRentalOpen: z.boolean(),
-	sundayOpen: z.boolean(),
 	seasonOverride: z.enum(["auto", "summer", "winter"]),
 	summerFrom: monthDaySchema.default(""),
 	summerTo: monthDaySchema.default(""),
@@ -119,7 +122,6 @@ export const updateRentalSettings = createServerFn({ method: "POST" })
 				id: 1,
 				seasonalFilteringEnabled: data.seasonalFilteringEnabled,
 				isRentalOpen: data.isRentalOpen,
-				sundayOpen: data.sundayOpen,
 				seasonOverride: data.seasonOverride,
 				summerFrom: data.summerFrom || null,
 				summerTo: data.summerTo || null,
@@ -132,7 +134,6 @@ export const updateRentalSettings = createServerFn({ method: "POST" })
 				set: {
 					seasonalFilteringEnabled: data.seasonalFilteringEnabled,
 					isRentalOpen: data.isRentalOpen,
-					sundayOpen: data.sundayOpen,
 					seasonOverride: data.seasonOverride,
 					summerFrom: data.summerFrom || null,
 					summerTo: data.summerTo || null,

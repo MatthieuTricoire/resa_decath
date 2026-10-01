@@ -121,20 +121,15 @@ export function RentalWindowField({
 
 	return (
 		<fieldset className={cn("@container", className)}>
-			{/* La légende nomme le groupe pour les lecteurs d'écran : c'est le seul
-			    élément associé au `fieldset`, un titre de carte ne l'est pas. Elle
-			    n'est visible que si l'appelant n'a pas déjà titré son bloc, pour ne
-			    pas afficher deux fois le même mot. */}
 			<legend
 				className={cn(heading && "island-kicker mb-3", !heading && "sr-only")}
 			>
 				{heading ?? DEFAULT_HEADING}
 			</legend>
-			{/* La disposition suit la largeur du composant, pas celle de l'écran : dans le
-			    panier le sélecteur vit dans une colonne étroite, où une règle `sm:` liée
-			    au viewport écrasait le bouton de date sous le texte de retour. */}
-			<div className="grid gap-3 @min-[26rem]:grid-cols-[minmax(0,1fr)_auto] @min-[26rem]:items-end">
-				<div className="min-w-0 space-y-1 text-sm">
+
+			<div className="grid gap-4">
+				{/* Date de départ */}
+				<div className="space-y-1 text-sm">
 					<p className="font-semibold">Date de départ</p>
 					<RentalStartDatePicker
 						value={pickupDate}
@@ -149,80 +144,78 @@ export function RentalWindowField({
 						}
 					/>
 				</div>
-				<p className="min-w-0 text-sm text-[var(--sea-ink-soft)] @min-[26rem]:pb-2">
-					{returnDate ? (
-						<>
-							Retour le{" "}
-							<strong className="text-[var(--sea-ink)]">
-								{formatLongDate(returnDate)}
-							</strong>
-						</>
-					) : (
-						"Choisissez une durée"
-					)}
-				</p>
-			</div>
 
-			<div className="mt-4">
-				<div className="flex items-center justify-between gap-2">
-					<p className="text-sm font-semibold">Durée</p>
-					{onClear && pickupDate && (
-						<Button
-							type="button"
-							size="sm"
-							variant="ghost"
-							className="text-[var(--sea-ink-soft)]"
-							onClick={onClear}
-						>
-							Effacer
-						</Button>
+				{/* Sélection de durée */}
+				<div className="space-y-2">
+					<div className="flex items-center justify-between gap-2">
+						<p className="text-sm font-semibold">Durée</p>
+						{onClear && pickupDate && (
+							<Button
+								type="button"
+								size="sm"
+								variant="ghost"
+								className="text-[var(--sea-ink-soft)]"
+								onClick={onClear}
+							>
+								Effacer
+							</Button>
+						)}
+					</div>
+
+					{isPending ? (
+						<p className="text-sm text-[var(--sea-ink-soft)]">
+							Chargement des durées…
+						</p>
+					) : durations.length === 0 ? (
+						<p className="text-sm text-[var(--sea-ink-soft)]">
+							{emptyMessage ??
+								"Aucune durée n’est encore tarifée sur ce catalogue."}
+						</p>
+					) : (
+						<div className="flex flex-wrap gap-2">
+							{durations.map((duration) => {
+								const reason = blockedReasons.get(duration);
+								const selected = duration === currentDuration;
+								return (
+									<Button
+										key={duration}
+										type="button"
+										size="sm"
+										variant={selected ? "default" : "outline"}
+										aria-pressed={selected}
+										disabled={reason !== undefined}
+										title={reason}
+										className="h-10 sm:h-8"
+										onClick={() =>
+											onChange({ pickupDate, durationDays: duration })
+										}
+									>
+										{rentalDurationLabel(duration)}
+										{reason && (
+											<LockIcon className="size-3.5" aria-hidden="true" />
+										)}
+										{reason && <span className="sr-only"> — {reason}</span>}
+									</Button>
+								);
+							})}
+						</div>
 					)}
 				</div>
-				{isPending ? (
-					<p className="mt-2 text-sm text-[var(--sea-ink-soft)]">
-						Chargement des durées…
-					</p>
-				) : durations.length === 0 ? (
-					<p className="mt-2 text-sm text-[var(--sea-ink-soft)]">
-						{emptyMessage ??
-							"Aucune durée n’est encore tarifée sur ce catalogue."}
-					</p>
-				) : (
-					<div className="mt-2 flex flex-wrap gap-2">
-						{durations.map((duration) => {
-							const reason = blockedReasons.get(duration);
-							const selected = duration === currentDuration;
-							return (
-								<Button
-									key={duration}
-									type="button"
-									size="sm"
-									variant={selected ? "default" : "outline"}
-									aria-pressed={selected}
-									disabled={reason !== undefined}
-									title={reason}
-									// Cible plus haute sur mobile pour le pouce (≥ 40 px),
-									// taille compacte maintenue au-dessus de 640 px.
-									className="h-10 sm:h-8"
-									onClick={() =>
-										onChange({ pickupDate, durationDays: duration })
-									}
-								>
-									{rentalDurationLabel(duration)}
-									{reason && (
-										<LockIcon className="size-3.5" aria-hidden="true" />
-									)}
-									{reason && <span className="sr-only"> — {reason}</span>}
-								</Button>
-							);
-						})}
+
+				{/* Date de retour */}
+				{returnDate && (
+					<div className="space-y-1 text-sm">
+						<p className="font-semibold">Date de retour prévue</p>
+						<div className="flex items-center h-10 px-3 border rounded-lg bg-gray-50 text-[var(--sea-ink-soft)]">
+							{formatLongDate(returnDate)}
+						</div>
 					</div>
 				)}
 			</div>
 
-			{hint ? (
+			{hint && (
 				<p className="mt-3 text-sm text-[var(--sea-ink-soft)]">{hint}</p>
-			) : null}
+			)}
 		</fieldset>
 	);
 }

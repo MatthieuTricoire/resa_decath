@@ -6,16 +6,16 @@ import {
 
 /**
  * Le 11 avril 2026 est un samedi, le 12 un dimanche, le 13 un lundi, le 10 un
- * vendredi. Toute la règle tient sur ces jours : le magasin ouvre du lundi au
- * samedi, le dimanche seulement s'il a été ouvert.
+ * vendredi. Toute la règle tient sur ces jours : chaque jour est ouvert ou fermé
+ * selon la configuration de l'admin.
  */
 const VENDREDI = "2026-04-10";
 const SAMEDI = "2026-04-11";
 const DIMANCHE = "2026-04-12";
 const LUNDI = "2026-04-13";
 
-const FERME = { sundayOpen: false };
-const OUVERT = { sundayOpen: true };
+const HORS_DIMANCHE = { openDays: [1, 2, 3, 4, 5, 6] };
+const TOUS_LES_JOURS = { openDays: [0, 1, 2, 3, 4, 5, 6] };
 const TOUTES_DUREES = [1, 2, 3, 7];
 
 const options = (...durations: number[]) =>
@@ -32,7 +32,7 @@ describe("resolveCheckoutWindow", () => {
 			pickupDate: SAMEDI,
 			requestedDuration: 1,
 			durations: TOUTES_DUREES,
-			settings: FERME,
+			settings: HORS_DIMANCHE,
 		});
 		// 1 jour = un retrait le samedi, rendu le même jour.
 		expect(window).toEqual({
@@ -47,7 +47,7 @@ describe("resolveCheckoutWindow", () => {
 			pickupDate: SAMEDI,
 			requestedDuration: 3,
 			durations: TOUTES_DUREES,
-			settings: FERME,
+			settings: HORS_DIMANCHE,
 		});
 		expect(window?.returnDate).toBe(LUNDI);
 		expect(window?.durationDays).toBe(3);
@@ -61,7 +61,7 @@ describe("resolveCheckoutWindow", () => {
 			pickupDate: VENDREDI,
 			requestedDuration: 3,
 			durations: TOUTES_DUREES,
-			settings: FERME,
+			settings: HORS_DIMANCHE,
 		});
 		expect(window).toEqual({
 			pickupDate: VENDREDI,
@@ -76,7 +76,7 @@ describe("resolveCheckoutWindow", () => {
 			pickupDate: SAMEDI,
 			requestedDuration: 2,
 			durations: [2],
-			settings: FERME,
+			settings: HORS_DIMANCHE,
 		});
 		expect(window).toBeNull();
 	});
@@ -86,7 +86,7 @@ describe("resolveCheckoutWindow", () => {
 			pickupDate: VENDREDI,
 			requestedDuration: 3,
 			durations: TOUTES_DUREES,
-			settings: OUVERT,
+			settings: TOUS_LES_JOURS,
 		});
 		expect(window?.durationDays).toBe(3);
 		expect(window?.returnDate).toBe(DIMANCHE);
@@ -98,7 +98,7 @@ describe("resolveCheckoutWindow", () => {
 				pickupDate: SAMEDI,
 				requestedDuration: null,
 				durations: TOUTES_DUREES,
-				settings: FERME,
+				settings: HORS_DIMANCHE,
 			}),
 		).toBeNull();
 	});
@@ -119,7 +119,7 @@ describe("blockedCheckoutDurations", () => {
 			blockedCheckoutDurations({
 				pickupDate: null,
 				durations: TOUTES_DUREES,
-				settings: FERME,
+				settings: HORS_DIMANCHE,
 			}),
 		).toEqual([]);
 	});
@@ -137,7 +137,7 @@ describe("blockedCheckoutDurations", () => {
 		const blocked = blockedCheckoutDurations({
 			pickupDate: SAMEDI,
 			durations: TOUTES_DUREES,
-			settings: FERME,
+			settings: HORS_DIMANCHE,
 		});
 		// Samedi : +1 samedi, +2 dimanche (bloqué), +3 lundi, +7 samedi.
 		expect(blocked.map((block) => block.duration)).toEqual([2]);
@@ -149,7 +149,7 @@ describe("blockedCheckoutDurations", () => {
 			blockedCheckoutDurations({
 				pickupDate: SAMEDI,
 				durations: TOUTES_DUREES,
-				settings: OUVERT,
+				settings: TOUS_LES_JOURS,
 			}),
 		).toEqual([]);
 	});
@@ -158,7 +158,7 @@ describe("blockedCheckoutDurations", () => {
 		const blocked = blockedCheckoutDurations({
 			pickupDate: SAMEDI,
 			durations: TOUTES_DUREES,
-			settings: FERME,
+			settings: HORS_DIMANCHE,
 			// Ce matériel ne vend que 1 et 7 jours.
 			priceOptions: options(1, 7),
 		});
@@ -171,7 +171,7 @@ describe("blockedCheckoutDurations", () => {
 		const blocked = blockedCheckoutDurations({
 			pickupDate: SAMEDI,
 			durations: TOUTES_DUREES,
-			settings: FERME,
+			settings: HORS_DIMANCHE,
 			priceOptions: options(1, 2, 3, 7),
 			minDuration: 2,
 		});
@@ -185,7 +185,7 @@ describe("blockedCheckoutDurations", () => {
 		const blocked = blockedCheckoutDurations({
 			pickupDate: SAMEDI,
 			durations: TOUTES_DUREES,
-			settings: FERME,
+			settings: HORS_DIMANCHE,
 			priceOptions: options(1, 3),
 		});
 		// 3 jours est bien vendu : seul 7 jours est refusé pour un motif tarifaire.
@@ -199,7 +199,7 @@ describe("blockedCheckoutDurations", () => {
 		const blocked = blockedCheckoutDurations({
 			pickupDate: SAMEDI,
 			durations: TOUTES_DUREES,
-			settings: FERME,
+			settings: HORS_DIMANCHE,
 			priceOptions: [
 				{ id: "opt-3", duration: 3, label: "3j", price: "n'importe quoi" },
 			],

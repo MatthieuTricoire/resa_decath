@@ -13,8 +13,8 @@ import {
 
 /**
  * Rappel des dates utilisées : le 12 avril 2026 est un dimanche, le 11 un
- * samedi, le 13 un lundi. Toute la règle tient sur ces trois jours : le magasin
- * ouvre du lundi au samedi, et le dimanche seulement s'il a été ouvert.
+ * samedi, le 13 un lundi. Toute la règle tient sur ces trois jours : chaque jour
+ * est ouvert ou fermé selon la configuration de l'admin, sans jour réservé.
  */
 const SAMEDI = "2026-04-11";
 const DIMANCHE = "2026-04-12";
@@ -22,8 +22,17 @@ const LUNDI = "2026-04-13";
 const VENDREDI = "2026-04-10";
 const MERCREDI = "2026-04-15";
 
-const FERME = { sundayOpen: false };
-const OUVERT = { sundayOpen: true };
+/** Semaine courante du magasin : ouvert du lundi au samedi. */
+const HORS_DIMANCHE = { openDays: [1, 2, 3, 4, 5, 6] };
+/** Semaine de forte saison : le dimanche s'ajoute aux six autres jours. */
+const TOUS_LES_JOURS = { openDays: [0, 1, 2, 3, 4, 5, 6] };
+/**
+ * Un jour de semaine fermé, pour prouver qu'aucun jour n'est privilégié : la
+ * règle ne doit pas être « dimanche » mais « jour absent de la liste ».
+ */
+const SANS_LUNDI = { openDays: [0, 2, 3, 4, 5, 6] };
+/** Magasin fermé toute la semaine, l'état le plus restrictif. */
+const TOUT_FERME = { openDays: [] };
 
 describe("dayOfWeekFromDateKey", () => {
 	it("nomme le jour de la semaine, 0 = dimanche", () => {
@@ -40,23 +49,40 @@ describe("dayOfWeekFromDateKey", () => {
 });
 
 describe("isOpenDay", () => {
-	it("ferme le dimanche par défaut", () => {
-		expect(isOpenDay(DIMANCHE, FERME)).toBe(false);
+	it("ferme le dimanche absent de la configuration", () => {
+		expect(isOpenDay(DIMANCHE, HORS_DIMANCHE)).toBe(false);
 	});
 
-	it("ouvre tous les autres jours, même sans réglage", () => {
+	it("ouvre les jours présents dans la configuration", () => {
 		for (const day of [VENDREDI, SAMEDI, LUNDI, MERCREDI]) {
-			expect(isOpenDay(day, FERME)).toBe(true);
+			expect(isOpenDay(day, HORS_DIMANCHE)).toBe(true);
 		}
 	});
 
 	it("ouvre le dimanche quand l'admin l'a autorisé", () => {
-		expect(isOpenDay(DIMANCHE, OUVERT)).toBe(true);
-		expect(isOpenDay(LUNDI, OUVERT)).toBe(true);
+		expect(isOpenDay(DIMANCHE, TOUS_LES_JOURS)).toBe(true);
+		expect(isOpenDay(LUNDI, TOUS_LES_JOURS)).toBe(true);
+	});
+
+	/**
+	 * La règle ne doit pas être « dimanche » mais « jour ouvert » : un jour de
+	 * semaine fermé l'est aussi. C'est ce test qui distingue une configuration
+	 * hebdomadaire d'un simple interrupteur dominical.
+	 */
+	it("ferme un jour de semaine dès qu'il n'est pas dans la liste", () => {
+		expect(isOpenDay(LUNDI, SANS_LUNDI)).toBe(false);
+		expect(isOpenDay(MERCREDI, SANS_LUNDI)).toBe(true);
+		expect(isOpenDay(DIMANCHE, SANS_LUNDI)).toBe(true);
+	});
+
+	it("ferme tout quand aucun jour n'est ouvert", () => {
+		for (const day of [DIMANCHE, SAMEDI, LUNDI, MERCREDI]) {
+			expect(isOpenDay(day, TOUT_FERME)).toBe(false);
+		}
 	});
 
 	it("traite une date invalide comme fermée", () => {
-		expect(isOpenDay("2026-02-30", OUVERT)).toBe(false);
+		expect(isOpenDay("2026-02-30", TOUS_LES_JOURS)).toBe(false);
 	});
 });
 
@@ -78,7 +104,7 @@ describe("durationIsBookable", () => {
 			durationIsBookable({
 				pickupDate: SAMEDI,
 				durationDays: 2,
-				settings: FERME,
+				settings: HORS_DIMANCHE,
 			}),
 		).toBe(false);
 	});
@@ -88,7 +114,7 @@ describe("durationIsBookable", () => {
 			durationIsBookable({
 				pickupDate: SAMEDI,
 				durationDays: 2,
-				settings: OUVERT,
+				settings: TOUS_LES_JOURS,
 			}),
 		).toBe(true);
 	});
@@ -103,7 +129,7 @@ describe("durationIsBookable", () => {
 			durationIsBookable({
 				pickupDate: SAMEDI,
 				durationDays: 3,
-				settings: FERME,
+				settings: HORS_DIMANCHE,
 			}),
 		).toBe(true);
 	});
@@ -113,14 +139,14 @@ describe("durationIsBookable", () => {
 			durationIsBookable({
 				pickupDate: DIMANCHE,
 				durationDays: 1,
-				settings: FERME,
+				settings: HORS_DIMANCHE,
 			}),
 		).toBe(false);
 		expect(
 			durationIsBookable({
 				pickupDate: DIMANCHE,
 				durationDays: 1,
-				settings: OUVERT,
+				settings: TOUS_LES_JOURS,
 			}),
 		).toBe(true);
 	});
@@ -132,7 +158,7 @@ describe("bookableDurations", () => {
 			bookableDurations({
 				pickupDate: SAMEDI,
 				durations: [1, 2, 3, 7],
-				settings: FERME,
+				settings: HORS_DIMANCHE,
 			}),
 		).toEqual([1, 3, 7]);
 	});
@@ -142,7 +168,7 @@ describe("bookableDurations", () => {
 			bookableDurations({
 				pickupDate: SAMEDI,
 				durations: [1, 2, 3, 7],
-				settings: OUVERT,
+				settings: TOUS_LES_JOURS,
 			}),
 		).toEqual([1, 2, 3, 7]);
 	});
@@ -152,7 +178,7 @@ describe("bookableDurations", () => {
 			bookableDurations({
 				pickupDate: DIMANCHE,
 				durations: [1, 2, 3],
-				settings: FERME,
+				settings: HORS_DIMANCHE,
 			}),
 		).toEqual([]);
 	});
@@ -165,7 +191,7 @@ describe("resolveDuration", () => {
 				pickupDate: SAMEDI,
 				requestedDuration: 3,
 				durations: [1, 2, 3, 7],
-				settings: FERME,
+				settings: HORS_DIMANCHE,
 			}),
 		).toBe(3);
 	});
@@ -176,7 +202,7 @@ describe("resolveDuration", () => {
 				pickupDate: SAMEDI,
 				requestedDuration: 2,
 				durations: [1, 2, 3],
-				settings: FERME,
+				settings: HORS_DIMANCHE,
 			}),
 		).toBe(3);
 	});
@@ -187,7 +213,7 @@ describe("resolveDuration", () => {
 				pickupDate: SAMEDI,
 				requestedDuration: 7,
 				durations: [1, 2, 3],
-				settings: FERME,
+				settings: HORS_DIMANCHE,
 			}),
 		).toBe(3);
 	});
@@ -198,7 +224,7 @@ describe("resolveDuration", () => {
 				pickupDate: DIMANCHE,
 				requestedDuration: 2,
 				durations: [1, 2, 3],
-				settings: FERME,
+				settings: HORS_DIMANCHE,
 			}),
 		).toBeNull();
 	});
@@ -209,7 +235,7 @@ describe("resolveDuration", () => {
 				pickupDate: SAMEDI,
 				requestedDuration: 2,
 				durations: [1, 2, 3],
-				settings: OUVERT,
+				settings: TOUS_LES_JOURS,
 			}),
 		).toBe(2);
 	});
@@ -221,7 +247,7 @@ describe("closedEndpoints", () => {
 			closedEndpoints({
 				pickupDate: SAMEDI,
 				returnDate: LUNDI,
-				settings: FERME,
+				settings: HORS_DIMANCHE,
 			}),
 		).toEqual([]);
 	});
@@ -231,7 +257,7 @@ describe("closedEndpoints", () => {
 			closedEndpoints({
 				pickupDate: SAMEDI,
 				returnDate: DIMANCHE,
-				settings: FERME,
+				settings: HORS_DIMANCHE,
 			}),
 		).toEqual([{ role: "return", dateKey: DIMANCHE }]);
 	});
@@ -241,7 +267,7 @@ describe("closedEndpoints", () => {
 			closedEndpoints({
 				pickupDate: DIMANCHE,
 				returnDate: DIMANCHE,
-				settings: FERME,
+				settings: HORS_DIMANCHE,
 			}),
 		).toEqual([
 			{ role: "pickup", dateKey: DIMANCHE },
@@ -254,7 +280,7 @@ describe("closedEndpoints", () => {
 			closedEndpoints({
 				pickupDate: DIMANCHE,
 				returnDate: LUNDI,
-				settings: OUVERT,
+				settings: TOUS_LES_JOURS,
 			}),
 		).toEqual([]);
 	});
@@ -285,7 +311,7 @@ describe("closedReturnDurations", () => {
 		const blocked = closedReturnDurations({
 			pickupDate: SAMEDI,
 			durations: [1, 2],
-			settings: OUVERT,
+			settings: TOUS_LES_JOURS,
 		});
 		expect(blocked).toEqual([]);
 	});
@@ -294,7 +320,7 @@ describe("closedReturnDurations", () => {
 		const blocked = closedReturnDurations({
 			pickupDate: SAMEDI,
 			durations: [1, 2, 3, 7],
-			settings: FERME,
+			settings: HORS_DIMANCHE,
 		});
 		// Samedi + 1 = samedi, + 2 = dimanche (bloqué), + 3 = lundi, + 7 = samedi.
 		expect(blocked.map((block) => block.duration)).toEqual([2]);
@@ -306,7 +332,7 @@ describe("closedReturnDurations", () => {
 		const blocked = closedReturnDurations({
 			pickupDate: SAMEDI,
 			durations: [3],
-			settings: FERME,
+			settings: HORS_DIMANCHE,
 		});
 		expect(blocked).toEqual([]);
 	});
@@ -315,7 +341,7 @@ describe("closedReturnDurations", () => {
 		const blocked = closedReturnDurations({
 			pickupDate: SAMEDI,
 			durations: [0],
-			settings: FERME,
+			settings: HORS_DIMANCHE,
 		});
 		expect(blocked).toEqual([]);
 	});

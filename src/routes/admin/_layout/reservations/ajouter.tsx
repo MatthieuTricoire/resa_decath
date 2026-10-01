@@ -54,8 +54,9 @@ import {
 	getAvailableStock,
 } from "#/features/reservations/queries";
 import { queryKeys as reservationQueryKeys } from "#/features/reservations/query-keys";
-import { getRentalSettings } from "#/features/settings/queries";
-import { queryKeys as settingsQueryKeys } from "#/features/settings/query-keys";
+import { getStoreHours } from "#/features/store-hours/queries";
+import { storeHoursKeys } from "#/features/store-hours/query-keys";
+import { openDaysFromHours } from "#/features/store-hours/types";
 import {
 	type CreateUserInput,
 	createUser,
@@ -197,11 +198,13 @@ function RouteComponent() {
 		return getReservationDurationDays(pickup, retour);
 	}, [pickupDate, returnDate]);
 
-	// Mêmes règles que le site public : la règle du dimanche vient des réglages,
-	// les durées affichées de la table de référence des durées.
-	const { data: rentalSettings } = useQuery({
-		queryKey: settingsQueryKeys.settings.all,
-		queryFn: () => getRentalSettings(),
+	// Mêmes règles que le site public : les jours d'ouverture viennent de
+	// `store_hours`, les durées affichées de la table de référence des durées.
+	// Tant que les horaires chargent, aucune date n'est exclue — plutôt que d'en
+	// exclure de mauvaises sur la base d'une information pas encore arrivée.
+	const { data: storeHours } = useQuery({
+		queryKey: storeHoursKeys.all,
+		queryFn: () => getStoreHours(),
 		staleTime: 5 * 60 * 1000,
 	});
 	const { data: rentalDurations, isPending: durationsPending } = useQuery({
@@ -213,8 +216,8 @@ function RouteComponent() {
 	// bloquées se recalculerait à chaque rendu.
 	const openingDays = useMemo(
 		() =>
-			rentalSettings ? { sundayOpen: rentalSettings.sundayOpen } : undefined,
-		[rentalSettings],
+			storeHours ? { openDays: openDaysFromHours(storeHours) } : undefined,
+		[storeHours],
 	);
 	const durationOptions = useMemo(
 		() => (rentalDurations ?? []).map((row) => row.days),

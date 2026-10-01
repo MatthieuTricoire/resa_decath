@@ -12,14 +12,23 @@ import { RentalDurationsForm } from "#/features/durees/rental-durations-form";
 import { getRentalSettings } from "#/features/settings/queries";
 import { queryKeys as settingsQueryKeys } from "#/features/settings/query-keys";
 import { RentalSettingsForm } from "#/features/settings/rental-settings-form";
+import { getStoreHours } from "#/features/store-hours/queries";
+import { storeHoursKeys } from "#/features/store-hours/query-keys";
+import { StoreHoursForm } from "#/features/store-hours/store-hours-form";
 import { Route as AdminLayoutRoute } from "../_layout";
 
 export const Route = createFileRoute("/admin/_layout/reglages")({
 	loader: async ({ context: { queryClient } }) => {
-		const [settings] = await Promise.all([
+		const [settings, hours] = await Promise.all([
 			queryClient.fetchQuery({
 				queryKey: settingsQueryKeys.settings.all,
 				queryFn: () => getRentalSettings(),
+			}),
+			// Les horaires décident d'un retrait ou d'un retour : ils sont lus avec
+			// les réglages, pas après, pour que la page s'affiche en un aller-retour.
+			queryClient.fetchQuery({
+				queryKey: storeHoursKeys.all,
+				queryFn: () => getStoreHours(),
 			}),
 			queryClient.prefetchQuery({
 				queryKey: durationQueryKeys.durees.all,
@@ -34,13 +43,13 @@ export const Route = createFileRoute("/admin/_layout/reglages")({
 				queryFn: () => getAttributeDefinitions(),
 			}),
 		]);
-		return { settings };
+		return { settings, hours };
 	},
 	component: RouteComponent,
 });
 
 function RouteComponent() {
-	const { settings } = Route.useLoaderData();
+	const { settings, hours } = Route.useLoaderData();
 	const { user } = AdminLayoutRoute.useLoaderData();
 	const isAdmin = user.role === "admin";
 
@@ -54,10 +63,12 @@ function RouteComponent() {
 							Paramètres de l’application
 						</h2>
 						<p className="text-sm text-muted-foreground">
-							Centralisez les règles de location, les durées et la tarification
-							de la plateforme.
+							Centralisez les règles de location, les horaires, les durées et la
+							tarification de la plateforme.
 						</p>
 					</div>
+
+					<StoreHoursForm hours={hours} />
 
 					<RentalSettingsForm settings={settings} />
 

@@ -31,6 +31,8 @@ import {
 	quoteVariantForDuration,
 } from "#/features/reservations/pricing";
 import { getRentalSettingsRecord } from "#/features/settings/queries";
+import { getStoreHoursRecord } from "#/features/store-hours/queries";
+import { openDaysFromHours } from "#/features/store-hours/types";
 import { toParisDateKey } from "#/lib/dates";
 import { generateReservationReference } from "#/lib/reservation-reference";
 
@@ -103,7 +105,7 @@ export const reserveEquipment = createServerOnlyFn(
 		const requestedVariantIds = [
 			...new Set(input.items.map((item) => item.variantId)),
 		];
-		const [settings, variants] = await Promise.all([
+		const [settings, variants, storeHours] = await Promise.all([
 			getRentalSettingsRecord(),
 			db
 				.select({
@@ -122,6 +124,7 @@ export const reserveEquipment = createServerOnlyFn(
 					eq(schema.itemVariants.itemId, schema.items.id),
 				)
 				.where(inArray(schema.itemVariants.id, requestedVariantIds)),
+			getStoreHoursRecord(),
 		]);
 		if (variants.length !== requestedVariantIds.length) {
 			throw new Error("Une des variantes sélectionnées est introuvable");
@@ -138,7 +141,7 @@ export const reserveEquipment = createServerOnlyFn(
 		const closed = closedEndpoints({
 			pickupDate: toParisDateKey(pickup),
 			returnDate: toParisDateKey(returnD),
-			settings,
+			settings: { openDays: openDaysFromHours(storeHours) },
 		});
 		if (closed.length > 0) {
 			throw new Error(closedEndpointMessage(closed[0]));

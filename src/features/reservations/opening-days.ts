@@ -8,14 +8,15 @@ import {
  * Jours d'ouverture du magasin, seul moyen de savoir si une date peut porter un
  * retrait ou un retour.
  *
- * Le magasin est ouvert du lundi au samedi ; le dimanche est fermé, sauf si
- * l'admin l'ouvre explicitement depuis les réglages (forte saison). C'est le
- * **seul** jour dont l'ouverture varie : tous les autres sont ouverts, sans
- * exception ni horaire (l'application raisonne en journées entières, jamais en
- * heures).
+ * La semaine est pilotée par l'admin dans `store_hours` : chaque jour est ouvert
+ * ou fermé, et seul un jour ouvert accepte un retrait ou un retour. Ce module ne
+ * connaît que l'ensemble des jours ouverts, pas leurs horaires — l'application
+ * raisonne en journées entières, jamais en heures. L'intérêt d'une seule liste
+ * est qu'elle ne peut pas diverger : ajouter un jour ouvert ici, c'est ajouter
+ * un jour réservable partout, calendriers compris.
  *
  * Deux bornes seulement sont concernées : le **retrait** et le **retour**. Les
- * jours situés entre les deux n'ont aucune importance — avec le dimanche fermé,
+ * jours situés entre les deux n'ont aucune importance — avec un dimanche fermé,
  * une location du samedi au lundi reste parfaitement possible, et c'est le cas
  * d'usage principal du week-end. Le matériel reste chez le client pendant le
  * dimanche, seul le comptoir est fermé.
@@ -25,19 +26,23 @@ import {
  * publics et l'affichage des horaires.
  */
 
-const SUNDAY = 0;
-
-export type OpeningDaysSettings = {
-	/** Ouverture exceptionnelle du dimanche. */
-	sundayOpen: boolean;
-};
-
 /** Rôle d'une date dans la fenêtre de location, pour un message d'erreur. */
 export type WindowEndpoint = "pickup" | "return";
 
 export type ClosedEndpoint = {
 	role: WindowEndpoint;
 	dateKey: string;
+};
+
+export type OpeningDaysSettings = {
+	/**
+	 * Jours d'ouverture, `0` = dimanche … `6` = samedi.
+	 *
+	 * Vide signifie que le magasin est fermé toute la semaine : c'est le seul
+	 * état qui mérite une refusal, et il n'a rien d'exceptionnel — un
+	 * `rental_settings` vide produit exactement la même liste.
+	 */
+	openDays: readonly number[];
 };
 
 /**
@@ -59,7 +64,7 @@ export function isOpenDay(
 ): boolean {
 	const day = dayOfWeekFromDateKey(dateKey);
 	if (day === null) return false;
-	return day !== SUNDAY || settings.sundayOpen;
+	return settings.openDays.includes(day);
 }
 
 /** Date de retour produite par une durée, bornes incluses. */

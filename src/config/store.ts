@@ -2,19 +2,15 @@
  * Données du magasin : une source unique pour le header, le footer, les pages
  * NAP, le JSON-LD `Store` et le pied des emails transactionnels.
  *
- * Seul le dimanche a une ouverture variable : elle vient des réglages en base
- * et se lit via `getRentalSettingsRecord`. Les fonctions d'affichage la
- * reçoivent donc en paramètre plutôt que de la lire ici, ce qui les garde
- * utilisables aussi bien dans un composant que dans une fonction de SEO.
+ * Les **horaires d'ouverture** ne sont pas ici : ils sont la seule chose que
+ * l'admin pilote au quotidien, et les garder dans une constante aurait garanti
+ * que le footer, la page ville et le JSON-LD finissent par afficher trois
+ * versions d'horaires différentes. Ils vivent dans `store_hours` et sont lus par
+ * `features/store-hours`, dont les fonctions d'affichage vivent ci-dessous pour
+ * rester utilisables aussi bien dans un composant que dans une fonction de SEO.
  */
 
-export type StoreOpeningHour = {
-	/** 0 = dimanche … 6 = samedi */
-	day: number;
-	label: string;
-	opens: string;
-	closes: string;
-};
+import type { StoreHours } from "#/features/store-hours/types";
 
 export const store = {
 	name: "Décathlon Mountain",
@@ -27,18 +23,9 @@ export const store = {
 	/** Format E.164, requis pour `tel:` et schema.org */
 	phoneHref: "tel:+33554200140",
 	/** Retrait possible dès l'ouverture, retour avant la fermeture. */
-	pickupWindow: "dès l’ouverture (9h)",
-	returnWindow: "avant la fermeture (19h)",
+	pickupWindow: "dès l’ouverture",
+	returnWindow: "avant la fermeture",
 	paymentNotice: "Paiement et retrait en magasin, au comptoir location.",
-	openingHours: [
-		{ day: 1, label: "Lundi", opens: "09:00", closes: "19:00" },
-		{ day: 2, label: "Mardi", opens: "09:00", closes: "19:00" },
-		{ day: 3, label: "Mercredi", opens: "09:00", closes: "19:00" },
-		{ day: 4, label: "Jeudi", opens: "09:00", closes: "19:00" },
-		{ day: 5, label: "Vendredi", opens: "09:00", closes: "19:00" },
-		{ day: 6, label: "Samedi", opens: "09:00", closes: "19:00" },
-		{ day: 0, label: "Dimanche", opens: "", closes: "" },
-	] satisfies StoreOpeningHour[],
 	defaultTitle: "Location de matériel de montagne à Laruns",
 	defaultDescription:
 		"Réservez en ligne votre matériel de montagne à Décathlon Mountain Laruns : escalade, randonnée, bivouac et via ferrata. Retrait et paiement en magasin.",
@@ -52,22 +39,17 @@ export const storeCanonicalPath = `/location-materiel-${store.citySlug}`;
 export const storeDefaultTitle = store.defaultTitle;
 export const storeDefaultDescription = store.defaultDescription;
 
-/** Horaires d'un jour d'ouverture : 09h–19h comme les six autres jours. */
-const DEFAULT_OPENING_HOUR = { opens: "09:00", closes: "19:00" } as const;
-
 /**
- * Horaires réels, le dimanche étant la seule ouverture variable : elle se règle
- * depuis l'admin (forte saison) et ne peut donc pas rester figée dans la config.
- * Les horaires de tous les autres jours sont eux constants.
+ * Jours ouverts au format schema.org.
+ *
+ * Un jour donne autant d'entrées qu'il a de créneaux : c'est la seule façon
+ * correcte de publier une fermeture de midi, l'ancienne version n'en annonçait
+ * qu'un seul par jour et laissait donc la pause de déjeuner invisible. Un jour
+ * fermé n'en produit aucune — même s'il porte des horaires en base, qui ne servent
+ * qu'à le rouvrir vite — ce qui laisse Google lire une fermeture plutôt qu'une
+ * journée à horaires indéterminés.
  */
-export function storeOpeningHours(sundayOpen: boolean): StoreOpeningHour[] {
-	return store.openingHours.map((hour) =>
-		hour.day === 0 && sundayOpen ? { ...hour, ...DEFAULT_OPENING_HOUR } : hour,
-	);
-}
-
-/** Horaires au format schema.org (aucune entrée pour le jour de fermeture). */
-export function getStoreOpeningHoursSpecification(sundayOpen: boolean): Array<{
+export function getStoreOpeningHoursSpecification(hours: StoreHours): Array<{
 	"@type": "openingHoursSpecification";
 	dayOfWeek: string;
 	opens: string;
@@ -83,20 +65,33 @@ export function getStoreOpeningHoursSpecification(sundayOpen: boolean): Array<{
 		"Saturday",
 	];
 
-	return storeOpeningHours(sundayOpen)
-		.filter((hour) => hour.opens && hour.closes)
-		.map((hour) => ({
-			"@type": "openingHoursSpecification" as const,
-			dayOfWeek: `https://schema.org/${days[hour.day]}`,
-			opens: hour.opens,
-			closes: hour.closes,
-		}));
+	return hours.flatMap((day) =>
+		day.isOpen
+			? day.slots.map((slot) => ({
+					"@type": "openingHoursSpecification" as const,
+					dayOfWeek: `https://schema.org/${days[day.day]}`,
+					opens: slot.opens,
+					closes: slot.closes,
+				}))
+			: [],
+	);
 }
 
-/** « Lundi 09:00 – 19:00 · … · Dimanche 09:00 – 19:00 » pour le pied de page. */
-export function storeOpeningHoursText(sundayOpen: boolean): string {
-	return storeOpeningHours(sundayOpen)
-		.filter((hour) => hour.opens && hour.closes)
-		.map((hour) => `${hour.label} ${hour.opens} – ${hour.closes}`)
-		.join(" · ");
+/**
+ * Les horaires prêts à afficher, un jour par ligne.
+ *
+ * Les jours fermés sont conservés avec le mot « fermé » plutôt que retirés : un
+ * tableau qui saute le dimanche laisse croire que l'info a été oubliée, alors
+ * qu'elle est la première chose qu'un client veut vérifier avant de venir.
+ */
+export function storeOpeningHoursText(hours: StoreHours): Array<{
+	day: string;
+	hours: string;
+}> {
+	return hours.map((day) => ({
+		day: day.label,
+		hours: day.isOpen
+			? day.slots.map((slot) => `${slot.opens} – ${slot.closes}`).join(" · ")
+			: "fermé",
+	}));
 }

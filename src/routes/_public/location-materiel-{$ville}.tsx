@@ -23,6 +23,10 @@ import {
 	getPublicRentalDurations,
 	getPublicStoreSchedule,
 } from "#/features/equipements/public-queries";
+import {
+	DEFAULT_STORE_HOURS,
+	type StoreHours,
+} from "#/features/store-hours/types";
 import { PUBLIC_PAGE_CACHE_CONTROL } from "#/lib/cache-control";
 import {
 	buildPageHead,
@@ -81,11 +85,11 @@ export const Route = createFileRoute("/_public/location-materiel-{$ville}")({
 				queryFn: () => getPublicRentalDurations(),
 			}),
 		]);
-		const { sundayOpen } = await queryClient.ensureQueryData({
+		const { hours, openDays } = await queryClient.ensureQueryData({
 			queryKey: ["public", "store-schedule"],
 			queryFn: () => getPublicStoreSchedule(),
 		});
-		return { sundayOpen };
+		return { hours, openDays };
 	},
 	headers: () => ({ "Cache-Control": PUBLIC_PAGE_CACHE_CONTROL }),
 	head: ({ loaderData }) =>
@@ -98,10 +102,12 @@ export const Route = createFileRoute("/_public/location-materiel-{$ville}")({
 			},
 			jsonLd: [
 				// `head` peut s'exécuter avant le loader sur un `notFound` : sans
-				// horaire chargé, le magasin est ouvert du lundi au samedi, comme
-				// le décrit sa configuration.
+				// horaires chargés, on publie la semaine de référence, qui est
+				// aussi le seed et ce que l'admin verra par défaut.
 				storeJsonLd(
-					getStoreOpeningHoursSpecification(!!loaderData?.sundayOpen),
+					getStoreOpeningHoursSpecification(
+						loaderData?.hours ?? DEFAULT_STORE_HOURS,
+					),
 				),
 				faqPageJsonLd(HOME_FAQ),
 			],
@@ -134,7 +140,7 @@ function HomePage() {
 	].filter(Boolean);
 	// Le loader a déjà rempli le cache pour le sélecteur de dates : on relit la
 	// même clé plutôt que d'en référencer une seconde fois le serveur.
-	const { sundayOpen } = Route.useLoaderData();
+	const { hours } = Route.useLoaderData();
 
 	return (
 		<>
@@ -144,7 +150,7 @@ function HomePage() {
 					<h1 className="display-title text-4xl leading-tight font-semibold sm:text-5xl">
 						Réservez votre matériel à {store.city}, sans passer par la caisse
 					</h1>
-					<p className="max-w-xl text-lg text-(--sea-ink-soft)">
+					<p className="max-w-xl text-lg text-[var(--sea-ink-soft)]">
 						Escalade, randonnée, bivouac et via ferrata : choisissez vos dates,
 						réservez en ligne et retirez votre équipement au comptoir location.
 					</p>
@@ -162,13 +168,12 @@ function HomePage() {
 							</a>
 						</Button>
 					</div>
-					<p className="text-sm text-(--sea-ink-soft)">{store.paymentNotice}</p>
+					<p className="text-sm text-[var(--sea-ink-soft)]">
+						{store.paymentNotice}
+					</p>
 				</div>
 
-				<PracticalInfoCard
-					sundayOpen={sundayOpen}
-					className="hidden lg:block"
-				/>
+				<PracticalInfoCard hours={hours} className="hidden lg:block" />
 			</section>
 
 			{/* Étape 1 : cible du CTA « Louer du matériel ». Le décalage de scroll
@@ -325,7 +330,7 @@ function HomePage() {
 			    hero reste visible (`hidden lg:block`), l'une des deux étant
 			    toujours hors de l'arbre d'accessibilité. */}
 			<section className="page-wrap py-10 lg:hidden">
-				<PracticalInfoCard sundayOpen={sundayOpen} />
+				<PracticalInfoCard hours={hours} />
 			</section>
 		</>
 	);
@@ -333,10 +338,10 @@ function HomePage() {
 
 /** Carte « Informations pratiques » : adresse, horaires, contrôle du matériel. */
 function PracticalInfoCard({
-	sundayOpen,
+	hours,
 	className,
 }: {
-	sundayOpen: boolean;
+	hours: StoreHours;
 	className?: string;
 }) {
 	return (
@@ -354,8 +359,22 @@ function PracticalInfoCard({
 					<CalendarDays className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
 					<div>
 						<dt className="font-semibold">Horaires</dt>
-						<dd className="text-[var(--sea-ink-soft)]">
-							{storeOpeningHoursText(sundayOpen)}
+						{/* Une liste de définitions plutôt qu'un tableau : il n'y a pas
+							    d'en-tête de colonne, seulement des paires jour / horaires.
+							    Un tableau ferait annoncer aux lecteurs d'écran une grille de
+							    données qui n'existe pas. */}
+						<dd className="mt-1 text-[var(--sea-ink-soft)]">
+							<dl className="space-y-1">
+								{storeOpeningHoursText(hours).map((day) => (
+									<div
+										key={day.day}
+										className="flex justify-between gap-4 sm:justify-start sm:gap-3"
+									>
+										<dt className="w-24 shrink-0 font-medium">{day.day}</dt>
+										<dd>{day.hours}</dd>
+									</div>
+								))}
+							</dl>
 						</dd>
 					</div>
 				</div>
