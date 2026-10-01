@@ -30,7 +30,11 @@ import {
 	supportsDuration,
 } from "#/features/reservations/pricing";
 import { PUBLIC_PAGE_CACHE_CONTROL } from "#/lib/cache-control";
-import { earliestPickupDateInParis, rentalDurationLabel } from "#/lib/dates";
+import {
+	DEFAULT_LAST_SAME_DAY_PICKUP_HOUR,
+	earliestPickupDateInParis,
+	rentalDurationLabel,
+} from "#/lib/dates";
 import { breadcrumbJsonLd, buildPageHead, productJsonLd } from "#/lib/seo";
 import { cn } from "#/lib/utils";
 import {
@@ -237,9 +241,14 @@ function ProductPage() {
 	// La fenêtre est celle de toute la commande : on prévient avant de la
 	// changer sous les pieds d'un panier déjà rempli.
 	const switchDuration = (nextDuration: number) => {
-		// Date la plus proche servie côté public : aujourd'hui avant 15h, sinon
-		// demain — jamais une fenêtre du jour même une fois la coupure passée.
-		const pickup = pickupDate ?? earliestPickupDateInParis();
+		// Date la plus proche servie côté public : aujourd'hui avant la coupure,
+		// sinon demain — jamais une fenêtre du jour même une fois celle-ci passée.
+		const pickup =
+			pickupDate ??
+			earliestPickupDateInParis(
+				schedule.data?.lastSameDayPickupHour ??
+					DEFAULT_LAST_SAME_DAY_PICKUP_HOUR,
+			);
 		// Le repli peut décaler la durée demandée : l'avertir reste le bon
 		// comportement, l'ordre des articles est de toute façon recalculé.
 		if (cartCount > 0) {

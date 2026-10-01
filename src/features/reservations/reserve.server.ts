@@ -33,7 +33,7 @@ import {
 import { getRentalSettingsRecord } from "#/features/settings/queries";
 import { getStoreHoursRecord } from "#/features/store-hours/queries";
 import { openDaysFromHours } from "#/features/store-hours/types";
-import { toParisDateKey } from "#/lib/dates";
+import { earliestPickupDateInParis, toParisDateKey } from "#/lib/dates";
 import { generateReservationReference } from "#/lib/reservation-reference";
 
 /**
@@ -145,6 +145,24 @@ export const reserveEquipment = createServerOnlyFn(
 		});
 		if (closed.length > 0) {
 			throw new Error(closedEndpointMessage(closed[0]));
+		}
+
+		// Coupure du jour même : c'est le seul contrôle de `reserve` qui dépend
+		// d'une valeur modifiable par l'admin, il ne peut donc pas vivre dans le
+		// schéma Zod. Il est ici pour la même raison que les jours d'ouverture :
+		// un point de décision unique, que le calendrier public ne fait que
+		// refléter. Un panier restauré avant la coupure puis soumis après doit
+		// être refusé ici, sinon la fenêtre reviendrait d'un simple rechargement.
+		// La caisse backoffice s'en affranchit : elle saisit une réservation au
+		// comptoir, il n'y a plus de délai de préparation à respecter.
+		const sameDayCutoffRefused =
+			input.source === "WEB" &&
+			toParisDateKey(pickup) <
+				earliestPickupDateInParis(settings.lastSameDayPickupHour);
+		if (sameDayCutoffRefused) {
+			throw new Error(
+				"Trop tard pour un retrait le jour même : la location est possible à partir de demain.",
+			);
 		}
 
 		// Prix par durée : une seule requête pour toutes les variantes demandées.

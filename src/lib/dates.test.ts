@@ -3,6 +3,7 @@ import {
 	addDaysToDateKey,
 	compareDateKeys,
 	countRentalDays,
+	DEFAULT_LAST_SAME_DAY_PICKUP_HOUR,
 	dateKeyRangeFromDates,
 	dateKeyRangeToDates,
 	dateKeyToUtcNoon,
@@ -118,54 +119,54 @@ describe("isPastSameDayPickupCutoffInParis", () => {
 		// « en-GB », `hourCycle: "h23"` : 15h Paris est une borne, pas une heure
 		// locale arbitraire.
 		expect(
-			isPastSameDayPickupCutoffInParis(new Date("2026-07-01T12:30:00Z")),
+			isPastSameDayPickupCutoffInParis(15, new Date("2026-07-01T12:30:00Z")),
 		).toBe(false);
 	});
 
 	it("est faux avant 15h à Paris", () => {
 		// 14:30 en été (UTC+2), 14:59 en hiver (UTC+1).
 		expect(
-			isPastSameDayPickupCutoffInParis(new Date("2026-07-01T12:30:00Z")),
+			isPastSameDayPickupCutoffInParis(15, new Date("2026-07-01T12:30:00Z")),
 		).toBe(false);
 		expect(
-			isPastSameDayPickupCutoffInParis(new Date("2026-01-15T13:59:00Z")),
+			isPastSameDayPickupCutoffInParis(15, new Date("2026-01-15T13:59:00Z")),
 		).toBe(false);
 	});
 
 	it("est vrai à partir de 15h à Paris", () => {
 		// 15:00 pile (été et hiver), puis tard le soir.
 		expect(
-			isPastSameDayPickupCutoffInParis(new Date("2026-07-01T13:00:00Z")),
+			isPastSameDayPickupCutoffInParis(15, new Date("2026-07-01T13:00:00Z")),
 		).toBe(true);
 		expect(
-			isPastSameDayPickupCutoffInParis(new Date("2026-01-15T14:00:00Z")),
+			isPastSameDayPickupCutoffInParis(15, new Date("2026-01-15T14:00:00Z")),
 		).toBe(true);
 		expect(
-			isPastSameDayPickupCutoffInParis(new Date("2026-07-01T19:00:00Z")),
+			isPastSameDayPickupCutoffInParis(15, new Date("2026-07-01T19:00:00Z")),
 		).toBe(true);
 	});
 });
 
 describe("earliestPickupDateInParis", () => {
 	it("renvoie aujourd'hui avant la coupure", () => {
-		expect(earliestPickupDateInParis(new Date("2026-07-01T10:00:00Z"))).toBe(
-			"2026-07-01",
-		);
+		expect(
+			earliestPickupDateInParis(15, new Date("2026-07-01T10:00:00Z")),
+		).toBe("2026-07-01");
 	});
 
 	it("renvoie demain dès la coupure passée", () => {
-		expect(earliestPickupDateInParis(new Date("2026-07-01T13:00:00Z"))).toBe(
-			"2026-07-02",
-		);
-		expect(earliestPickupDateInParis(new Date("2026-01-15T23:30:00Z"))).toBe(
-			"2026-01-16",
-		);
+		expect(
+			earliestPickupDateInParis(15, new Date("2026-07-01T13:00:00Z")),
+		).toBe("2026-07-02");
+		expect(
+			earliestPickupDateInParis(15, new Date("2026-01-15T23:30:00Z")),
+		).toBe("2026-01-16");
 	});
 
 	it("repart du jour même juste après minuit", () => {
-		expect(earliestPickupDateInParis(new Date("2026-07-02T00:00:00Z"))).toBe(
-			"2026-07-02",
-		);
+		expect(
+			earliestPickupDateInParis(15, new Date("2026-07-02T00:00:00Z")),
+		).toBe("2026-07-02");
 	});
 });
 
@@ -224,5 +225,60 @@ describe("dateKeyRangeFromDates", () => {
 
 	it("renvoie des clés vides pour une plage absente", () => {
 		expect(dateKeyRangeFromDates({})).toEqual({ from: "", to: "" });
+	});
+});
+
+describe("coupure du jour même paramétrable", () => {
+	// 14:30 à Paris en été (UTC+2).
+	const quatorzeTrente = new Date("2026-07-01T12:30:00Z");
+
+	it("reporte la coupure quand l'admin la décale", () => {
+		// À 15h de coupure, 14h30 est encore réservable aujourd'hui.
+		expect(earliestPickupDateInParis(15, quatorzeTrente)).toBe("2026-07-01");
+		// À 14h de coupure, la même heure est trop tard : on décale d'un jour.
+		expect(earliestPickupDateInParis(14, quatorzeTrente)).toBe("2026-07-02");
+	});
+
+	it("suit l'heure de coupure, pas une constante", () => {
+		// Même moment, quatre réglages différents : une seule constante donnerait
+		// le même résultat pour les quatre.
+		const results = [12, 13, 14, 15].map((hour) =>
+			earliestPickupDateInParis(hour, quatorzeTrente),
+		);
+		expect(results).toEqual([
+			"2026-07-02",
+			"2026-07-02",
+			"2026-07-02",
+			"2026-07-01",
+		]);
+	});
+
+	it("accepte une coupure à 0 : le jour même devient interdit toute la journée", () => {
+		expect(earliestPickupDateInParis(0, quatorzeTrente)).toBe("2026-07-02");
+		// Même à 00h01, la journée est déjà perdue si la coupure est à 0.
+		expect(earliestPickupDateInParis(0, new Date("2026-07-01T00:30:00Z"))).toBe(
+			"2026-07-02",
+		);
+	});
+
+	it("replie sur la valeur par défaut si la coupure est hors bornes", () => {
+		// Une valeur illisible ne doit pas rendre la règle inopérante : NaN ferait
+		// échouer la comparaison et autoriserait toujours le jour même.
+		expect(earliestPickupDateInParis(Number.NaN, quatorzeTrente)).toBe(
+			earliestPickupDateInParis(
+				DEFAULT_LAST_SAME_DAY_PICKUP_HOUR,
+				quatorzeTrente,
+			),
+		);
+		expect(earliestPickupDateInParis(99, quatorzeTrente)).toBe(
+			earliestPickupDateInParis(23, quatorzeTrente),
+		);
+		expect(earliestPickupDateInParis(-5, quatorzeTrente)).toBe(
+			earliestPickupDateInParis(0, quatorzeTrente),
+		);
+	});
+
+	it("garde 15h comme valeur par défaut", () => {
+		expect(DEFAULT_LAST_SAME_DAY_PICKUP_HOUR).toBe(15);
 	});
 });

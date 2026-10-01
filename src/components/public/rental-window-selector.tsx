@@ -15,6 +15,7 @@ import {
 } from "#/features/reservations/opening-days";
 import {
 	countRentalDays,
+	DEFAULT_LAST_SAME_DAY_PICKUP_HOUR,
 	earliestPickupDateInParis,
 	rentalDurationLabel,
 	todayInParis,
@@ -65,10 +66,15 @@ export function RentalWindowSelector({
 
 	const durationDays =
 		pickupDate && returnDate ? countRentalDays(pickupDate, returnDate) : 0;
-	// Date de retrait la plus proche : aujourd'hui avant 15h, sinon demain. Elle
-	// borne le calendrier, sert de repli quand aucune date n'est choisie, et
+	// Date de retrait la plus proche : aujourd'hui avant la coupure, sinon demain.
+	// Elle borne le calendrier, sert de repli quand aucune date n'est choisie, et
 	// évite de repartir sur une fenêtre du jour même une fois la coupure passée.
-	const earliestPickupDate = earliestPickupDateInParis();
+	// Tant que les horaires n'ont pas répondu, on garde la valeur par défaut : une
+	// borne trop haute laisserait choisir une date que le serveur refusera, une
+	// borne trop basse ferait inutilement disparaître aujourd'hui du calendrier.
+	const earliestPickupDate = earliestPickupDateInParis(
+		schedule.data?.lastSameDayPickupHour ?? DEFAULT_LAST_SAME_DAY_PICKUP_HOUR,
+	);
 	// La coupure du jour même est dépassée : on prévient que la location ne
 	// démarre plus aujourd'hui.
 	const sameDayCutoffPassed = earliestPickupDate > todayInParis();
@@ -158,7 +164,11 @@ export function RentalWindowSelector({
 			{sameDayCutoffPassed && (
 				<p className="mt-3 flex items-start gap-2 rounded-xl border border-[var(--line)] bg-white/70 p-3 text-sm">
 					<CalendarDays className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-					15h passées : la location ne démarre plus le jour même. Le retrait est
+					{String(
+						schedule.data?.lastSameDayPickupHour ??
+							DEFAULT_LAST_SAME_DAY_PICKUP_HOUR,
+					).padStart(2, "0")}
+					h passées : la location ne démarre plus le jour même. Le retrait est
 					possible à partir de demain.
 				</p>
 			)}

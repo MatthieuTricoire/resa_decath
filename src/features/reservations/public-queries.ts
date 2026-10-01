@@ -12,7 +12,7 @@ import {
 	withWithdrawalCodes,
 } from "#/features/reservations/public-queries.server";
 import { reserveEquipment } from "#/features/reservations/reserve.server";
-import { earliestPickupDateInParis, todayInParis } from "#/lib/dates";
+import { todayInParis } from "#/lib/dates";
 import { generateReservationAccessToken } from "#/lib/reservation-reference";
 
 /**
@@ -64,11 +64,11 @@ const reserveInputSchema = z
 	.refine(
 		(data) => data.pickupDate >= todayInParis(),
 		"La date de retrait ne peut pas être dans le passé",
-	)
-	.refine(
-		(data) => data.pickupDate >= earliestPickupDateInParis(),
-		"Trop tard pour un retrait le jour même : la location est possible à partir de demain.",
 	);
+// La coupure du jour même n'est PAS vérifiée ici : elle est modifiable par
+// l'admin, et un schéma Zod statique ne peut pas lire la base. Elle est
+// appliquée dans `reserve.server.ts`, qui lit les réglages — sinon le
+// formulaire accepterait une date que le serveur refuse.
 
 export type ReserveInput = z.infer<typeof reserveInputSchema>;
 

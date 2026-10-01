@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import {
 	createContext,
 	type ReactNode,
@@ -6,8 +7,14 @@ import {
 	useState,
 } from "react";
 import { toast } from "sonner";
-import { getPublicCartIdentities } from "#/features/equipements/public-queries";
-import { earliestPickupDateInParis } from "#/lib/dates";
+import {
+	getPublicCartIdentities,
+	type PublicStoreSchedule,
+} from "#/features/equipements/public-queries";
+import {
+	DEFAULT_LAST_SAME_DAY_PICKUP_HOUR,
+	earliestPickupDateInParis,
+} from "#/lib/dates";
 import {
 	type PublicCartState,
 	publicCartStore,
@@ -84,9 +91,21 @@ async function reconcile(
  */
 export function CartPersistenceProvider({ children }: { children: ReactNode }) {
 	const [hydrated, setHydrated] = useState(false);
+	const queryClient = useQueryClient();
 
 	useEffect(() => {
 		const storage = safeSessionStorage();
+
+		// La restauration est synchrone, elle ne peut donc pas attendre la
+		// requête. Le layout public précharge les horaires, le cache est donc
+		// déjà rempli ; sinon on retombe sur la valeur par défaut, que le serveur
+		// revérifiera de toute façon.
+		const schedule = queryClient.getQueryData<PublicStoreSchedule>([
+			"public",
+			"store-schedule",
+		]);
+		const cutoffHour =
+			schedule?.lastSameDayPickupHour ?? DEFAULT_LAST_SAME_DAY_PICKUP_HOUR;
 
 		const restored = dropStaleWindow(
 			readStoredCart(storage) ?? {
@@ -94,9 +113,9 @@ export function CartPersistenceProvider({ children }: { children: ReactNode }) {
 				pickupDate: null,
 				returnDate: null,
 			},
-			// La borne basse suit le garde-fou du jour même : après 15h, une
-			// fenêtre persistée sur aujourd'hui est traitée comme périmée.
-			earliestPickupDateInParis(),
+			// La borne basse suit le garde-fou du jour même : après la coupure,
+			// une fenêtre persistée sur aujourd'hui est traitée comme périmée.
+			earliestPickupDateInParis(cutoffHour),
 		);
 		if (restored.lines.length > 0 || restored.pickupDate) {
 			publicCartStore.setState(() => restored);
@@ -117,7 +136,9 @@ export function CartPersistenceProvider({ children }: { children: ReactNode }) {
 		return () => {
 			subscription.unsubscribe();
 		};
-	}, []);
+		// Une seule fois par document : c'est le montage initial qui restaure.
+		// `queryClient` est stable, le lire ici ne doit pas relancer l'effet.
+	}, [queryClient]);
 
 	return (
 		<CartHydratedContext.Provider value={hydrated}>

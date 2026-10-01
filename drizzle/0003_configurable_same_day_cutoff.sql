@@ -1,0 +1,1 @@
+ALTER TABLE "rental_settings" ADD COLUMN "last_same_day_pickup_hour" integer DEFAULT 15 NOT NULL;

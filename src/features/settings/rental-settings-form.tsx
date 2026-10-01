@@ -27,12 +27,22 @@ import {
 } from "#/features/settings/queries";
 import { queryKeys } from "#/features/settings/query-keys";
 
+/**
+ * Les 24 heures de la journée, une par entrée de menu. La liste est calculée
+ * une fois : `noArrayIndexKey` refuse l'index, et la valeur d'une heure est de
+ * toute façon une clé plus stable que sa position dans le menu.
+ */
+const CUTOFF_HOURS = Array.from({ length: 24 }, (_, hour) => hour);
+
 export function RentalSettingsForm({ settings }: { settings: RentalSettings }) {
 	const queryClient = useQueryClient();
 	const [seasonalFilteringEnabled, setSeasonalFilteringEnabled] = useState(
 		settings.seasonalFilteringEnabled,
 	);
 	const [isRentalOpen, setIsRentalOpen] = useState(settings.isRentalOpen);
+	const [lastSameDayPickupHour, setLastSameDayPickupHour] = useState(
+		settings.lastSameDayPickupHour,
+	);
 	const [seasonOverride, setSeasonOverride] = useState(settings.seasonOverride);
 	const [summerFrom, setSummerFrom] = useState(settings.summerFrom ?? "");
 	const [summerTo, setSummerTo] = useState(settings.summerTo ?? "");
@@ -57,6 +67,7 @@ export function RentalSettingsForm({ settings }: { settings: RentalSettings }) {
 		saveMutation.mutate({
 			seasonalFilteringEnabled,
 			isRentalOpen,
+			lastSameDayPickupHour,
 			seasonOverride,
 			summerFrom,
 			summerTo,
@@ -89,6 +100,33 @@ export function RentalSettingsForm({ settings }: { settings: RentalSettings }) {
 						onCheckedChange={setIsRentalOpen}
 						aria-label="Activer ou désactiver les locations"
 					/>
+				</Field>
+
+				<Field>
+					<FieldLabel>Retrait le jour même</FieldLabel>
+					<p className="text-sm text-muted-foreground">
+						À partir de cette heure, le site public réserve uniquement à partir
+						du lendemain : il faut laisser le temps de préparer la commande. La
+						caisse de l’admin n’est pas concernée.
+					</p>
+					<Select
+						value={String(lastSameDayPickupHour)}
+						onValueChange={(value) => setLastSameDayPickupHour(Number(value))}
+					>
+						<SelectTrigger
+							className="sm:w-64"
+							aria-label="Heure limite de retrait"
+						>
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							{CUTOFF_HOURS.map((hour) => (
+								<SelectItem key={hour} value={String(hour)}>
+									{String(hour).padStart(2, "0")}:00
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
 				</Field>
 
 				<Field orientation="horizontal" className="items-start sm:items-center">

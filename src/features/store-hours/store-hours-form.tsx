@@ -11,8 +11,8 @@ import {
 	CardTitle,
 } from "#/components/ui/card";
 import { Field, FieldContent, FieldLabel } from "#/components/ui/field";
-import { Input } from "#/components/ui/input";
 import { Switch } from "#/components/ui/switch";
+import { TimePicker } from "#/components/ui/time-picker";
 import {
 	type UpdateStoreHoursInput,
 	updateStoreHours,
@@ -140,7 +140,7 @@ export function StoreHoursForm({ hours }: { hours: StoreHours }) {
 								)}
 							</div>
 							{draft.isOpen ? (
-								<div className="mt-2 flex flex-wrap items-center gap-2">
+								<div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-3">
 									<TimeSlot
 										label={`Ouverture ${draft.label}`}
 										from={draft.morningFrom}
@@ -194,7 +194,14 @@ export function StoreHoursForm({ hours }: { hours: StoreHours }) {
 	);
 }
 
-/** Une plage d'horaires : deux champs heure reliés par un tiret. */
+/**
+ * Une plage d'horaires : deux sélecteurs reliés par un tiret.
+ *
+ * Les deux bornes partagent le même `label` : `TimePicker` s'en sert pour nommer
+ * chaque sélecteur, ce qui donne « Ouverture Lundi — de » et « Ouverture Lundi —
+ * à ». Un lecteur d'écran sait donc que les deux sélecteurs d'une ligne vont
+ * ensemble.
+ */
 function TimeSlot({
 	label,
 	from,
@@ -208,24 +215,20 @@ function TimeSlot({
 }) {
 	return (
 		<div className="flex items-center gap-1.5">
-			<Input
-				type="time"
-				step={300}
+			<TimePicker
 				value={from}
 				aria-label={`${label} — de`}
-				onChange={(event) => onChange(event.target.value, to)}
-				className="w-28"
+				invalid={Boolean(from) !== Boolean(to)}
+				onChange={(next) => onChange(next, to)}
 			/>
 			<span aria-hidden="true" className="text-muted-foreground">
 				–
 			</span>
-			<Input
-				type="time"
-				step={300}
+			<TimePicker
 				value={to}
 				aria-label={`${label} — à`}
-				onChange={(event) => onChange(from, event.target.value)}
-				className="w-28"
+				invalid={Boolean(from) !== Boolean(to)}
+				onChange={(next) => onChange(from, next)}
 			/>
 		</div>
 	);

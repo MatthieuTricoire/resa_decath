@@ -615,13 +615,30 @@ export const getPublicRentalDurations = createServerFn({
 export type PublicStoreSchedule = OpeningDaysSettings & {
 	/** Les sept jours, du lundi au dimanche, pour l'affichage des horaires. */
 	hours: StoreHours;
+	/**
+	 * Heure limite de retrait le jour même, heure de Paris. Elle accompagne les
+	 * horaires parce que les deux bornent la même chose : la date de retrait la
+	 * plus proche. Les lieurs de calendrier en ont besoin sans pouvoir lire la
+	 * base eux-mêmes.
+	 */
+	lastSameDayPickupHour: number;
 };
 
 export const getPublicStoreSchedule = createServerFn({
 	method: "GET",
 }).handler(async (): Promise<PublicStoreSchedule> => {
-	const hours = await getStoreHoursRecord();
-	return { openDays: openDaysFromHours(hours), hours };
+	// Les deux réglages sont lus ensemble : un calendrier qui afficherait la
+	// bonne heure d'ouverture mais la mauvaise coupure autoriserait un retrait
+	// que le serveur refuse.
+	const [hours, settings] = await Promise.all([
+		getStoreHoursRecord(),
+		getRentalSettingsRecord(),
+	]);
+	return {
+		openDays: openDaysFromHours(hours),
+		hours,
+		lastSameDayPickupHour: settings.lastSameDayPickupHour,
+	};
 });
 
 /**

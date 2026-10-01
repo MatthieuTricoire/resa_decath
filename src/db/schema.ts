@@ -258,6 +258,13 @@ export const rentalSettings = pgTable("rental_settings", {
 		.notNull()
 		.default(true),
 	isRentalOpen: boolean("is_rental_open").notNull().default(true),
+	// Heure limite pour un retrait le jour même, heure de Paris. Volontairement
+	// hors de `store_hours` : celle-là décrit l'ouverture du magasin, celle-ci le
+	// délai de préparation d'une commande. Passé cette heure, le public réserve
+	// à partir de demain ; la caisse backoffice n'est pas concernée.
+	lastSameDayPickupHour: integer("last_same_day_pickup_hour")
+		.notNull()
+		.default(15),
 	// Les jours d'ouverture ne sont pas ici mais dans `store_hours` : c'est la
 	// seule table qui décrit quand le magasin est ouvert, pour que le calendrier
 	// de réservation, le pied de page et le JSON-LD lisent la même chose.

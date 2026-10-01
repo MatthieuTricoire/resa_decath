@@ -47,17 +47,23 @@ export function todayInParis(): string {
 }
 
 /**
- * Dernière heure pour un retrait le jour même : après, le site public refuse une
- * location qui démarre aujourd'hui. La caisse backoffice garde la main, seul le
- * parcours public est concerné.
+ * Dernière heure pour un retrait le jour même, utilisée quand la base n'a pas
+ * encore de valeur : après, le site public refuse une location qui démarre
+ * aujourd'hui. La caisse backoffice garde la main, seul le parcours public est
+ * concerné.
+ *
+ * La valeur effective vit dans `rental_settings.last_same_day_pickup_hour` et
+ * reste modifiable depuis les Réglages. Cette constante n'est plus qu'un
+ * repli : aucun appelant ne doit s'y fier pour une règle métier.
  */
-export const LAST_SAME_DAY_PICKUP_HOUR = 15;
+export const DEFAULT_LAST_SAME_DAY_PICKUP_HOUR = 15;
 
 /**
- * Est-il plus de `LAST_SAME_DAY_PICKUP_HOUR` à Paris ? L'heure est lue dans le
- * fuseau « Europe/Paris », jamais celui de la machine qui exécute le code.
+ * Est-il plus de `cutoffHour` à Paris ? L'heure est lue dans le fuseau
+ * « Europe/Paris », jamais celui de la machine qui exécute le code.
  */
 export function isPastSameDayPickupCutoffInParis(
+	cutoffHour: number,
 	now: Date = new Date(),
 ): boolean {
 	const parts = new Intl.DateTimeFormat("en-GB", {
@@ -66,7 +72,13 @@ export function isPastSameDayPickupCutoffInParis(
 		hourCycle: "h23",
 	}).formatToParts(now);
 	const hour = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
-	return hour >= LAST_SAME_DAY_PICKUP_HOUR;
+	return hour >= clampCutoffHour(cutoffHour);
+}
+
+/** Une heure de coupure hors bornes rendrait la règle illisible : on la borne. */
+export function clampCutoffHour(hour: number): number {
+	if (!Number.isFinite(hour)) return DEFAULT_LAST_SAME_DAY_PICKUP_HOUR;
+	return Math.min(23, Math.max(0, Math.round(hour)));
 }
 
 /**
@@ -75,9 +87,12 @@ export function isPastSameDayPickupCutoffInParis(
  * borne basse, pour que le calendrier et la sauvegarde de panier appliquent la
  * même règle que le serveur.
  */
-export function earliestPickupDateInParis(now: Date = new Date()): string {
+export function earliestPickupDateInParis(
+	cutoffHour: number,
+	now: Date = new Date(),
+): string {
 	const today = toParisDateKey(now);
-	if (!isPastSameDayPickupCutoffInParis(now)) return today;
+	if (!isPastSameDayPickupCutoffInParis(cutoffHour, now)) return today;
 	return addDaysToDateKey(today, 1) ?? today;
 }
 

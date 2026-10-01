@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "#/db";
 import * as schema from "#/db/schema";
 import { requireDashboardSession } from "#/features/auth/queries";
+import { DEFAULT_LAST_SAME_DAY_PICKUP_HOUR } from "#/lib/dates";
 
 /**
  * Règles de disponibilité, hors horaires.
@@ -15,6 +16,8 @@ import { requireDashboardSession } from "#/features/auth/queries";
 export type RentalSettings = {
 	seasonalFilteringEnabled: boolean;
 	isRentalOpen: boolean;
+	/** Heure de Paris, 0-23. Volontairement hors de `store_hours`. */
+	lastSameDayPickupHour: number;
 	seasonOverride: "auto" | "summer" | "winter";
 	summerFrom: string | null;
 	summerTo: string | null;
@@ -26,6 +29,7 @@ export type RentalSettings = {
 export const DEFAULT_RENTAL_SETTINGS: RentalSettings = {
 	seasonalFilteringEnabled: true,
 	isRentalOpen: true,
+	lastSameDayPickupHour: DEFAULT_LAST_SAME_DAY_PICKUP_HOUR,
 	seasonOverride: "auto",
 	summerFrom: null,
 	summerTo: null,
@@ -100,6 +104,9 @@ const monthDaySchema = z.string().refine((value) => {
 const updateRentalSettingsSchema = z.object({
 	seasonalFilteringEnabled: z.boolean(),
 	isRentalOpen: z.boolean(),
+	// Bornée à l'heure : 23 rendrait la règle inopérante, -1 la rendrait
+	// toujours vraie. Le refus est ici, pas au moment de l'appliquer.
+	lastSameDayPickupHour: z.number().int().min(0).max(23),
 	seasonOverride: z.enum(["auto", "summer", "winter"]),
 	summerFrom: monthDaySchema.default(""),
 	summerTo: monthDaySchema.default(""),
@@ -122,6 +129,7 @@ export const updateRentalSettings = createServerFn({ method: "POST" })
 				id: 1,
 				seasonalFilteringEnabled: data.seasonalFilteringEnabled,
 				isRentalOpen: data.isRentalOpen,
+				lastSameDayPickupHour: data.lastSameDayPickupHour,
 				seasonOverride: data.seasonOverride,
 				summerFrom: data.summerFrom || null,
 				summerTo: data.summerTo || null,
@@ -134,6 +142,7 @@ export const updateRentalSettings = createServerFn({ method: "POST" })
 				set: {
 					seasonalFilteringEnabled: data.seasonalFilteringEnabled,
 					isRentalOpen: data.isRentalOpen,
+					lastSameDayPickupHour: data.lastSameDayPickupHour,
 					seasonOverride: data.seasonOverride,
 					summerFrom: data.summerFrom || null,
 					summerTo: data.summerTo || null,
