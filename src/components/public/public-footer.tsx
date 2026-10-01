@@ -17,6 +17,12 @@ export function PublicFooter() {
 		queryFn: () => getPublicStoreSchedule(),
 		staleTime: 5 * 60 * 1000,
 	});
+	// Vide seulement si l'admin a fermé les sept jours : sans ce cas, le bloc
+	// disparaîtrait et le footer laisserait croire qu'il n'y a pas d'horaires,
+	// alors que le magasin répond simplement « fermé ».
+	const openGroups = storeOpeningHoursGrouped(
+		schedule.data?.hours ?? DEFAULT_STORE_HOURS,
+	);
 
 	return (
 		<footer className="site-footer mt-20">
@@ -75,19 +81,21 @@ export function PublicFooter() {
 					    de midi dans l'admin les met tous les trois à jour. La layout
 					    publique la précharge, donc elle est déjà dans le HTML initial.
 
-					    Regroupés par créneaux identiques : sept lignes pour deux
-					    informations dans une colonne d'environ 250px. La page ville garde
-					    le détail jour par jour, elle a la largeur pour ça. */}
-					<dl className="space-y-1 text-[var(--sea-ink-soft)]">
-						{storeOpeningHoursGrouped(
-							schedule.data?.hours ?? DEFAULT_STORE_HOURS,
-						).map((group) => (
-							<div key={group.days} className="flex flex-col">
-								<dt className="font-medium">{group.days}</dt>
-								<dd>{group.hours}</dd>
-							</div>
-						))}
-					</dl>
+					    Regroupés par créneaux identiques, jours fermés absents : deux
+					    lignes dans une colonne d'environ 250px. La page ville garde le
+					    détail jour par jour, elle a la largeur pour ça. */}
+					{openGroups.length === 0 ? (
+						<p className="text-[var(--sea-ink-soft)]">Fermé toute la semaine</p>
+					) : (
+						<dl className="space-y-1 text-[var(--sea-ink-soft)]">
+							{openGroups.map((group) => (
+								<div key={group.days} className="flex flex-col">
+									<dt className="font-medium">{group.days}</dt>
+									<dd>{group.hours}</dd>
+								</div>
+							))}
+						</dl>
+					)}
 					<p className="text-[var(--sea-ink-soft)]">{store.paymentNotice}</p>
 				</div>
 			</div>

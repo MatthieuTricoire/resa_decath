@@ -101,39 +101,54 @@ function storeDayHoursText(day: StoreHours[number]): string {
 }
 
 /**
- * Une plage de jours partageant les mêmes horaires, pour le pied de page.
+ * Une plage de jours **ouverts** partageant les mêmes horaires, pour le pied de
+ * page.
  *
- * Sept lignes pour deux informations distinctes : le pied de page est une
- * colonne d'environ 250px, la page ville a toute la largeur dont elle veut. Les
- * jours y sont donc regroupés par créneaux identiques, ce qui ramène la semaine
- * de référence à deux lignes. `storeOpeningHoursText` garde le détail jour par
- * jour pour la page ville.
+ * Trois choix, dans l'ordre où le pied de page est le plus contraignant :
  *
- * Le regroupement est **calculé**, jamais figé en dur : si l'admin ferme le
- * samedi, la ligne devient « Lundi – Vendredi » puis « Samedi – Dimanche ». Une
- * plage écrite dans le code afficherait des horaires que l'admin a supprimés.
+ * 1. Les jours fermés sont **absents**, pas affichés « fermé ». Une colonne
+ *    d'environ 250px ne peut pas spent une ligne « fermé » par jour sans
+ *    noyer les horaires, qui sont l'information cherchée. La page ville, via
+ *    `storeOpeningHoursText`, garde le détail jour par jour : c'est là qu'on vérifie
+ *    si le magasin est ouvert le dimanche, et le JSON-LD fait de même.
+ * 2. Les jours ouverts sont regroupés par créneaux identiques, ce qui ramène la
+ *    semaine de référence à deux lignes.
+ * 3. Le regroupement est **calculé**, jamais figé en dur : si l'admin ferme le
+ *    samedi, la ligne devient « Lundi – Vendredi ». Une plage écrite dans le code
+ *    afficherait des horaires que l'admin a supprimés.
  *
- * Les groupes suivent l'ordre du calendrier, jamais l'ordre alphabétique :
- * « Samedi – Dimanche fermé » se lit sans avoir à compter les jours.
+ * Un jour fermé coupe la plage : fermer le mercredi donne « Lundi – Mardi » puis
+ * « Jeudi – Samedi », jamais « Lundi – Samedi ». Le trou se devine mais ne
+ * s'explique pas, et c'est le prix d'un footer qui tient en deux lignes. Le
+ * détail reste sur la page ville.
+ *
+ * Les groupes suivent l'ordre du calendrier, jamais l'ordre alphabétique, pour
+ * que la plage se lise sans compter les jours.
  */
 export function storeOpeningHoursGrouped(hours: StoreHours): Array<{
 	days: string;
 	hours: string;
 }> {
-	const groups: Array<{ signature: string; hours: string; labels: string[] }> =
-		[];
+	const groups: Array<{ hours: string; labels: string[] }> = [];
+	// Un jour fermé coupe le groupe en cours. Sans cette coupure, fermer le
+	// mercredi donnerait « Lundi – Samedi » : la plage afficherait des horaires
+	// d'ouverture pour un jour que l'admin vient de fermer, et le pied de page
+	// affirmed le contraire de la configuration.
+	let previousClosed = false;
 
 	for (const day of hours) {
+		if (!day.isOpen) {
+			previousClosed = true;
+			continue;
+		}
 		const text = storeDayHoursText(day);
-		// `isOpen` entre dans la signature : deux jours sans créneau ne doivent
-		// pas se retrouver dans le même groupe que deux jours ouverts.
-		const signature = `${day.isOpen ? "open" : "closed"}:${text}`;
 		const current = groups[groups.length - 1];
-		if (current && current.signature === signature) {
+		if (!previousClosed && current && current.hours === text) {
 			current.labels.push(day.label);
 		} else {
-			groups.push({ signature, hours: text, labels: [day.label] });
+			groups.push({ hours: text, labels: [day.label] });
 		}
+		previousClosed = false;
 	}
 
 	return groups.map((group) => ({

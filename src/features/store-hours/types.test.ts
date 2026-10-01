@@ -141,10 +141,31 @@ describe("regroupement des horaires pour le pied de page", () => {
 			...overrides[day.day],
 		}));
 
-	it("ramène la semaine de référence à deux lignes", () => {
+	it("ramène la semaine de référence à une seule ligne", () => {
+		// Le jour fermé disparaît : c'est la page ville qui porte le détail avec
+		// « fermé », pas le footer.
 		expect(storeOpeningHoursGrouped(semaine())).toEqual([
 			{ days: "Lundi – Samedi", hours: "09:00 – 12:30 · 14:30 – 19:00" },
-			{ days: "Dimanche", hours: "fermé" },
+		]);
+	});
+
+	it("ne publie aucun jour fermé", () => {
+		for (const hours of storeOpeningHoursGrouped(
+			semaine({ 3: { isOpen: false } }),
+		)) {
+			expect(hours.hours).not.toBe("fermé");
+			expect(hours.days).not.toContain("Mercredi");
+		}
+	});
+
+	it("ignore les horaires conservés d'un jour fermé", () => {
+		// Le dimanche porte 8h45–13h en base : tant qu'il est fermé, ces horaires
+		// ne doivent rien laisser dans le footer.
+		const dimancheFerme = semaine({
+			0: { isOpen: false, slots: [{ opens: "08:45", closes: "13:00" }] },
+		});
+		expect(storeOpeningHoursGrouped(dimancheFerme)).toEqual([
+			{ days: "Lundi – Samedi", hours: "09:00 – 12:30 · 14:30 – 19:00" },
 		]);
 	});
 
@@ -163,13 +184,13 @@ describe("regroupement des horaires pour le pied de page", () => {
 		]);
 	});
 
-	it("n'écrit « Tous les jours » que si les 7 jours vraiment identiques", () => {
-		// Six jours ouverts et un fermé : la semaine n'est pas uniforme, le libellé
-		// serait un mensonge.
+	it("n'écrit « Tous les jours » que si les 7 jours sont ouverts", () => {
+		// Six jours ouverts suffisent à retirer le libellé : il dirait une semaine
+		// ouverte en semaine.
 		const sixOuverts = semaine({ 6: { isOpen: false, slots: [] } });
-		const labels = storeOpeningHoursGrouped(sixOuverts).map((g) => g.days);
-		expect(labels).not.toContain("Tous les jours");
-		expect(labels).toEqual(["Lundi – Vendredi", "Samedi – Dimanche"]);
+		expect(storeOpeningHoursGrouped(sixOuverts).map((g) => g.days)).toEqual([
+			"Lundi – Vendredi",
+		]);
 	});
 
 	it("respecte l'ordre du calendrier quand un jour diffère au milieu", () => {
@@ -182,46 +203,71 @@ describe("regroupement des horaires pour le pied de page", () => {
 			{ days: "Lundi – Mardi", hours: "09:00 – 12:30 · 14:30 – 19:00" },
 			{ days: "Mercredi", hours: "10:00 – 13:00" },
 			{ days: "Jeudi – Samedi", hours: "09:00 – 12:30 · 14:30 – 19:00" },
-			{ days: "Dimanche", hours: "fermé" },
 		]);
 	});
 
-	it("distingue un jour fermé de ses horaires conservés", () => {
-		// Le dimanche garde 8h45–13h en base : il ne doit pas rejoindre le groupe
-		// d'un jour ouvert qui ouvrirait à la même heure.
-		const dimancheOuvert = semaine({
-			0: { isOpen: true, slots: [{ opens: "08:45", closes: "13:00" }] },
-		});
-		const groups = storeOpeningHoursGrouped(dimancheOuvert);
-		expect(groups).toEqual([
-			{ days: "Lundi – Samedi", hours: "09:00 – 12:30 · 14:30 – 19:00" },
-			{ days: "Dimanche", hours: "08:45 – 13:00" },
+	it("separe les deux plages d'un jour fermé au milieu", () => {
+		// Fermer le mercredi laisse « Lundi – Mardi » puis « Jeudi – samedi ». Le
+		// trou se devine mais ne s'explique pas : c'est le prix assumé d'un footer
+		// de deux lignes, et le détail reste sur la page ville.
+		const mercrediFerme = semaine({ 3: { isOpen: false, slots: [] } });
+		expect(storeOpeningHoursGrouped(mercrediFerme).map((g) => g.days)).toEqual([
+			"Lundi – Mardi",
+			"Jeudi – Samedi",
 		]);
 	});
 
-	it("regroupe des jours fermés entre eux", () => {
+	it("ne fait jamais couvrir un jour fermé par une plage", () => {
+		// Le piege : en ignorant les jours fermes, le mercredi glissait dans la
+		// plage « Lundi – Samedi » et le footer affirmait l'ouverture d'un jour
+		// ferme. Chaque jour ferme doit couper le groupe qui le precede.
+		for (const ferme of [0, 1, 2, 3, 4, 5, 6]) {
+			const jours = semaine({ [ferme]: { isOpen: false, slots: [] } });
+			const groupes = storeOpeningHoursGrouped(jours);
+			const labelFerme = jours.find((day) => day.day === ferme)?.label;
+
+			// Une plage ne peut pas declarer 7 jours alors qu'un est ferme.
+			expect(groupes.every((group) => group.days !== "Tous les jours")).toBe(
+				true,
+			);
+
+			// Le libelle du jour ferme ne doit pas figurer comme borne d'une plage.
+			for (const group of groupes) {
+				const bornes = group.days.split(" – ");
+				expect(bornes).not.toContain(labelFerme ?? "?");
+			}
+		}
+	});
+
+	it("rend une liste vide quand la semaine entière est fermée", () => {
+		// Le footer traite ce cas à part avec « Fermé toute la semaine » : sans cela
+		// le bloc disparaîtrait et laisserait croire à une absence d'horaires.
 		const toutFerme = semaine(
 			Object.fromEntries(
 				[0, 1, 2, 3, 4, 5, 6].map((day) => [day, { isOpen: false, slots: [] }]),
 			),
 		);
-		// « Tous les jours · fermé » dit que le magasin existe et n'ouvre pas ;
-		// un « fermé » nu se lirait comme une information manquante.
-		expect(storeOpeningHoursGrouped(toutFerme)).toEqual([
-			{ days: "Tous les jours", hours: "fermé" },
-		]);
+		expect(storeOpeningHoursGrouped(toutFerme)).toEqual([]);
 	});
 
-	it("ne peut pas changer les horaires d'un jour", () => {
-		// Le regroupement redecoupe la semaine, il ne la redecrit pas. On verifie
-		// donc que l'ensemble des horaires publies est le meme dans les deux
-		// rendus : le footer ne peut pas dire autre chose que la page ville.
-		const detail = storeOpeningHoursText(semaine());
-		const groupes = storeOpeningHoursGrouped(semaine());
+	it("ne peut pas changer les horaires d'un jour ouvert", () => {
+		// Le regroupement redecoupe la semaine, il ne la redecrit pas : les horaires
+		// doivent être exactement ceux que le detail donne pour ces mêmes jours.
+		const jours = semaine();
+		const detail = storeOpeningHoursText(jours);
+		const groupes = storeOpeningHoursGrouped(jours);
 
-		expect(new Set(groupes.map((group) => group.hours))).toEqual(
-			new Set(detail.map((day) => day.hours)),
-		);
+		// Chaque horaire du footer existe tel quel dans le detail quotidien.
+		const parDetail = new Set(detail.map((day) => day.hours));
+		for (const group of groupes) {
+			expect(parDetail.has(group.hours)).toBe(true);
+		}
+
+		// Et le detail des jours fermes ne se retrouve dans aucun groupe.
+		for (const day of jours.filter((entry) => !entry.isOpen)) {
+			const attendu = storeOpeningHoursText([day])[0]?.hours;
+			expect(groupes.map((group) => group.hours)).not.toContain(attendu);
+		}
 	});
 
 	it("nomme les deux extremites d'une plage, pas les jours du milieu", () => {
