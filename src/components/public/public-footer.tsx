@@ -4,7 +4,7 @@ import { MapPin, Phone } from "lucide-react";
 import {
 	store,
 	storeCanonicalPath,
-	storeOpeningHoursText,
+	storeOpeningHoursGrouped,
 } from "#/config/store";
 import { getPublicStoreSchedule } from "#/features/equipements/public-queries";
 import { DEFAULT_STORE_HOURS } from "#/features/store-hours/types";
@@ -73,17 +73,18 @@ export function PublicFooter() {
 					{/* Horaires lus, jamais écrits ici : le pied de page, la page ville et
 					    le JSON-LD consomment la même donnée, donc ajouter une fermeture
 					    de midi dans l'admin les met tous les trois à jour. La layout
-					    publique la précharge, donc elle est déjà dans le HTML initial. */}
+					    publique la précharge, donc elle est déjà dans le HTML initial.
+
+					    Regroupés par créneaux identiques : sept lignes pour deux
+					    informations dans une colonne d'environ 250px. La page ville garde
+					    le détail jour par jour, elle a la largeur pour ça. */}
 					<dl className="space-y-1 text-[var(--sea-ink-soft)]">
-						{storeOpeningHoursText(
+						{storeOpeningHoursGrouped(
 							schedule.data?.hours ?? DEFAULT_STORE_HOURS,
-						).map((day) => (
-							<div
-								key={day.day}
-								className="flex justify-between gap-4 sm:justify-start sm:gap-3"
-							>
-								<dt className="sm:w-24 sm:shrink-0">{day.day}</dt>
-								<dd className="text-right sm:text-left">{day.hours}</dd>
+						).map((group) => (
+							<div key={group.days} className="flex flex-col">
+								<dt className="font-medium">{group.days}</dt>
+								<dd>{group.hours}</dd>
 							</div>
 						))}
 					</dl>

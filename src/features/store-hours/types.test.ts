@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { storeOpeningHoursText } from "#/config/store";
+import {
+	storeOpeningHoursGrouped,
+	storeOpeningHoursText,
+} from "#/config/store";
 import {
 	DEFAULT_STORE_HOURS,
 	defaultLabelForDay,
@@ -119,5 +122,114 @@ describe("publication des horaires", () => {
 			"Samedi",
 			"Dimanche",
 		]);
+	});
+});
+
+describe("regroupement des horaires pour le pied de page", () => {
+	/** Reprend la semaine de référence en modifiant les jours demandés. */
+	const semaine = (
+		overrides: Partial<Record<number, Partial<StoreDayHours>>> = {},
+	) =>
+		normalizeStoreHours([]).map((day) => ({
+			...day,
+			slots: day.isOpen
+				? [
+						{ opens: "09:00", closes: "12:30" },
+						{ opens: "14:30", closes: "19:00" },
+					]
+				: [],
+			...overrides[day.day],
+		}));
+
+	it("ramène la semaine de référence à deux lignes", () => {
+		expect(storeOpeningHoursGrouped(semaine())).toEqual([
+			{ days: "Lundi – Samedi", hours: "09:00 – 12:30 · 14:30 – 19:00" },
+			{ days: "Dimanche", hours: "fermé" },
+		]);
+	});
+
+	it("nomme « Tous les jours » quand l'admin ouvre les 7 jours", () => {
+		const tousOuverts = semaine({
+			0: {
+				isOpen: true,
+				slots: [
+					{ opens: "09:00", closes: "12:30" },
+					{ opens: "14:30", closes: "19:00" },
+				],
+			},
+		});
+		expect(storeOpeningHoursGrouped(tousOuverts)).toEqual([
+			{ days: "Tous les jours", hours: "09:00 – 12:30 · 14:30 – 19:00" },
+		]);
+	});
+
+	it("n'écrit « Tous les jours » que si les 7 jours vraiment identiques", () => {
+		// Six jours ouverts et un fermé : la semaine n'est pas uniforme, le libellé
+		// serait un mensonge.
+		const sixOuverts = semaine({ 6: { isOpen: false, slots: [] } });
+		const labels = storeOpeningHoursGrouped(sixOuverts).map((g) => g.days);
+		expect(labels).not.toContain("Tous les jours");
+		expect(labels).toEqual(["Lundi – Vendredi", "Samedi – Dimanche"]);
+	});
+
+	it("respecte l'ordre du calendrier quand un jour diffère au milieu", () => {
+		// Regrouper par horaires sans suivre l'ordre donnerait « Mercredi » avant
+		// « Lundi – Mardi » : la lecture serait fausse.
+		const decale = semaine({
+			3: { slots: [{ opens: "10:00", closes: "13:00" }] },
+		});
+		expect(storeOpeningHoursGrouped(decale)).toEqual([
+			{ days: "Lundi – Mardi", hours: "09:00 – 12:30 · 14:30 – 19:00" },
+			{ days: "Mercredi", hours: "10:00 – 13:00" },
+			{ days: "Jeudi – Samedi", hours: "09:00 – 12:30 · 14:30 – 19:00" },
+			{ days: "Dimanche", hours: "fermé" },
+		]);
+	});
+
+	it("distingue un jour fermé de ses horaires conservés", () => {
+		// Le dimanche garde 8h45–13h en base : il ne doit pas rejoindre le groupe
+		// d'un jour ouvert qui ouvrirait à la même heure.
+		const dimancheOuvert = semaine({
+			0: { isOpen: true, slots: [{ opens: "08:45", closes: "13:00" }] },
+		});
+		const groups = storeOpeningHoursGrouped(dimancheOuvert);
+		expect(groups).toEqual([
+			{ days: "Lundi – Samedi", hours: "09:00 – 12:30 · 14:30 – 19:00" },
+			{ days: "Dimanche", hours: "08:45 – 13:00" },
+		]);
+	});
+
+	it("regroupe des jours fermés entre eux", () => {
+		const toutFerme = semaine(
+			Object.fromEntries(
+				[0, 1, 2, 3, 4, 5, 6].map((day) => [day, { isOpen: false, slots: [] }]),
+			),
+		);
+		// « Tous les jours · fermé » dit que le magasin existe et n'ouvre pas ;
+		// un « fermé » nu se lirait comme une information manquante.
+		expect(storeOpeningHoursGrouped(toutFerme)).toEqual([
+			{ days: "Tous les jours", hours: "fermé" },
+		]);
+	});
+
+	it("ne peut pas changer les horaires d'un jour", () => {
+		// Le regroupement redecoupe la semaine, il ne la redecrit pas. On verifie
+		// donc que l'ensemble des horaires publies est le meme dans les deux
+		// rendus : le footer ne peut pas dire autre chose que la page ville.
+		const detail = storeOpeningHoursText(semaine());
+		const groupes = storeOpeningHoursGrouped(semaine());
+
+		expect(new Set(groupes.map((group) => group.hours))).toEqual(
+			new Set(detail.map((day) => day.hours)),
+		);
+	});
+
+	it("nomme les deux extremites d'une plage, pas les jours du milieu", () => {
+		// Une plage ne peut pas nommer ses sept jours : « Lundi – Samedi » doit se
+		// lire comme une plage, sinon le footer reprend les sept lignes qu'on voulait
+		// supprimer.
+		const [premier] = storeOpeningHoursGrouped(semaine());
+		expect(premier?.days).toBe("Lundi – Samedi");
+		expect(premier?.days).not.toContain("Mercredi");
 	});
 });

@@ -90,8 +90,67 @@ export function storeOpeningHoursText(hours: StoreHours): Array<{
 }> {
 	return hours.map((day) => ({
 		day: day.label,
-		hours: day.isOpen
-			? day.slots.map((slot) => `${slot.opens} – ${slot.closes}`).join(" · ")
-			: "fermé",
+		hours: storeDayHoursText(day),
 	}));
+}
+
+/** Un jour rendu en une chaîne : ses créneaux, ou « fermé ». */
+function storeDayHoursText(day: StoreHours[number]): string {
+	if (!day.isOpen) return "fermé";
+	return day.slots.map((slot) => `${slot.opens} – ${slot.closes}`).join(" · ");
+}
+
+/**
+ * Une plage de jours partageant les mêmes horaires, pour le pied de page.
+ *
+ * Sept lignes pour deux informations distinctes : le pied de page est une
+ * colonne d'environ 250px, la page ville a toute la largeur dont elle veut. Les
+ * jours y sont donc regroupés par créneaux identiques, ce qui ramène la semaine
+ * de référence à deux lignes. `storeOpeningHoursText` garde le détail jour par
+ * jour pour la page ville.
+ *
+ * Le regroupement est **calculé**, jamais figé en dur : si l'admin ferme le
+ * samedi, la ligne devient « Lundi – Vendredi » puis « Samedi – Dimanche ». Une
+ * plage écrite dans le code afficherait des horaires que l'admin a supprimés.
+ *
+ * Les groupes suivent l'ordre du calendrier, jamais l'ordre alphabétique :
+ * « Samedi – Dimanche fermé » se lit sans avoir à compter les jours.
+ */
+export function storeOpeningHoursGrouped(hours: StoreHours): Array<{
+	days: string;
+	hours: string;
+}> {
+	const groups: Array<{ signature: string; hours: string; labels: string[] }> =
+		[];
+
+	for (const day of hours) {
+		const text = storeDayHoursText(day);
+		// `isOpen` entre dans la signature : deux jours sans créneau ne doivent
+		// pas se retrouver dans le même groupe que deux jours ouverts.
+		const signature = `${day.isOpen ? "open" : "closed"}:${text}`;
+		const current = groups[groups.length - 1];
+		if (current && current.signature === signature) {
+			current.labels.push(day.label);
+		} else {
+			groups.push({ signature, hours: text, labels: [day.label] });
+		}
+	}
+
+	return groups.map((group) => ({
+		days: storeDayRangeLabel(group.labels),
+		hours: group.hours,
+	}));
+}
+
+/**
+ * « Lundi », « Lundi – Mercredi », « Tous les jours ».
+ *
+ * Les sept jours ensemble ne sont pas nommés jusqu'au bout : « Tous les jours »
+ * est plus court et sans ambiguïté, là où « Lundi – Dimanche » se lit comme une
+ * plage alors qu'elle couvre toute la semaine.
+ */
+function storeDayRangeLabel(labels: string[]): string {
+	if (labels.length === 7) return "Tous les jours";
+	if (labels.length === 1) return labels[0] ?? "";
+	return `${labels[0]} – ${labels[labels.length - 1]}`;
 }
