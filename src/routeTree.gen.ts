@@ -32,12 +32,16 @@ import { Route as PublicReservationReferenceRouteImport } from './routes/_public
 import { Route as PublicActiviteActivitySlugRouteImport } from './routes/_public/activite/$activitySlug'
 import { Route as AdminLayoutUtilisateursIndexRouteImport } from './routes/admin/_layout/utilisateurs/index'
 import { Route as AdminLayoutReservationsIndexRouteImport } from './routes/admin/_layout/reservations/index'
+import { Route as AdminLayoutReglagesIndexRouteImport } from './routes/admin/_layout/reglages/index'
 import { Route as AdminLayoutEquipementsIndexRouteImport } from './routes/admin/_layout/equipements/index'
 import { Route as AdminLayoutUtilisateursAjouterRouteImport } from './routes/admin/_layout/utilisateurs/ajouter'
 import { Route as AdminLayoutUtilisateursUserIdRouteImport } from './routes/admin/_layout/utilisateurs/$userId'
 import { Route as AdminLayoutReservationsAjouterRouteImport } from './routes/admin/_layout/reservations/ajouter'
 import { Route as AdminLayoutReservationsReservationIdRouteImport } from './routes/admin/_layout/reservations/$reservationId'
-import { Route as AdminLayoutEquipementsCategoriesRouteImport } from './routes/admin/_layout/equipements/categories'
+import { Route as AdminLayoutReglagesProduitsRouteImport } from './routes/admin/_layout/reglages/produits'
+import { Route as AdminLayoutReglagesHorairesRouteImport } from './routes/admin/_layout/reglages/horaires'
+import { Route as AdminLayoutReglagesFacturationRouteImport } from './routes/admin/_layout/reglages/facturation'
+import { Route as AdminLayoutReglagesCategoriesRouteImport } from './routes/admin/_layout/reglages/categories'
 import { Route as AdminLayoutEquipementsAjouterRouteImport } from './routes/admin/_layout/equipements/ajouter'
 import { Route as AdminLayoutEquipementsItemIdRouteImport } from './routes/admin/_layout/equipements/$itemId'
 import { Route as PublicActiviteActivitySlugProductSlugRouteImport } from './routes/_public/activite/$activitySlug/$productSlug'
@@ -166,6 +170,12 @@ const AdminLayoutReservationsIndexRoute =
     path: '/',
     getParentRoute: () => AdminLayoutReservationsRoute,
   } as any)
+const AdminLayoutReglagesIndexRoute =
+  AdminLayoutReglagesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminLayoutReglagesRoute,
+  } as any)
 const AdminLayoutEquipementsIndexRoute =
   AdminLayoutEquipementsIndexRouteImport.update({
     id: '/',
@@ -196,11 +206,29 @@ const AdminLayoutReservationsReservationIdRoute =
     path: '/$reservationId',
     getParentRoute: () => AdminLayoutReservationsRoute,
   } as any)
-const AdminLayoutEquipementsCategoriesRoute =
-  AdminLayoutEquipementsCategoriesRouteImport.update({
+const AdminLayoutReglagesProduitsRoute =
+  AdminLayoutReglagesProduitsRouteImport.update({
+    id: '/produits',
+    path: '/produits',
+    getParentRoute: () => AdminLayoutReglagesRoute,
+  } as any)
+const AdminLayoutReglagesHorairesRoute =
+  AdminLayoutReglagesHorairesRouteImport.update({
+    id: '/horaires',
+    path: '/horaires',
+    getParentRoute: () => AdminLayoutReglagesRoute,
+  } as any)
+const AdminLayoutReglagesFacturationRoute =
+  AdminLayoutReglagesFacturationRouteImport.update({
+    id: '/facturation',
+    path: '/facturation',
+    getParentRoute: () => AdminLayoutReglagesRoute,
+  } as any)
+const AdminLayoutReglagesCategoriesRoute =
+  AdminLayoutReglagesCategoriesRouteImport.update({
     id: '/categories',
     path: '/categories',
-    getParentRoute: () => AdminLayoutEquipementsRoute,
+    getParentRoute: () => AdminLayoutReglagesRoute,
   } as any)
 const AdminLayoutEquipementsAjouterRoute =
   AdminLayoutEquipementsAjouterRouteImport.update({
@@ -266,7 +294,7 @@ export interface FileRoutesByFullPath {
   '/admin/durees': typeof AdminLayoutDureesRoute
   '/admin/equipements': typeof AdminLayoutEquipementsRouteWithChildren
   '/admin/facturation': typeof AdminLayoutFacturationRoute
-  '/admin/reglages': typeof AdminLayoutReglagesRoute
+  '/admin/reglages': typeof AdminLayoutReglagesRouteWithChildren
   '/admin/reservations': typeof AdminLayoutReservationsRouteWithChildren
   '/admin/statistiques': typeof AdminLayoutStatistiquesRoute
   '/admin/utilisateurs': typeof AdminLayoutUtilisateursRouteWithChildren
@@ -275,12 +303,16 @@ export interface FileRoutesByFullPath {
   '/activite/$activitySlug/$productSlug': typeof PublicActiviteActivitySlugProductSlugRoute
   '/admin/equipements/$itemId': typeof AdminLayoutEquipementsItemIdRouteWithChildren
   '/admin/equipements/ajouter': typeof AdminLayoutEquipementsAjouterRoute
-  '/admin/equipements/categories': typeof AdminLayoutEquipementsCategoriesRoute
+  '/admin/reglages/categories': typeof AdminLayoutReglagesCategoriesRoute
+  '/admin/reglages/facturation': typeof AdminLayoutReglagesFacturationRoute
+  '/admin/reglages/horaires': typeof AdminLayoutReglagesHorairesRoute
+  '/admin/reglages/produits': typeof AdminLayoutReglagesProduitsRoute
   '/admin/reservations/$reservationId': typeof AdminLayoutReservationsReservationIdRouteWithChildren
   '/admin/reservations/ajouter': typeof AdminLayoutReservationsAjouterRoute
   '/admin/utilisateurs/$userId': typeof AdminLayoutUtilisateursUserIdRouteWithChildren
   '/admin/utilisateurs/ajouter': typeof AdminLayoutUtilisateursAjouterRoute
   '/admin/equipements/': typeof AdminLayoutEquipementsIndexRoute
+  '/admin/reglages/': typeof AdminLayoutReglagesIndexRoute
   '/admin/reservations/': typeof AdminLayoutReservationsIndexRoute
   '/admin/utilisateurs/': typeof AdminLayoutUtilisateursIndexRoute
   '/admin/equipements/$itemId/modifier': typeof AdminLayoutEquipementsItemIdModifierRoute
@@ -302,16 +334,19 @@ export interface FileRoutesByTo {
   '/reservation/$reference': typeof PublicReservationReferenceRoute
   '/admin/durees': typeof AdminLayoutDureesRoute
   '/admin/facturation': typeof AdminLayoutFacturationRoute
-  '/admin/reglages': typeof AdminLayoutReglagesRoute
   '/admin/statistiques': typeof AdminLayoutStatistiquesRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/admin': typeof AdminLayoutIndexRoute
   '/activite/$activitySlug/$productSlug': typeof PublicActiviteActivitySlugProductSlugRoute
   '/admin/equipements/ajouter': typeof AdminLayoutEquipementsAjouterRoute
-  '/admin/equipements/categories': typeof AdminLayoutEquipementsCategoriesRoute
+  '/admin/reglages/categories': typeof AdminLayoutReglagesCategoriesRoute
+  '/admin/reglages/facturation': typeof AdminLayoutReglagesFacturationRoute
+  '/admin/reglages/horaires': typeof AdminLayoutReglagesHorairesRoute
+  '/admin/reglages/produits': typeof AdminLayoutReglagesProduitsRoute
   '/admin/reservations/ajouter': typeof AdminLayoutReservationsAjouterRoute
   '/admin/utilisateurs/ajouter': typeof AdminLayoutUtilisateursAjouterRoute
   '/admin/equipements': typeof AdminLayoutEquipementsIndexRoute
+  '/admin/reglages': typeof AdminLayoutReglagesIndexRoute
   '/admin/reservations': typeof AdminLayoutReservationsIndexRoute
   '/admin/utilisateurs': typeof AdminLayoutUtilisateursIndexRoute
   '/admin/equipements/$itemId/modifier': typeof AdminLayoutEquipementsItemIdModifierRoute
@@ -337,7 +372,7 @@ export interface FileRoutesById {
   '/admin/_layout/durees': typeof AdminLayoutDureesRoute
   '/admin/_layout/equipements': typeof AdminLayoutEquipementsRouteWithChildren
   '/admin/_layout/facturation': typeof AdminLayoutFacturationRoute
-  '/admin/_layout/reglages': typeof AdminLayoutReglagesRoute
+  '/admin/_layout/reglages': typeof AdminLayoutReglagesRouteWithChildren
   '/admin/_layout/reservations': typeof AdminLayoutReservationsRouteWithChildren
   '/admin/_layout/statistiques': typeof AdminLayoutStatistiquesRoute
   '/admin/_layout/utilisateurs': typeof AdminLayoutUtilisateursRouteWithChildren
@@ -346,12 +381,16 @@ export interface FileRoutesById {
   '/_public/activite/$activitySlug/$productSlug': typeof PublicActiviteActivitySlugProductSlugRoute
   '/admin/_layout/equipements/$itemId': typeof AdminLayoutEquipementsItemIdRouteWithChildren
   '/admin/_layout/equipements/ajouter': typeof AdminLayoutEquipementsAjouterRoute
-  '/admin/_layout/equipements/categories': typeof AdminLayoutEquipementsCategoriesRoute
+  '/admin/_layout/reglages/categories': typeof AdminLayoutReglagesCategoriesRoute
+  '/admin/_layout/reglages/facturation': typeof AdminLayoutReglagesFacturationRoute
+  '/admin/_layout/reglages/horaires': typeof AdminLayoutReglagesHorairesRoute
+  '/admin/_layout/reglages/produits': typeof AdminLayoutReglagesProduitsRoute
   '/admin/_layout/reservations/$reservationId': typeof AdminLayoutReservationsReservationIdRouteWithChildren
   '/admin/_layout/reservations/ajouter': typeof AdminLayoutReservationsAjouterRoute
   '/admin/_layout/utilisateurs/$userId': typeof AdminLayoutUtilisateursUserIdRouteWithChildren
   '/admin/_layout/utilisateurs/ajouter': typeof AdminLayoutUtilisateursAjouterRoute
   '/admin/_layout/equipements/': typeof AdminLayoutEquipementsIndexRoute
+  '/admin/_layout/reglages/': typeof AdminLayoutReglagesIndexRoute
   '/admin/_layout/reservations/': typeof AdminLayoutReservationsIndexRoute
   '/admin/_layout/utilisateurs/': typeof AdminLayoutUtilisateursIndexRoute
   '/admin/_layout/equipements/$itemId/modifier': typeof AdminLayoutEquipementsItemIdModifierRoute
@@ -386,12 +425,16 @@ export interface FileRouteTypes {
     | '/activite/$activitySlug/$productSlug'
     | '/admin/equipements/$itemId'
     | '/admin/equipements/ajouter'
-    | '/admin/equipements/categories'
+    | '/admin/reglages/categories'
+    | '/admin/reglages/facturation'
+    | '/admin/reglages/horaires'
+    | '/admin/reglages/produits'
     | '/admin/reservations/$reservationId'
     | '/admin/reservations/ajouter'
     | '/admin/utilisateurs/$userId'
     | '/admin/utilisateurs/ajouter'
     | '/admin/equipements/'
+    | '/admin/reglages/'
     | '/admin/reservations/'
     | '/admin/utilisateurs/'
     | '/admin/equipements/$itemId/modifier'
@@ -413,16 +456,19 @@ export interface FileRouteTypes {
     | '/reservation/$reference'
     | '/admin/durees'
     | '/admin/facturation'
-    | '/admin/reglages'
     | '/admin/statistiques'
     | '/api/auth/$'
     | '/admin'
     | '/activite/$activitySlug/$productSlug'
     | '/admin/equipements/ajouter'
-    | '/admin/equipements/categories'
+    | '/admin/reglages/categories'
+    | '/admin/reglages/facturation'
+    | '/admin/reglages/horaires'
+    | '/admin/reglages/produits'
     | '/admin/reservations/ajouter'
     | '/admin/utilisateurs/ajouter'
     | '/admin/equipements'
+    | '/admin/reglages'
     | '/admin/reservations'
     | '/admin/utilisateurs'
     | '/admin/equipements/$itemId/modifier'
@@ -456,12 +502,16 @@ export interface FileRouteTypes {
     | '/_public/activite/$activitySlug/$productSlug'
     | '/admin/_layout/equipements/$itemId'
     | '/admin/_layout/equipements/ajouter'
-    | '/admin/_layout/equipements/categories'
+    | '/admin/_layout/reglages/categories'
+    | '/admin/_layout/reglages/facturation'
+    | '/admin/_layout/reglages/horaires'
+    | '/admin/_layout/reglages/produits'
     | '/admin/_layout/reservations/$reservationId'
     | '/admin/_layout/reservations/ajouter'
     | '/admin/_layout/utilisateurs/$userId'
     | '/admin/_layout/utilisateurs/ajouter'
     | '/admin/_layout/equipements/'
+    | '/admin/_layout/reglages/'
     | '/admin/_layout/reservations/'
     | '/admin/_layout/utilisateurs/'
     | '/admin/_layout/equipements/$itemId/modifier'
@@ -643,6 +693,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLayoutReservationsIndexRouteImport
       parentRoute: typeof AdminLayoutReservationsRoute
     }
+    '/admin/_layout/reglages/': {
+      id: '/admin/_layout/reglages/'
+      path: '/'
+      fullPath: '/admin/reglages/'
+      preLoaderRoute: typeof AdminLayoutReglagesIndexRouteImport
+      parentRoute: typeof AdminLayoutReglagesRoute
+    }
     '/admin/_layout/equipements/': {
       id: '/admin/_layout/equipements/'
       path: '/'
@@ -678,12 +735,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLayoutReservationsReservationIdRouteImport
       parentRoute: typeof AdminLayoutReservationsRoute
     }
-    '/admin/_layout/equipements/categories': {
-      id: '/admin/_layout/equipements/categories'
+    '/admin/_layout/reglages/produits': {
+      id: '/admin/_layout/reglages/produits'
+      path: '/produits'
+      fullPath: '/admin/reglages/produits'
+      preLoaderRoute: typeof AdminLayoutReglagesProduitsRouteImport
+      parentRoute: typeof AdminLayoutReglagesRoute
+    }
+    '/admin/_layout/reglages/horaires': {
+      id: '/admin/_layout/reglages/horaires'
+      path: '/horaires'
+      fullPath: '/admin/reglages/horaires'
+      preLoaderRoute: typeof AdminLayoutReglagesHorairesRouteImport
+      parentRoute: typeof AdminLayoutReglagesRoute
+    }
+    '/admin/_layout/reglages/facturation': {
+      id: '/admin/_layout/reglages/facturation'
+      path: '/facturation'
+      fullPath: '/admin/reglages/facturation'
+      preLoaderRoute: typeof AdminLayoutReglagesFacturationRouteImport
+      parentRoute: typeof AdminLayoutReglagesRoute
+    }
+    '/admin/_layout/reglages/categories': {
+      id: '/admin/_layout/reglages/categories'
       path: '/categories'
-      fullPath: '/admin/equipements/categories'
-      preLoaderRoute: typeof AdminLayoutEquipementsCategoriesRouteImport
-      parentRoute: typeof AdminLayoutEquipementsRoute
+      fullPath: '/admin/reglages/categories'
+      preLoaderRoute: typeof AdminLayoutReglagesCategoriesRouteImport
+      parentRoute: typeof AdminLayoutReglagesRoute
     }
     '/admin/_layout/equipements/ajouter': {
       id: '/admin/_layout/equipements/ajouter'
@@ -813,7 +891,6 @@ const AdminLayoutEquipementsItemIdRouteWithChildren =
 interface AdminLayoutEquipementsRouteChildren {
   AdminLayoutEquipementsItemIdRoute: typeof AdminLayoutEquipementsItemIdRouteWithChildren
   AdminLayoutEquipementsAjouterRoute: typeof AdminLayoutEquipementsAjouterRoute
-  AdminLayoutEquipementsCategoriesRoute: typeof AdminLayoutEquipementsCategoriesRoute
   AdminLayoutEquipementsIndexRoute: typeof AdminLayoutEquipementsIndexRoute
 }
 
@@ -822,8 +899,6 @@ const AdminLayoutEquipementsRouteChildren: AdminLayoutEquipementsRouteChildren =
     AdminLayoutEquipementsItemIdRoute:
       AdminLayoutEquipementsItemIdRouteWithChildren,
     AdminLayoutEquipementsAjouterRoute: AdminLayoutEquipementsAjouterRoute,
-    AdminLayoutEquipementsCategoriesRoute:
-      AdminLayoutEquipementsCategoriesRoute,
     AdminLayoutEquipementsIndexRoute: AdminLayoutEquipementsIndexRoute,
   }
 
@@ -831,6 +906,25 @@ const AdminLayoutEquipementsRouteWithChildren =
   AdminLayoutEquipementsRoute._addFileChildren(
     AdminLayoutEquipementsRouteChildren,
   )
+
+interface AdminLayoutReglagesRouteChildren {
+  AdminLayoutReglagesCategoriesRoute: typeof AdminLayoutReglagesCategoriesRoute
+  AdminLayoutReglagesFacturationRoute: typeof AdminLayoutReglagesFacturationRoute
+  AdminLayoutReglagesHorairesRoute: typeof AdminLayoutReglagesHorairesRoute
+  AdminLayoutReglagesProduitsRoute: typeof AdminLayoutReglagesProduitsRoute
+  AdminLayoutReglagesIndexRoute: typeof AdminLayoutReglagesIndexRoute
+}
+
+const AdminLayoutReglagesRouteChildren: AdminLayoutReglagesRouteChildren = {
+  AdminLayoutReglagesCategoriesRoute: AdminLayoutReglagesCategoriesRoute,
+  AdminLayoutReglagesFacturationRoute: AdminLayoutReglagesFacturationRoute,
+  AdminLayoutReglagesHorairesRoute: AdminLayoutReglagesHorairesRoute,
+  AdminLayoutReglagesProduitsRoute: AdminLayoutReglagesProduitsRoute,
+  AdminLayoutReglagesIndexRoute: AdminLayoutReglagesIndexRoute,
+}
+
+const AdminLayoutReglagesRouteWithChildren =
+  AdminLayoutReglagesRoute._addFileChildren(AdminLayoutReglagesRouteChildren)
 
 interface AdminLayoutReservationsReservationIdRouteChildren {
   AdminLayoutReservationsReservationIdIndexRoute: typeof AdminLayoutReservationsReservationIdIndexRoute
@@ -907,7 +1001,7 @@ interface AdminLayoutRouteChildren {
   AdminLayoutDureesRoute: typeof AdminLayoutDureesRoute
   AdminLayoutEquipementsRoute: typeof AdminLayoutEquipementsRouteWithChildren
   AdminLayoutFacturationRoute: typeof AdminLayoutFacturationRoute
-  AdminLayoutReglagesRoute: typeof AdminLayoutReglagesRoute
+  AdminLayoutReglagesRoute: typeof AdminLayoutReglagesRouteWithChildren
   AdminLayoutReservationsRoute: typeof AdminLayoutReservationsRouteWithChildren
   AdminLayoutStatistiquesRoute: typeof AdminLayoutStatistiquesRoute
   AdminLayoutUtilisateursRoute: typeof AdminLayoutUtilisateursRouteWithChildren
@@ -918,7 +1012,7 @@ const AdminLayoutRouteChildren: AdminLayoutRouteChildren = {
   AdminLayoutDureesRoute: AdminLayoutDureesRoute,
   AdminLayoutEquipementsRoute: AdminLayoutEquipementsRouteWithChildren,
   AdminLayoutFacturationRoute: AdminLayoutFacturationRoute,
-  AdminLayoutReglagesRoute: AdminLayoutReglagesRoute,
+  AdminLayoutReglagesRoute: AdminLayoutReglagesRouteWithChildren,
   AdminLayoutReservationsRoute: AdminLayoutReservationsRouteWithChildren,
   AdminLayoutStatistiquesRoute: AdminLayoutStatistiquesRoute,
   AdminLayoutUtilisateursRoute: AdminLayoutUtilisateursRouteWithChildren,

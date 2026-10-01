@@ -24,7 +24,7 @@ export function SiteHeader({
 					{title}
 				</h1>
 				{links && links.length > 0 && (
-					<nav className="ml-4 hidden items-center gap-1 md:flex">
+					<nav className="ml-4 flex items-center gap-1 overflow-x-auto md:flex">
 						{links.map((link) => (
 							<Link
 								key={link.href}

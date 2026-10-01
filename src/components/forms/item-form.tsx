@@ -634,8 +634,7 @@ export function ItemForm({
 										<p className="text-sm text-muted-foreground italic">
 											Aucun attribut défini. Ajoutez vos attributs{" "}
 											<Link
-												to="/admin/reglages"
-												hash="attributs"
+												to="/admin/reglages/produits"
 												className="underline"
 											>
 												ici

@@ -14,7 +14,7 @@ function RouteComponent() {
 				title="Équipements"
 				links={[
 					{ label: "Liste", href: "/admin/equipements" },
-					{ label: "Catégories", href: "/admin/equipements/categories" },
+					{ label: "Ajouter", href: "/admin/equipements/ajouter" }
 				]}
 				actions={
 					<Button variant="outline" size="sm" asChild>
