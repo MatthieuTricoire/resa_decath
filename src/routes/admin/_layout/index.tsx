@@ -26,8 +26,17 @@ import {
 } from "#/features/reservations/queries";
 import { queryKeys } from "#/features/reservations/query-keys";
 
-const formatDateTime = (iso: string) =>
-	format(new Date(iso), "dd/MM/yy HH:mm", { locale: frLocale });
+/**
+ * Une date de réservation, sans heure.
+ *
+ * Le retrait et le retour n'ont pas d'heure : le site ne propose que des dates,
+ * converties à midi UTC par convention. Une heure de retrait affichée ici serait
+ * la même constante sur toutes les lignes — 14:00 en été, 13:00 en hiver — donc
+ * une information qui n'en est pas une. Les vraies heures (création, mise à
+ * jour) gardent leur format complet ailleurs.
+ */
+const formatDateOnly = (iso: string) =>
+	format(new Date(iso), "dd/MM/yy", { locale: frLocale });
 
 function daysLate(iso: string) {
 	const diff =
@@ -177,7 +186,7 @@ function LateSection({
 						<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
 							<span className="text-xs text-muted-foreground">Prévu</span>
 							<time dateTime={row[dateField]} className="font-medium">
-								{formatDateTime(row[dateField])}
+								{formatDateOnly(row[dateField])}
 							</time>
 						</div>
 						<div className="flex items-center gap-2">
@@ -222,7 +231,7 @@ function LateSection({
 								</TableCell>
 								<TableCell>
 									<div className="text-sm whitespace-nowrap">
-										{formatDateTime(row[dateField])}
+										{formatDateOnly(row[dateField])}
 									</div>
 									<Badge className="mt-1 bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
 										{lateLabel(row[dateField])}
@@ -289,10 +298,6 @@ function ScheduleSection({
 				emptyLabel={emptyLabel}
 				renderDetails={(row) => (
 					<div className="space-y-1 text-sm">
-						<div className="flex items-center gap-2">
-							<span className="text-xs text-muted-foreground">Heure</span>
-							<span className="font-semibold tabular-nums">{row.time}</span>
-						</div>
 						<p className="text-muted-foreground">
 							{row.itemCount} article{row.itemCount > 1 ? "s" : ""}
 						</p>
@@ -313,7 +318,6 @@ function ScheduleSection({
 					<TableHeader className="bg-muted/50">
 						<TableRow>
 							<TableHead scope="col">Client</TableHead>
-							<TableHead scope="col">Heure</TableHead>
 							<TableHead scope="col">Articles</TableHead>
 							<TableHead scope="col" className="w-24">
 								<span className="sr-only">Actions</span>
@@ -324,7 +328,7 @@ function ScheduleSection({
 						{isLoading ? (
 							<TableRow>
 								<TableCell
-									colSpan={4}
+									colSpan={3}
 									className="text-center text-sm text-muted-foreground"
 								>
 									Chargement...
@@ -333,7 +337,7 @@ function ScheduleSection({
 						) : rows.length === 0 ? (
 							<TableRow>
 								<TableCell
-									colSpan={4}
+									colSpan={3}
 									className="text-center text-sm text-muted-foreground"
 								>
 									{emptyLabel}
@@ -347,9 +351,6 @@ function ScheduleSection({
 										<div className="text-xs text-muted-foreground">
 											{row.clientEmail}
 										</div>
-									</TableCell>
-									<TableCell className="text-sm tabular-nums">
-										{row.time}
 									</TableCell>
 									<TableCell className="text-sm tabular-nums">
 										{row.itemCount}

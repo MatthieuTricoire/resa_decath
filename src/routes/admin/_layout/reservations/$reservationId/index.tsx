@@ -48,9 +48,22 @@ const formatPrice = (val: string | null) => {
 	return `${parseFloat(val).toFixed(2).replace(".", ",")} €`;
 };
 
+/** Un vrai horodatage : l'heure de création de la réservation est une donnée. */
 const formatDt = (iso: string) => {
 	const d = new Date(iso);
 	return format(d, "dd/MM/yyyy à HH:mm", { locale: frLocale });
+};
+
+/**
+ * Une date de retrait ou de retour, sans heure.
+ *
+ * Le retrait et le retour n'ont pas d'heure : le site ne propose que des dates,
+ * converties à midi UTC par convention. L'heure stockée est donc une constante —
+ * 14:00 en été, 13:00 en hiver — et l'afficher ne dirait rien du tout.
+ */
+const formatDateOnly = (iso: string) => {
+	const d = new Date(iso);
+	return format(d, "dd/MM/yyyy", { locale: frLocale });
 };
 
 export const Route = createFileRoute(
@@ -172,9 +185,9 @@ function RouteComponent() {
 					</CardHeader>
 					<CardContent className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
 						<div className="text-muted-foreground">Retrait prévu</div>
-						<div>{formatDt(reservation.pickupDate)}</div>
+						<div>{formatDateOnly(reservation.pickupDate)}</div>
 						<div className="text-muted-foreground">Retour prévu</div>
-						<div>{formatDt(reservation.returnDate)}</div>
+						<div>{formatDateOnly(reservation.returnDate)}</div>
 						<div className="text-muted-foreground">Créée le</div>
 						<div>{formatDt(reservation.createdAt)}</div>
 						<div className="text-muted-foreground">Total</div>

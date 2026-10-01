@@ -38,9 +38,22 @@ const statusLabel: Record<string, string> = {
 	EXPIRED: "Expirée",
 };
 
+/** Un vrai horodatage : création ou mise à jour du compte. */
 const formatDt = (iso: string) => {
 	const d = new Date(iso);
 	return format(d, "dd/MM/yyyy à HH:mm", { locale: frLocale });
+};
+
+/**
+ * Une date de retrait ou de retour, sans heure.
+ *
+ * Le retrait et le retour n'ont pas d'heure : le site ne propose que des dates,
+ * converties à midi UTC par convention. L'heure stockée est donc une constante —
+ * 14:00 en été, 13:00 en hiver — et l'afficher ne dirait rien du tout.
+ */
+const formatDateOnly = (iso: string) => {
+	const d = new Date(iso);
+	return format(d, "dd/MM/yyyy", { locale: frLocale });
 };
 
 const formatPrice = (val: string | null) => {
@@ -162,9 +175,9 @@ function RouteComponent() {
 										</div>
 										<div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm mb-3">
 											<div className="text-muted-foreground">Retrait</div>
-											<div>{formatDt(res.pickupDate)}</div>
+											<div>{formatDateOnly(res.pickupDate)}</div>
 											<div className="text-muted-foreground">Retour</div>
-											<div>{formatDt(res.returnDate)}</div>
+											<div>{formatDateOnly(res.returnDate)}</div>
 											<div className="text-muted-foreground">Total</div>
 											<div className="font-semibold">
 												{formatPrice(res.totalPrice)}

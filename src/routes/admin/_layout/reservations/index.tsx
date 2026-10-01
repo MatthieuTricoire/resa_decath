@@ -18,6 +18,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
 import {
 	getReservations,
+	type ReservationLineItem,
 	type ReservationRow,
 } from "#/features/reservations/queries";
 import { queryKeys } from "#/features/reservations/query-keys";
@@ -99,10 +100,45 @@ const formatPrice = (val: string | null) => {
 	return `${parseFloat(val).toFixed(2).replace(".", ",")} €`;
 };
 
+/**
+ * Une date de réservation, sans heure.
+ *
+ * Le retrait et le retour n'ont pas d'heure : le site ne propose que des dates,
+ * converties à midi UTC par convention. Afficher cette heure donnerait la même
+ * valeur sur toutes les lignes — 14:00 en été, 13:00 en hiver.
+ */
 const formatDate = (iso: string) => {
 	const d = new Date(iso);
-	return format(d, "dd/MM/yy HH:mm", { locale: frLocale });
+	return format(d, "dd/MM/yy", { locale: frLocale });
 };
+
+/**
+ * Le nombre de pièces d'une réservation, toutes lignes confondues.
+ *
+ * C'est ce que le comptoir compte en premier : deuxsnowboards et quatre paires
+ * de skis font six pièces à sortir, pas deux articles.
+ */
+const totalQuantity = (items: ReservationLineItem[]) =>
+	items.reduce((total, item) => total + item.quantity, 0);
+
+/**
+ * Le détail des pièces pour le survol, une ligne par article.
+ *
+ * `title` est le seul endroit où la liste tient sans alourdir le tableau : sur
+ * un écran large, le survol donne ce qu'il faut préparer ; sur mobile il n'y a
+ * pas de survol, on passe par la fiche de la réservation.
+ */
+const itemsSummary = (items: ReservationLineItem[]) =>
+	items
+		.map((item) => {
+			const nom = [item.brand, item.itemName].filter(Boolean).join(" ");
+			const option =
+				item.priceOptionLabel && item.priceOptionLabel !== "—"
+					? ` – ${item.priceOptionLabel}`
+					: "";
+			return `${item.quantity}× ${nom}${option}`;
+		})
+		.join("\n");
 
 export const Route = createFileRoute("/admin/_layout/reservations/")({
 	loader: async ({ context: { queryClient } }) => {
@@ -195,6 +231,7 @@ function RouteComponent() {
 									<TableHead>Carte fidélité</TableHead>
 									<TableHead>Retrait</TableHead>
 									<TableHead>Retour</TableHead>
+									<TableHead>Produits</TableHead>
 									<TableHead>Statut</TableHead>
 									<TableHead>Total</TableHead>
 									<TableHead />
@@ -204,7 +241,7 @@ function RouteComponent() {
 								{isPending ? (
 									<TableRow>
 										<TableCell
-											colSpan={8}
+											colSpan={9}
 											className="h-24 text-center text-muted-foreground"
 										>
 											Chargement...
@@ -239,6 +276,19 @@ function RouteComponent() {
 											</TableCell>
 											<TableCell className="text-sm whitespace-nowrap">
 												{formatDate(r.returnDate)}
+											</TableCell>
+											<TableCell className="text-sm">
+												{r.items.length === 0 ? (
+													"—"
+												) : (
+													<span
+														className="whitespace-nowrap"
+														title={itemsSummary(r.items)}
+													>
+														{totalQuantity(r.items)} article
+														{totalQuantity(r.items) > 1 ? "s" : ""}
+													</span>
+												)}
 											</TableCell>
 											<TableCell>
 												<div className="flex flex-col items-start gap-1">
@@ -277,7 +327,7 @@ function RouteComponent() {
 								) : (
 									<TableRow>
 										<TableCell
-											colSpan={8}
+											colSpan={9}
 											className="h-24 text-center text-muted-foreground"
 										>
 											Aucune réservation trouvée.
