@@ -9,85 +9,60 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as PublicRouteImport } from './routes/_public'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiSitemapRouteImport } from './routes/api/sitemap'
-import { Route as AdminLoginRouteImport } from './routes/admin/login'
-import { Route as AdminLayoutRouteImport } from './routes/admin/_layout'
-import { Route as PublicReservationRouteImport } from './routes/_public/reservation'
-import { Route as PublicPanierRouteImport } from './routes/_public/panier'
-import { Route as PublicMonCompteRouteImport } from './routes/_public/mon-compte'
-import { Route as PublicLocationMaterielChar123villeChar125RouteImport } from './routes/_public/location-materiel-{$ville}'
+import { Route as PublicRouteImport } from './routes/_public'
 import { Route as PublicConnexionRouteImport } from './routes/_public/connexion'
-import { Route as AdminLayoutIndexRouteImport } from './routes/admin/_layout/index'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as AdminLayoutUtilisateursRouteImport } from './routes/admin/_layout/utilisateurs'
-import { Route as AdminLayoutStatistiquesRouteImport } from './routes/admin/_layout/statistiques'
-import { Route as AdminLayoutReservationsRouteImport } from './routes/admin/_layout/reservations'
-import { Route as AdminLayoutReglagesRouteImport } from './routes/admin/_layout/reglages'
-import { Route as AdminLayoutFacturationRouteImport } from './routes/admin/_layout/facturation'
-import { Route as AdminLayoutEquipementsRouteImport } from './routes/admin/_layout/equipements'
-import { Route as AdminLayoutDureesRouteImport } from './routes/admin/_layout/durees'
-import { Route as PublicReservationReferenceRouteImport } from './routes/_public/reservation/$reference'
+import { Route as PublicLocationMaterielChar123villeChar125RouteImport } from './routes/_public/location-materiel-{$ville}'
+import { Route as PublicMonCompteRouteImport } from './routes/_public/mon-compte'
+import { Route as PublicPanierRouteImport } from './routes/_public/panier'
+import { Route as PublicReservationRouteImport } from './routes/_public/reservation'
+import { Route as AdminLayoutRouteImport } from './routes/admin/_layout'
+import { Route as AdminLoginRouteImport } from './routes/admin/login'
+import { Route as ApiSitemapRouteImport } from './routes/api/sitemap'
 import { Route as PublicActiviteActivitySlugRouteImport } from './routes/_public/activite/$activitySlug'
-import { Route as AdminLayoutUtilisateursIndexRouteImport } from './routes/admin/_layout/utilisateurs/index'
-import { Route as AdminLayoutReservationsIndexRouteImport } from './routes/admin/_layout/reservations/index'
-import { Route as AdminLayoutReglagesIndexRouteImport } from './routes/admin/_layout/reglages/index'
-import { Route as AdminLayoutEquipementsIndexRouteImport } from './routes/admin/_layout/equipements/index'
-import { Route as AdminLayoutUtilisateursAjouterRouteImport } from './routes/admin/_layout/utilisateurs/ajouter'
-import { Route as AdminLayoutUtilisateursUserIdRouteImport } from './routes/admin/_layout/utilisateurs/$userId'
-import { Route as AdminLayoutReservationsAjouterRouteImport } from './routes/admin/_layout/reservations/ajouter'
-import { Route as AdminLayoutReservationsReservationIdRouteImport } from './routes/admin/_layout/reservations/$reservationId'
-import { Route as AdminLayoutReglagesProduitsRouteImport } from './routes/admin/_layout/reglages/produits'
-import { Route as AdminLayoutReglagesHorairesRouteImport } from './routes/admin/_layout/reglages/horaires'
-import { Route as AdminLayoutReglagesFacturationRouteImport } from './routes/admin/_layout/reglages/facturation'
-import { Route as AdminLayoutReglagesCategoriesRouteImport } from './routes/admin/_layout/reglages/categories'
-import { Route as AdminLayoutEquipementsAjouterRouteImport } from './routes/admin/_layout/equipements/ajouter'
-import { Route as AdminLayoutEquipementsItemIdRouteImport } from './routes/admin/_layout/equipements/$itemId'
+import { Route as PublicReservationReferenceRouteImport } from './routes/_public/reservation/$reference'
+import { Route as AdminLayoutIndexRouteImport } from './routes/admin/_layout/index'
+import { Route as AdminLayoutDureesRouteImport } from './routes/admin/_layout/durees'
+import { Route as AdminLayoutEquipementsRouteImport } from './routes/admin/_layout/equipements'
+import { Route as AdminLayoutFacturationRouteImport } from './routes/admin/_layout/facturation'
+import { Route as AdminLayoutReglagesRouteImport } from './routes/admin/_layout/reglages'
+import { Route as AdminLayoutReservationsRouteImport } from './routes/admin/_layout/reservations'
+import { Route as AdminLayoutStatistiquesRouteImport } from './routes/admin/_layout/statistiques'
+import { Route as AdminLayoutUtilisateursRouteImport } from './routes/admin/_layout/utilisateurs'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as PublicActiviteActivitySlugProductSlugRouteImport } from './routes/_public/activite/$activitySlug/$productSlug'
-import { Route as AdminLayoutUtilisateursUserIdIndexRouteImport } from './routes/admin/_layout/utilisateurs/$userId/index'
-import { Route as AdminLayoutReservationsReservationIdIndexRouteImport } from './routes/admin/_layout/reservations/$reservationId/index'
+import { Route as AdminLayoutEquipementsIndexRouteImport } from './routes/admin/_layout/equipements/index'
+import { Route as AdminLayoutEquipementsItemIdRouteImport } from './routes/admin/_layout/equipements/$itemId'
+import { Route as AdminLayoutEquipementsAjouterRouteImport } from './routes/admin/_layout/equipements/ajouter'
+import { Route as AdminLayoutReglagesIndexRouteImport } from './routes/admin/_layout/reglages/index'
+import { Route as AdminLayoutReglagesCategoriesRouteImport } from './routes/admin/_layout/reglages/categories'
+import { Route as AdminLayoutReglagesFacturationRouteImport } from './routes/admin/_layout/reglages/facturation'
+import { Route as AdminLayoutReglagesHorairesRouteImport } from './routes/admin/_layout/reglages/horaires'
+import { Route as AdminLayoutReglagesProduitsRouteImport } from './routes/admin/_layout/reglages/produits'
+import { Route as AdminLayoutReservationsIndexRouteImport } from './routes/admin/_layout/reservations/index'
+import { Route as AdminLayoutReservationsReservationIdRouteImport } from './routes/admin/_layout/reservations/$reservationId'
+import { Route as AdminLayoutReservationsAjouterRouteImport } from './routes/admin/_layout/reservations/ajouter'
+import { Route as AdminLayoutUtilisateursIndexRouteImport } from './routes/admin/_layout/utilisateurs/index'
+import { Route as AdminLayoutUtilisateursUserIdRouteImport } from './routes/admin/_layout/utilisateurs/$userId'
+import { Route as AdminLayoutUtilisateursAjouterRouteImport } from './routes/admin/_layout/utilisateurs/ajouter'
 import { Route as AdminLayoutEquipementsItemIdIndexRouteImport } from './routes/admin/_layout/equipements/$itemId/index'
-import { Route as AdminLayoutUtilisateursUserIdModifierRouteImport } from './routes/admin/_layout/utilisateurs/$userId/modifier'
 import { Route as AdminLayoutEquipementsItemIdModifierRouteImport } from './routes/admin/_layout/equipements/$itemId/modifier'
+import { Route as AdminLayoutReservationsReservationIdIndexRouteImport } from './routes/admin/_layout/reservations/$reservationId/index'
+import { Route as AdminLayoutUtilisateursUserIdIndexRouteImport } from './routes/admin/_layout/utilisateurs/$userId/index'
+import { Route as AdminLayoutUtilisateursUserIdModifierRouteImport } from './routes/admin/_layout/utilisateurs/$userId/modifier'
 
-const PublicRoute = PublicRouteImport.update({
-  id: '/_public',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiSitemapRoute = ApiSitemapRouteImport.update({
-  id: '/api/sitemap',
-  path: '/api/sitemap',
+const PublicRoute = PublicRouteImport.update({
+  id: '/_public',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminLoginRoute = AdminLoginRouteImport.update({
-  id: '/admin/login',
-  path: '/admin/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminLayoutRoute = AdminLayoutRouteImport.update({
-  id: '/admin/_layout',
-  path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PublicReservationRoute = PublicReservationRouteImport.update({
-  id: '/reservation',
-  path: '/reservation',
-  getParentRoute: () => PublicRoute,
-} as any)
-const PublicPanierRoute = PublicPanierRouteImport.update({
-  id: '/panier',
-  path: '/panier',
-  getParentRoute: () => PublicRoute,
-} as any)
-const PublicMonCompteRoute = PublicMonCompteRouteImport.update({
-  id: '/mon-compte',
-  path: '/mon-compte',
+const PublicConnexionRoute = PublicConnexionRouteImport.update({
+  id: '/connexion',
+  path: '/connexion',
   getParentRoute: () => PublicRoute,
 } as any)
 const PublicLocationMaterielChar123villeChar125Route =
@@ -96,49 +71,51 @@ const PublicLocationMaterielChar123villeChar125Route =
     path: '/location-materiel-{$ville}',
     getParentRoute: () => PublicRoute,
   } as any)
-const PublicConnexionRoute = PublicConnexionRouteImport.update({
-  id: '/connexion',
-  path: '/connexion',
+const PublicMonCompteRoute = PublicMonCompteRouteImport.update({
+  id: '/mon-compte',
+  path: '/mon-compte',
   getParentRoute: () => PublicRoute,
 } as any)
+const PublicPanierRoute = PublicPanierRouteImport.update({
+  id: '/panier',
+  path: '/panier',
+  getParentRoute: () => PublicRoute,
+} as any)
+const PublicReservationRoute = PublicReservationRouteImport.update({
+  id: '/reservation',
+  path: '/reservation',
+  getParentRoute: () => PublicRoute,
+} as any)
+const AdminLayoutRoute = AdminLayoutRouteImport.update({
+  id: '/admin/_layout',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/admin/login',
+  path: '/admin/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSitemapRoute = ApiSitemapRouteImport.update({
+  id: '/api/sitemap',
+  path: '/api/sitemap',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PublicActiviteActivitySlugRoute =
+  PublicActiviteActivitySlugRouteImport.update({
+    id: '/activite/$activitySlug',
+    path: '/activite/$activitySlug',
+    getParentRoute: () => PublicRoute,
+  } as any)
+const PublicReservationReferenceRoute =
+  PublicReservationReferenceRouteImport.update({
+    id: '/$reference',
+    path: '/$reference',
+    getParentRoute: () => PublicReservationRoute,
+  } as any)
 const AdminLayoutIndexRoute = AdminLayoutIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AdminLayoutRoute,
-} as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminLayoutUtilisateursRoute = AdminLayoutUtilisateursRouteImport.update({
-  id: '/utilisateurs',
-  path: '/utilisateurs',
-  getParentRoute: () => AdminLayoutRoute,
-} as any)
-const AdminLayoutStatistiquesRoute = AdminLayoutStatistiquesRouteImport.update({
-  id: '/statistiques',
-  path: '/statistiques',
-  getParentRoute: () => AdminLayoutRoute,
-} as any)
-const AdminLayoutReservationsRoute = AdminLayoutReservationsRouteImport.update({
-  id: '/reservations',
-  path: '/reservations',
-  getParentRoute: () => AdminLayoutRoute,
-} as any)
-const AdminLayoutReglagesRoute = AdminLayoutReglagesRouteImport.update({
-  id: '/reglages',
-  path: '/reglages',
-  getParentRoute: () => AdminLayoutRoute,
-} as any)
-const AdminLayoutFacturationRoute = AdminLayoutFacturationRouteImport.update({
-  id: '/facturation',
-  path: '/facturation',
-  getParentRoute: () => AdminLayoutRoute,
-} as any)
-const AdminLayoutEquipementsRoute = AdminLayoutEquipementsRouteImport.update({
-  id: '/equipements',
-  path: '/equipements',
   getParentRoute: () => AdminLayoutRoute,
 } as any)
 const AdminLayoutDureesRoute = AdminLayoutDureesRouteImport.update({
@@ -146,94 +123,51 @@ const AdminLayoutDureesRoute = AdminLayoutDureesRouteImport.update({
   path: '/durees',
   getParentRoute: () => AdminLayoutRoute,
 } as any)
-const PublicReservationReferenceRoute =
-  PublicReservationReferenceRouteImport.update({
-    id: '/$reference',
-    path: '/$reference',
-    getParentRoute: () => PublicReservationRoute,
-  } as any)
-const PublicActiviteActivitySlugRoute =
-  PublicActiviteActivitySlugRouteImport.update({
-    id: '/activite/$activitySlug',
-    path: '/activite/$activitySlug',
-    getParentRoute: () => PublicRoute,
-  } as any)
-const AdminLayoutUtilisateursIndexRoute =
-  AdminLayoutUtilisateursIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AdminLayoutUtilisateursRoute,
-  } as any)
-const AdminLayoutReservationsIndexRoute =
-  AdminLayoutReservationsIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AdminLayoutReservationsRoute,
-  } as any)
-const AdminLayoutReglagesIndexRoute =
-  AdminLayoutReglagesIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AdminLayoutReglagesRoute,
+const AdminLayoutEquipementsRoute = AdminLayoutEquipementsRouteImport.update({
+  id: '/equipements',
+  path: '/equipements',
+  getParentRoute: () => AdminLayoutRoute,
+} as any)
+const AdminLayoutFacturationRoute = AdminLayoutFacturationRouteImport.update({
+  id: '/facturation',
+  path: '/facturation',
+  getParentRoute: () => AdminLayoutRoute,
+} as any)
+const AdminLayoutReglagesRoute = AdminLayoutReglagesRouteImport.update({
+  id: '/reglages',
+  path: '/reglages',
+  getParentRoute: () => AdminLayoutRoute,
+} as any)
+const AdminLayoutReservationsRoute = AdminLayoutReservationsRouteImport.update({
+  id: '/reservations',
+  path: '/reservations',
+  getParentRoute: () => AdminLayoutRoute,
+} as any)
+const AdminLayoutStatistiquesRoute = AdminLayoutStatistiquesRouteImport.update({
+  id: '/statistiques',
+  path: '/statistiques',
+  getParentRoute: () => AdminLayoutRoute,
+} as any)
+const AdminLayoutUtilisateursRoute = AdminLayoutUtilisateursRouteImport.update({
+  id: '/utilisateurs',
+  path: '/utilisateurs',
+  getParentRoute: () => AdminLayoutRoute,
+} as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PublicActiviteActivitySlugProductSlugRoute =
+  PublicActiviteActivitySlugProductSlugRouteImport.update({
+    id: '/$productSlug',
+    path: '/$productSlug',
+    getParentRoute: () => PublicActiviteActivitySlugRoute,
   } as any)
 const AdminLayoutEquipementsIndexRoute =
   AdminLayoutEquipementsIndexRouteImport.update({
     id: '/',
     path: '/',
-    getParentRoute: () => AdminLayoutEquipementsRoute,
-  } as any)
-const AdminLayoutUtilisateursAjouterRoute =
-  AdminLayoutUtilisateursAjouterRouteImport.update({
-    id: '/ajouter',
-    path: '/ajouter',
-    getParentRoute: () => AdminLayoutUtilisateursRoute,
-  } as any)
-const AdminLayoutUtilisateursUserIdRoute =
-  AdminLayoutUtilisateursUserIdRouteImport.update({
-    id: '/$userId',
-    path: '/$userId',
-    getParentRoute: () => AdminLayoutUtilisateursRoute,
-  } as any)
-const AdminLayoutReservationsAjouterRoute =
-  AdminLayoutReservationsAjouterRouteImport.update({
-    id: '/ajouter',
-    path: '/ajouter',
-    getParentRoute: () => AdminLayoutReservationsRoute,
-  } as any)
-const AdminLayoutReservationsReservationIdRoute =
-  AdminLayoutReservationsReservationIdRouteImport.update({
-    id: '/$reservationId',
-    path: '/$reservationId',
-    getParentRoute: () => AdminLayoutReservationsRoute,
-  } as any)
-const AdminLayoutReglagesProduitsRoute =
-  AdminLayoutReglagesProduitsRouteImport.update({
-    id: '/produits',
-    path: '/produits',
-    getParentRoute: () => AdminLayoutReglagesRoute,
-  } as any)
-const AdminLayoutReglagesHorairesRoute =
-  AdminLayoutReglagesHorairesRouteImport.update({
-    id: '/horaires',
-    path: '/horaires',
-    getParentRoute: () => AdminLayoutReglagesRoute,
-  } as any)
-const AdminLayoutReglagesFacturationRoute =
-  AdminLayoutReglagesFacturationRouteImport.update({
-    id: '/facturation',
-    path: '/facturation',
-    getParentRoute: () => AdminLayoutReglagesRoute,
-  } as any)
-const AdminLayoutReglagesCategoriesRoute =
-  AdminLayoutReglagesCategoriesRouteImport.update({
-    id: '/categories',
-    path: '/categories',
-    getParentRoute: () => AdminLayoutReglagesRoute,
-  } as any)
-const AdminLayoutEquipementsAjouterRoute =
-  AdminLayoutEquipementsAjouterRouteImport.update({
-    id: '/ajouter',
-    path: '/ajouter',
     getParentRoute: () => AdminLayoutEquipementsRoute,
   } as any)
 const AdminLayoutEquipementsItemIdRoute =
@@ -242,23 +176,77 @@ const AdminLayoutEquipementsItemIdRoute =
     path: '/$itemId',
     getParentRoute: () => AdminLayoutEquipementsRoute,
   } as any)
-const PublicActiviteActivitySlugProductSlugRoute =
-  PublicActiviteActivitySlugProductSlugRouteImport.update({
-    id: '/$productSlug',
-    path: '/$productSlug',
-    getParentRoute: () => PublicActiviteActivitySlugRoute,
+const AdminLayoutEquipementsAjouterRoute =
+  AdminLayoutEquipementsAjouterRouteImport.update({
+    id: '/ajouter',
+    path: '/ajouter',
+    getParentRoute: () => AdminLayoutEquipementsRoute,
   } as any)
-const AdminLayoutUtilisateursUserIdIndexRoute =
-  AdminLayoutUtilisateursUserIdIndexRouteImport.update({
+const AdminLayoutReglagesIndexRoute =
+  AdminLayoutReglagesIndexRouteImport.update({
     id: '/',
     path: '/',
-    getParentRoute: () => AdminLayoutUtilisateursUserIdRoute,
+    getParentRoute: () => AdminLayoutReglagesRoute,
   } as any)
-const AdminLayoutReservationsReservationIdIndexRoute =
-  AdminLayoutReservationsReservationIdIndexRouteImport.update({
+const AdminLayoutReglagesCategoriesRoute =
+  AdminLayoutReglagesCategoriesRouteImport.update({
+    id: '/categories',
+    path: '/categories',
+    getParentRoute: () => AdminLayoutReglagesRoute,
+  } as any)
+const AdminLayoutReglagesFacturationRoute =
+  AdminLayoutReglagesFacturationRouteImport.update({
+    id: '/facturation',
+    path: '/facturation',
+    getParentRoute: () => AdminLayoutReglagesRoute,
+  } as any)
+const AdminLayoutReglagesHorairesRoute =
+  AdminLayoutReglagesHorairesRouteImport.update({
+    id: '/horaires',
+    path: '/horaires',
+    getParentRoute: () => AdminLayoutReglagesRoute,
+  } as any)
+const AdminLayoutReglagesProduitsRoute =
+  AdminLayoutReglagesProduitsRouteImport.update({
+    id: '/produits',
+    path: '/produits',
+    getParentRoute: () => AdminLayoutReglagesRoute,
+  } as any)
+const AdminLayoutReservationsIndexRoute =
+  AdminLayoutReservationsIndexRouteImport.update({
     id: '/',
     path: '/',
-    getParentRoute: () => AdminLayoutReservationsReservationIdRoute,
+    getParentRoute: () => AdminLayoutReservationsRoute,
+  } as any)
+const AdminLayoutReservationsReservationIdRoute =
+  AdminLayoutReservationsReservationIdRouteImport.update({
+    id: '/$reservationId',
+    path: '/$reservationId',
+    getParentRoute: () => AdminLayoutReservationsRoute,
+  } as any)
+const AdminLayoutReservationsAjouterRoute =
+  AdminLayoutReservationsAjouterRouteImport.update({
+    id: '/ajouter',
+    path: '/ajouter',
+    getParentRoute: () => AdminLayoutReservationsRoute,
+  } as any)
+const AdminLayoutUtilisateursIndexRoute =
+  AdminLayoutUtilisateursIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminLayoutUtilisateursRoute,
+  } as any)
+const AdminLayoutUtilisateursUserIdRoute =
+  AdminLayoutUtilisateursUserIdRouteImport.update({
+    id: '/$userId',
+    path: '/$userId',
+    getParentRoute: () => AdminLayoutUtilisateursRoute,
+  } as any)
+const AdminLayoutUtilisateursAjouterRoute =
+  AdminLayoutUtilisateursAjouterRouteImport.update({
+    id: '/ajouter',
+    path: '/ajouter',
+    getParentRoute: () => AdminLayoutUtilisateursRoute,
   } as any)
 const AdminLayoutEquipementsItemIdIndexRoute =
   AdminLayoutEquipementsItemIdIndexRouteImport.update({
@@ -266,17 +254,29 @@ const AdminLayoutEquipementsItemIdIndexRoute =
     path: '/',
     getParentRoute: () => AdminLayoutEquipementsItemIdRoute,
   } as any)
-const AdminLayoutUtilisateursUserIdModifierRoute =
-  AdminLayoutUtilisateursUserIdModifierRouteImport.update({
-    id: '/modifier',
-    path: '/modifier',
-    getParentRoute: () => AdminLayoutUtilisateursUserIdRoute,
-  } as any)
 const AdminLayoutEquipementsItemIdModifierRoute =
   AdminLayoutEquipementsItemIdModifierRouteImport.update({
     id: '/modifier',
     path: '/modifier',
     getParentRoute: () => AdminLayoutEquipementsItemIdRoute,
+  } as any)
+const AdminLayoutReservationsReservationIdIndexRoute =
+  AdminLayoutReservationsReservationIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminLayoutReservationsReservationIdRoute,
+  } as any)
+const AdminLayoutUtilisateursUserIdIndexRoute =
+  AdminLayoutUtilisateursUserIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminLayoutUtilisateursUserIdRoute,
+  } as any)
+const AdminLayoutUtilisateursUserIdModifierRoute =
+  AdminLayoutUtilisateursUserIdModifierRouteImport.update({
+    id: '/modifier',
+    path: '/modifier',
+    getParentRoute: () => AdminLayoutUtilisateursUserIdRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -532,13 +532,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/_public': {
-      id: '/_public'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof PublicRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -546,46 +539,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/sitemap': {
-      id: '/api/sitemap'
-      path: '/api/sitemap'
-      fullPath: '/api/sitemap'
-      preLoaderRoute: typeof ApiSitemapRouteImport
+    '/_public': {
+      id: '/_public'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof PublicRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/login': {
-      id: '/admin/login'
-      path: '/admin/login'
-      fullPath: '/admin/login'
-      preLoaderRoute: typeof AdminLoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/_layout': {
-      id: '/admin/_layout'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminLayoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_public/reservation': {
-      id: '/_public/reservation'
-      path: '/reservation'
-      fullPath: '/reservation'
-      preLoaderRoute: typeof PublicReservationRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/panier': {
-      id: '/_public/panier'
-      path: '/panier'
-      fullPath: '/panier'
-      preLoaderRoute: typeof PublicPanierRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/mon-compte': {
-      id: '/_public/mon-compte'
-      path: '/mon-compte'
-      fullPath: '/mon-compte'
-      preLoaderRoute: typeof PublicMonCompteRouteImport
+    '/_public/connexion': {
+      id: '/_public/connexion'
+      path: '/connexion'
+      fullPath: '/connexion'
+      preLoaderRoute: typeof PublicConnexionRouteImport
       parentRoute: typeof PublicRoute
     }
     '/_public/location-materiel-{$ville}': {
@@ -595,67 +560,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicLocationMaterielChar123villeChar125RouteImport
       parentRoute: typeof PublicRoute
     }
-    '/_public/connexion': {
-      id: '/_public/connexion'
-      path: '/connexion'
-      fullPath: '/connexion'
-      preLoaderRoute: typeof PublicConnexionRouteImport
+    '/_public/mon-compte': {
+      id: '/_public/mon-compte'
+      path: '/mon-compte'
+      fullPath: '/mon-compte'
+      preLoaderRoute: typeof PublicMonCompteRouteImport
       parentRoute: typeof PublicRoute
+    }
+    '/_public/panier': {
+      id: '/_public/panier'
+      path: '/panier'
+      fullPath: '/panier'
+      preLoaderRoute: typeof PublicPanierRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/reservation': {
+      id: '/_public/reservation'
+      path: '/reservation'
+      fullPath: '/reservation'
+      preLoaderRoute: typeof PublicReservationRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/admin/_layout': {
+      id: '/admin/_layout'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminLayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/admin/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sitemap': {
+      id: '/api/sitemap'
+      path: '/api/sitemap'
+      fullPath: '/api/sitemap'
+      preLoaderRoute: typeof ApiSitemapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_public/activite/$activitySlug': {
+      id: '/_public/activite/$activitySlug'
+      path: '/activite/$activitySlug'
+      fullPath: '/activite/$activitySlug'
+      preLoaderRoute: typeof PublicActiviteActivitySlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/reservation/$reference': {
+      id: '/_public/reservation/$reference'
+      path: '/$reference'
+      fullPath: '/reservation/$reference'
+      preLoaderRoute: typeof PublicReservationReferenceRouteImport
+      parentRoute: typeof PublicReservationRoute
     }
     '/admin/_layout/': {
       id: '/admin/_layout/'
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminLayoutIndexRouteImport
-      parentRoute: typeof AdminLayoutRoute
-    }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/_layout/utilisateurs': {
-      id: '/admin/_layout/utilisateurs'
-      path: '/utilisateurs'
-      fullPath: '/admin/utilisateurs'
-      preLoaderRoute: typeof AdminLayoutUtilisateursRouteImport
-      parentRoute: typeof AdminLayoutRoute
-    }
-    '/admin/_layout/statistiques': {
-      id: '/admin/_layout/statistiques'
-      path: '/statistiques'
-      fullPath: '/admin/statistiques'
-      preLoaderRoute: typeof AdminLayoutStatistiquesRouteImport
-      parentRoute: typeof AdminLayoutRoute
-    }
-    '/admin/_layout/reservations': {
-      id: '/admin/_layout/reservations'
-      path: '/reservations'
-      fullPath: '/admin/reservations'
-      preLoaderRoute: typeof AdminLayoutReservationsRouteImport
-      parentRoute: typeof AdminLayoutRoute
-    }
-    '/admin/_layout/reglages': {
-      id: '/admin/_layout/reglages'
-      path: '/reglages'
-      fullPath: '/admin/reglages'
-      preLoaderRoute: typeof AdminLayoutReglagesRouteImport
-      parentRoute: typeof AdminLayoutRoute
-    }
-    '/admin/_layout/facturation': {
-      id: '/admin/_layout/facturation'
-      path: '/facturation'
-      fullPath: '/admin/facturation'
-      preLoaderRoute: typeof AdminLayoutFacturationRouteImport
-      parentRoute: typeof AdminLayoutRoute
-    }
-    '/admin/_layout/equipements': {
-      id: '/admin/_layout/equipements'
-      path: '/equipements'
-      fullPath: '/admin/equipements'
-      preLoaderRoute: typeof AdminLayoutEquipementsRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
     '/admin/_layout/durees': {
@@ -665,109 +630,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLayoutDureesRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
-    '/_public/reservation/$reference': {
-      id: '/_public/reservation/$reference'
-      path: '/$reference'
-      fullPath: '/reservation/$reference'
-      preLoaderRoute: typeof PublicReservationReferenceRouteImport
-      parentRoute: typeof PublicReservationRoute
+    '/admin/_layout/equipements': {
+      id: '/admin/_layout/equipements'
+      path: '/equipements'
+      fullPath: '/admin/equipements'
+      preLoaderRoute: typeof AdminLayoutEquipementsRouteImport
+      parentRoute: typeof AdminLayoutRoute
     }
-    '/_public/activite/$activitySlug': {
-      id: '/_public/activite/$activitySlug'
-      path: '/activite/$activitySlug'
-      fullPath: '/activite/$activitySlug'
-      preLoaderRoute: typeof PublicActiviteActivitySlugRouteImport
-      parentRoute: typeof PublicRoute
+    '/admin/_layout/facturation': {
+      id: '/admin/_layout/facturation'
+      path: '/facturation'
+      fullPath: '/admin/facturation'
+      preLoaderRoute: typeof AdminLayoutFacturationRouteImport
+      parentRoute: typeof AdminLayoutRoute
     }
-    '/admin/_layout/utilisateurs/': {
-      id: '/admin/_layout/utilisateurs/'
-      path: '/'
-      fullPath: '/admin/utilisateurs/'
-      preLoaderRoute: typeof AdminLayoutUtilisateursIndexRouteImport
-      parentRoute: typeof AdminLayoutUtilisateursRoute
+    '/admin/_layout/reglages': {
+      id: '/admin/_layout/reglages'
+      path: '/reglages'
+      fullPath: '/admin/reglages'
+      preLoaderRoute: typeof AdminLayoutReglagesRouteImport
+      parentRoute: typeof AdminLayoutRoute
     }
-    '/admin/_layout/reservations/': {
-      id: '/admin/_layout/reservations/'
-      path: '/'
-      fullPath: '/admin/reservations/'
-      preLoaderRoute: typeof AdminLayoutReservationsIndexRouteImport
-      parentRoute: typeof AdminLayoutReservationsRoute
+    '/admin/_layout/reservations': {
+      id: '/admin/_layout/reservations'
+      path: '/reservations'
+      fullPath: '/admin/reservations'
+      preLoaderRoute: typeof AdminLayoutReservationsRouteImport
+      parentRoute: typeof AdminLayoutRoute
     }
-    '/admin/_layout/reglages/': {
-      id: '/admin/_layout/reglages/'
-      path: '/'
-      fullPath: '/admin/reglages/'
-      preLoaderRoute: typeof AdminLayoutReglagesIndexRouteImport
-      parentRoute: typeof AdminLayoutReglagesRoute
+    '/admin/_layout/statistiques': {
+      id: '/admin/_layout/statistiques'
+      path: '/statistiques'
+      fullPath: '/admin/statistiques'
+      preLoaderRoute: typeof AdminLayoutStatistiquesRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
+    '/admin/_layout/utilisateurs': {
+      id: '/admin/_layout/utilisateurs'
+      path: '/utilisateurs'
+      fullPath: '/admin/utilisateurs'
+      preLoaderRoute: typeof AdminLayoutUtilisateursRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_public/activite/$activitySlug/$productSlug': {
+      id: '/_public/activite/$activitySlug/$productSlug'
+      path: '/$productSlug'
+      fullPath: '/activite/$activitySlug/$productSlug'
+      preLoaderRoute: typeof PublicActiviteActivitySlugProductSlugRouteImport
+      parentRoute: typeof PublicActiviteActivitySlugRoute
     }
     '/admin/_layout/equipements/': {
       id: '/admin/_layout/equipements/'
       path: '/'
       fullPath: '/admin/equipements/'
       preLoaderRoute: typeof AdminLayoutEquipementsIndexRouteImport
-      parentRoute: typeof AdminLayoutEquipementsRoute
-    }
-    '/admin/_layout/utilisateurs/ajouter': {
-      id: '/admin/_layout/utilisateurs/ajouter'
-      path: '/ajouter'
-      fullPath: '/admin/utilisateurs/ajouter'
-      preLoaderRoute: typeof AdminLayoutUtilisateursAjouterRouteImport
-      parentRoute: typeof AdminLayoutUtilisateursRoute
-    }
-    '/admin/_layout/utilisateurs/$userId': {
-      id: '/admin/_layout/utilisateurs/$userId'
-      path: '/$userId'
-      fullPath: '/admin/utilisateurs/$userId'
-      preLoaderRoute: typeof AdminLayoutUtilisateursUserIdRouteImport
-      parentRoute: typeof AdminLayoutUtilisateursRoute
-    }
-    '/admin/_layout/reservations/ajouter': {
-      id: '/admin/_layout/reservations/ajouter'
-      path: '/ajouter'
-      fullPath: '/admin/reservations/ajouter'
-      preLoaderRoute: typeof AdminLayoutReservationsAjouterRouteImport
-      parentRoute: typeof AdminLayoutReservationsRoute
-    }
-    '/admin/_layout/reservations/$reservationId': {
-      id: '/admin/_layout/reservations/$reservationId'
-      path: '/$reservationId'
-      fullPath: '/admin/reservations/$reservationId'
-      preLoaderRoute: typeof AdminLayoutReservationsReservationIdRouteImport
-      parentRoute: typeof AdminLayoutReservationsRoute
-    }
-    '/admin/_layout/reglages/produits': {
-      id: '/admin/_layout/reglages/produits'
-      path: '/produits'
-      fullPath: '/admin/reglages/produits'
-      preLoaderRoute: typeof AdminLayoutReglagesProduitsRouteImport
-      parentRoute: typeof AdminLayoutReglagesRoute
-    }
-    '/admin/_layout/reglages/horaires': {
-      id: '/admin/_layout/reglages/horaires'
-      path: '/horaires'
-      fullPath: '/admin/reglages/horaires'
-      preLoaderRoute: typeof AdminLayoutReglagesHorairesRouteImport
-      parentRoute: typeof AdminLayoutReglagesRoute
-    }
-    '/admin/_layout/reglages/facturation': {
-      id: '/admin/_layout/reglages/facturation'
-      path: '/facturation'
-      fullPath: '/admin/reglages/facturation'
-      preLoaderRoute: typeof AdminLayoutReglagesFacturationRouteImport
-      parentRoute: typeof AdminLayoutReglagesRoute
-    }
-    '/admin/_layout/reglages/categories': {
-      id: '/admin/_layout/reglages/categories'
-      path: '/categories'
-      fullPath: '/admin/reglages/categories'
-      preLoaderRoute: typeof AdminLayoutReglagesCategoriesRouteImport
-      parentRoute: typeof AdminLayoutReglagesRoute
-    }
-    '/admin/_layout/equipements/ajouter': {
-      id: '/admin/_layout/equipements/ajouter'
-      path: '/ajouter'
-      fullPath: '/admin/equipements/ajouter'
-      preLoaderRoute: typeof AdminLayoutEquipementsAjouterRouteImport
       parentRoute: typeof AdminLayoutEquipementsRoute
     }
     '/admin/_layout/equipements/$itemId': {
@@ -777,26 +700,89 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLayoutEquipementsItemIdRouteImport
       parentRoute: typeof AdminLayoutEquipementsRoute
     }
-    '/_public/activite/$activitySlug/$productSlug': {
-      id: '/_public/activite/$activitySlug/$productSlug'
-      path: '/$productSlug'
-      fullPath: '/activite/$activitySlug/$productSlug'
-      preLoaderRoute: typeof PublicActiviteActivitySlugProductSlugRouteImport
-      parentRoute: typeof PublicActiviteActivitySlugRoute
+    '/admin/_layout/equipements/ajouter': {
+      id: '/admin/_layout/equipements/ajouter'
+      path: '/ajouter'
+      fullPath: '/admin/equipements/ajouter'
+      preLoaderRoute: typeof AdminLayoutEquipementsAjouterRouteImport
+      parentRoute: typeof AdminLayoutEquipementsRoute
     }
-    '/admin/_layout/utilisateurs/$userId/': {
-      id: '/admin/_layout/utilisateurs/$userId/'
+    '/admin/_layout/reglages/': {
+      id: '/admin/_layout/reglages/'
       path: '/'
-      fullPath: '/admin/utilisateurs/$userId/'
-      preLoaderRoute: typeof AdminLayoutUtilisateursUserIdIndexRouteImport
-      parentRoute: typeof AdminLayoutUtilisateursUserIdRoute
+      fullPath: '/admin/reglages/'
+      preLoaderRoute: typeof AdminLayoutReglagesIndexRouteImport
+      parentRoute: typeof AdminLayoutReglagesRoute
     }
-    '/admin/_layout/reservations/$reservationId/': {
-      id: '/admin/_layout/reservations/$reservationId/'
+    '/admin/_layout/reglages/categories': {
+      id: '/admin/_layout/reglages/categories'
+      path: '/categories'
+      fullPath: '/admin/reglages/categories'
+      preLoaderRoute: typeof AdminLayoutReglagesCategoriesRouteImport
+      parentRoute: typeof AdminLayoutReglagesRoute
+    }
+    '/admin/_layout/reglages/facturation': {
+      id: '/admin/_layout/reglages/facturation'
+      path: '/facturation'
+      fullPath: '/admin/reglages/facturation'
+      preLoaderRoute: typeof AdminLayoutReglagesFacturationRouteImport
+      parentRoute: typeof AdminLayoutReglagesRoute
+    }
+    '/admin/_layout/reglages/horaires': {
+      id: '/admin/_layout/reglages/horaires'
+      path: '/horaires'
+      fullPath: '/admin/reglages/horaires'
+      preLoaderRoute: typeof AdminLayoutReglagesHorairesRouteImport
+      parentRoute: typeof AdminLayoutReglagesRoute
+    }
+    '/admin/_layout/reglages/produits': {
+      id: '/admin/_layout/reglages/produits'
+      path: '/produits'
+      fullPath: '/admin/reglages/produits'
+      preLoaderRoute: typeof AdminLayoutReglagesProduitsRouteImport
+      parentRoute: typeof AdminLayoutReglagesRoute
+    }
+    '/admin/_layout/reservations/': {
+      id: '/admin/_layout/reservations/'
       path: '/'
-      fullPath: '/admin/reservations/$reservationId/'
-      preLoaderRoute: typeof AdminLayoutReservationsReservationIdIndexRouteImport
-      parentRoute: typeof AdminLayoutReservationsReservationIdRoute
+      fullPath: '/admin/reservations/'
+      preLoaderRoute: typeof AdminLayoutReservationsIndexRouteImport
+      parentRoute: typeof AdminLayoutReservationsRoute
+    }
+    '/admin/_layout/reservations/$reservationId': {
+      id: '/admin/_layout/reservations/$reservationId'
+      path: '/$reservationId'
+      fullPath: '/admin/reservations/$reservationId'
+      preLoaderRoute: typeof AdminLayoutReservationsReservationIdRouteImport
+      parentRoute: typeof AdminLayoutReservationsRoute
+    }
+    '/admin/_layout/reservations/ajouter': {
+      id: '/admin/_layout/reservations/ajouter'
+      path: '/ajouter'
+      fullPath: '/admin/reservations/ajouter'
+      preLoaderRoute: typeof AdminLayoutReservationsAjouterRouteImport
+      parentRoute: typeof AdminLayoutReservationsRoute
+    }
+    '/admin/_layout/utilisateurs/': {
+      id: '/admin/_layout/utilisateurs/'
+      path: '/'
+      fullPath: '/admin/utilisateurs/'
+      preLoaderRoute: typeof AdminLayoutUtilisateursIndexRouteImport
+      parentRoute: typeof AdminLayoutUtilisateursRoute
+    }
+    '/admin/_layout/utilisateurs/$userId': {
+      id: '/admin/_layout/utilisateurs/$userId'
+      path: '/$userId'
+      fullPath: '/admin/utilisateurs/$userId'
+      preLoaderRoute: typeof AdminLayoutUtilisateursUserIdRouteImport
+      parentRoute: typeof AdminLayoutUtilisateursRoute
+    }
+    '/admin/_layout/utilisateurs/ajouter': {
+      id: '/admin/_layout/utilisateurs/ajouter'
+      path: '/ajouter'
+      fullPath: '/admin/utilisateurs/ajouter'
+      preLoaderRoute: typeof AdminLayoutUtilisateursAjouterRouteImport
+      parentRoute: typeof AdminLayoutUtilisateursRoute
     }
     '/admin/_layout/equipements/$itemId/': {
       id: '/admin/_layout/equipements/$itemId/'
@@ -805,19 +791,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLayoutEquipementsItemIdIndexRouteImport
       parentRoute: typeof AdminLayoutEquipementsItemIdRoute
     }
-    '/admin/_layout/utilisateurs/$userId/modifier': {
-      id: '/admin/_layout/utilisateurs/$userId/modifier'
-      path: '/modifier'
-      fullPath: '/admin/utilisateurs/$userId/modifier'
-      preLoaderRoute: typeof AdminLayoutUtilisateursUserIdModifierRouteImport
-      parentRoute: typeof AdminLayoutUtilisateursUserIdRoute
-    }
     '/admin/_layout/equipements/$itemId/modifier': {
       id: '/admin/_layout/equipements/$itemId/modifier'
       path: '/modifier'
       fullPath: '/admin/equipements/$itemId/modifier'
       preLoaderRoute: typeof AdminLayoutEquipementsItemIdModifierRouteImport
       parentRoute: typeof AdminLayoutEquipementsItemIdRoute
+    }
+    '/admin/_layout/reservations/$reservationId/': {
+      id: '/admin/_layout/reservations/$reservationId/'
+      path: '/'
+      fullPath: '/admin/reservations/$reservationId/'
+      preLoaderRoute: typeof AdminLayoutReservationsReservationIdIndexRouteImport
+      parentRoute: typeof AdminLayoutReservationsReservationIdRoute
+    }
+    '/admin/_layout/utilisateurs/$userId/': {
+      id: '/admin/_layout/utilisateurs/$userId/'
+      path: '/'
+      fullPath: '/admin/utilisateurs/$userId/'
+      preLoaderRoute: typeof AdminLayoutUtilisateursUserIdIndexRouteImport
+      parentRoute: typeof AdminLayoutUtilisateursUserIdRoute
+    }
+    '/admin/_layout/utilisateurs/$userId/modifier': {
+      id: '/admin/_layout/utilisateurs/$userId/modifier'
+      path: '/modifier'
+      fullPath: '/admin/utilisateurs/$userId/modifier'
+      preLoaderRoute: typeof AdminLayoutUtilisateursUserIdModifierRouteImport
+      parentRoute: typeof AdminLayoutUtilisateursUserIdRoute
     }
   }
 }
