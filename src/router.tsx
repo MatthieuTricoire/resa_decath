@@ -15,7 +15,7 @@ export function getRouter() {
 		defaultPreloadStaleTime: 0,
 	});
 
-	setupRouterSsrQueryIntegration({ router, queryClient: context.queryClient });
+	// setupRouterSsrQueryIntegration({ router, queryClient: context.queryClient });
 
 	return router;
 }

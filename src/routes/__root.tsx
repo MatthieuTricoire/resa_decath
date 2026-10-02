@@ -1,9 +1,10 @@
 import { TanStackDevtools } from "@tanstack/react-devtools";
-import type { QueryClient } from "@tanstack/react-query";
+import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
 	createRootRouteWithContext,
 	HeadContent,
 	Link,
+	Outlet,
 	Scripts,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
@@ -58,7 +59,19 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 	}),
 	notFoundComponent: RootNotFound,
 	shellComponent: RootDocument,
+	component: RootComponent,
 });
+
+/** Enveloppe l'application avec le QueryClientProvider passé via le contexte du routeur. */
+function RootComponent() {
+	const { queryClient } = Route.useRouteContext();
+
+	return (
+		<QueryClientProvider client={queryClient}>
+			<Outlet />
+		</QueryClientProvider>
+	);
+}
 
 /** Page 404 : aucune ville/activité/produit ne correspond à l'URL demandée. */
 function RootNotFound() {
