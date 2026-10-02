@@ -5,7 +5,13 @@ import {
 	notFound,
 	useRouter,
 } from "@tanstack/react-router";
-import { ArrowLeft, ShoppingBasket, TriangleAlert } from "lucide-react";
+import {
+	ArrowLeft,
+	CalendarClock,
+	CalendarDays,
+	Plus,
+	TriangleAlert,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DurationConflictNotice } from "#/components/public/duration-conflict-notice";
@@ -148,7 +154,7 @@ function ProductPage() {
 		.map((variant) => variant.id)
 		.sort();
 	// Le serveur reste maître du prix : même logique que la réservation finale,
-	// saison comprise, donc impossible d'annoncer un total que le refusera.
+	// saison comprise, donc impossible d'annoncer un total que le serveur refusera.
 	const quote = useQuery({
 		queryKey: [
 			"public",
@@ -354,7 +360,7 @@ function ProductPage() {
 			quantity,
 			imageUrl: product.image?.url ?? null,
 		});
-		toast.success(`${product.name} ajouté au panier`);
+		toast.success(`${product.name} ajouté à votre réservation`);
 		void router.navigate({ to: "/panier" });
 	};
 
@@ -367,8 +373,17 @@ function ProductPage() {
 			? "Choisir une autre durée"
 			: soldOut || allSoldOut
 				? "Plus d’exemplaire disponible"
-				: "Ajouter au panier";
+				: bookableQuote
+					? `Ajouter à ma réservation (${(bookableQuote.unitPrice * quantity).toFixed(2).replace(".", ",")} €)`
+					: "Ajouter à ma réservation";
 	const buyDisabled = !needsDates && (!bookableNow || soldOut);
+
+	const BuyIcon = !hasWindow
+		? CalendarDays
+		: durationNotPriced
+			? CalendarClock
+			: Plus;
+
 	const onBuyClick = () => {
 		if (needsDates) {
 			const target = document.getElementById("choisir-dates");
@@ -505,7 +520,7 @@ function ProductPage() {
 
 							<div className="space-y-6">
 								{/* La durée choisie n'est pas tarifée pour ce matériel : on le dit, et on
-							    propose les durées qui le sont, plutôt que d'afficher un titre seul. */}
+                                propose les durées qui le sont, plutôt que d'afficher un titre seul. */}
 								{durationNotPriced && (
 									<DurationConflictNotice
 										currentDuration={durationDays}
@@ -517,7 +532,7 @@ function ProductPage() {
 								)}
 
 								{/* Les tarifs décrivent une variante : ils n'ont de sens que si l'une
-							    d'elles couvre la fenêtre choisie. */}
+                                d'elles couvre la fenêtre choisie. */}
 								{selected && (
 									<div className="rounded-2xl border border-[var(--line)] bg-white/70 p-4">
 										{bookableQuote ? (
@@ -560,60 +575,9 @@ function ProductPage() {
 										)}
 									</div>
 								)}
-								{/* {selected && ( */}
-								{/* 	<div> */}
-								{/* 		<h2 className="island-kicker mb-3">Tarifs</h2> */}
-								{/* 		{selected.priceOptions.length === 0 ? ( */}
-								{/* 			<p className="text-sm text-[var(--sea-ink-soft)]"> */}
-								{/* 				Cette variante n&rsquo;est pas disponible à la location */}
-								{/* 				en ligne. Contactez-nous pour connaître ses */}
-								{/* 				disponibilités. */}
-								{/* 			</p> */}
-								{/* 		) : ( */}
-								{/* 			<ul className="space-y-2 text-sm"> */}
-								{/* 				{selected.priceOptions.map((option) => ( */}
-								{/* 					<li */}
-								{/* 						key={option.id} */}
-								{/* 						className="flex items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-white/70 px-3 py-2" */}
-								{/* 					> */}
-								{/* 						<span>{option.label}</span> */}
-								{/* 						<strong> */}
-								{/* 							{Number(option.price) */}
-								{/* 								.toFixed(2) */}
-								{/* 								.replace(".", ",")}{" "} */}
-								{/* 							€ */}
-								{/* 						</strong> */}
-								{/* 					</li> */}
-								{/* 				))} */}
-								{/* 			</ul> */}
-								{/* 		)} */}
-								{/* 		{hasWindow && quote.isPending ? ( */}
-								{/* 			<p className="mt-3 text-sm text-[var(--sea-ink-soft)]"> */}
-								{/* 				Calcul du total… */}
-								{/* 			</p> */}
-								{/* 		) : bookableQuote ? ( */}
-								{/* 			<p className="mt-3 text-sm"> */}
-								{/* 				Total pour */}
-								{/* 				{rentalDurationLabel( */}
-								{/* 					bookableQuote.durationDays, */}
-								{/* 				).toLowerCase()}{" "} */}
-								{/* 				: */}
-								{/* 				<strong className="text-[var(--sea-ink)]"> */}
-								{/* 					{bookableQuote.unitPrice.toFixed(2).replace(".", ",")}{" "} */}
-								{/* 					€ */}
-								{/* 				</strong> */}
-								{/* 			</p> */}
-								{/* 		) : ( */}
-								{/* 			<p className="mt-3 text-sm text-[var(--sea-ink-soft)]"> */}
-								{/* 				{selectedQuote?.message ?? */}
-								{/* 					"Choisissez vos dates pour connaître le total."} */}
-								{/* 			</p> */}
-								{/* 		)} */}
-								{/* 	</div> */}
-								{/* )} */}
 
 								{/* Plus aucune variante ne convient : on explique, et on ne laisse pas
-								    le client sans porte de sortie. */}
+                                    le client sans porte de sortie. */}
 								{blockedMessage ? (
 									<div className="rounded-xl border border-[var(--line)] bg-white/70 p-4">
 										<p className="flex items-start gap-2 text-sm">
@@ -636,11 +600,11 @@ function ProductPage() {
 								) : null}
 
 								{/* Le sélecteur reste atteignable même quand rien n'est vendable : c'est la
-						    seule sortie de la page. */}
+                                seule sortie de la page. */}
 								<div id="choisir-dates" className="scroll-mt-24">
 									{/* Les durées du catalogue que ce matériel ne tarifie pas sont
-									    grisées : le client voit l'ensemble de ce qui est lisible chez
-									    nous, plutôt qu'une liste amputée. */}
+                                        grisées : le client voit l'ensemble de ce qui est lisible chez
+                                        nous, plutôt qu'une liste amputée. */}
 									<RentalWindowSelector
 										durationSupport={durationSupport}
 										hint={`Retrait ${store.pickupWindow}, retour ${store.returnWindow}. Durée minimale de ${product.minDuration} jour${product.minDuration > 1 ? "s" : ""} pour ce matériel.`}
@@ -673,7 +637,7 @@ function ProductPage() {
 										disabled={buyDisabled}
 										aria-busy={quote.isFetching}
 									>
-										<ShoppingBasket className="size-4" aria-hidden="true" />
+										<BuyIcon className="size-4" aria-hidden="true" />
 										{buyLabel}
 									</Button>
 								</div>
@@ -694,9 +658,9 @@ function ProductPage() {
 				</div>
 
 				{/* Barre d'achat sticky mobile : quantité + CTA toujours visibles,
-				    compensée par le padding bas de la page. Hors des conteneurs
-				    space-y : la marge de ceux-ci décale un élément fixed de son
-				    bord bas. */}
+                    compensée par le padding bas de la page. Hors des conteneurs
+                    space-y : la marge de ceux-ci décale un élément fixed de son
+                    bord bas. */}
 				{bookableVariants.length !== 0 && (
 					<div className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--line)] bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] backdrop-blur supports-[padding-bottom:env(safe-area-inset-bottom)]:pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:hidden">
 						<div className="flex items-center gap-3">
@@ -725,7 +689,7 @@ function ProductPage() {
 								disabled={buyDisabled}
 								aria-busy={quote.isFetching}
 							>
-								<ShoppingBasket className="size-4" aria-hidden="true" />
+								<BuyIcon className="size-4" aria-hidden="true" />
 								{buyLabel}
 							</Button>
 						</div>
