@@ -208,11 +208,34 @@ async function main() {
 	const [catEscalade, catRando, catBivouac, catVia, catHiver] = await db
 		.insert(schema.categories)
 		.values([
-			{ name: "Escalade & Bloc", slug: "escalade-bloc" },
-			{ name: "Randonnée", slug: "randonnee" },
-			{ name: "Bivouac", slug: "bivouac" },
-			{ name: "Via Ferrata", slug: "via-ferrata" },
-			{ name: "Raquettes & Luge", slug: "raquettes-luge" },
+			{
+				name: "Escalade & Bloc",
+				slug: "escalade-bloc",
+				description:
+					"Baudriers, casques et crash pads contrôlés avant chaque location.",
+			},
+			{
+				name: "Randonnée",
+				slug: "randonnee",
+				description:
+					"Sacs à dos, bâtons et gourdes filtrantes pour partir en randonnée.",
+			},
+			{
+				name: "Bivouac",
+				slug: "bivouac",
+				description: "Tentes et sacs de couchage pour dormir en altitude.",
+			},
+			{
+				name: "Via Ferrata",
+				slug: "via-ferrata",
+				description:
+					"Kits complets, casques et gants pour progresser en sécurité.",
+			},
+			{
+				name: "Raquettes & Luge",
+				slug: "raquettes-luge",
+				description: "Raquettes et luges pour profiter de la neige en famille.",
+			},
 		])
 		.returning();
 

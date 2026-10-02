@@ -146,34 +146,20 @@ function ActivityPage() {
 				<p className="text-sm text-[var(--sea-ink-soft)]">{copy.body}</p>
 			</header>
 
-			{durationDays > 0 ? (
+			{durationDays > 0 && (
 				<p className="mt-10 flex items-center gap-2 text-sm text-[var(--sea-ink-soft)]">
 					<CalendarDays className="size-4 shrink-0" aria-hidden="true" />
-					{availableCount} article{availableCount > 1 ? "s" : ""} sur{" "}
-					{catalog.length} disponible{availableCount > 1 ? "s" : ""} pour{" "}
-					{rentalDurationLabel(durationDays).toLowerCase()}.
+					{availableCount === 0 ? (
+						<span>Aucun matériel disponible pour cette durée</span>
+					) : (
+						<span>
+							<strong>{availableCount}</strong> sur {catalog.length} équipement
+							{catalog.length > 1 ? "s" : ""} disponible
+							{availableCount > 1 ? "s" : ""} pour{" "}
+							{rentalDurationLabel(durationDays).toLowerCase()}
+						</span>
+					)}
 				</p>
-			) : (
-				<Alert className="mt-10 border-amber-200 bg-amber-50 text-amber-900 md:mx-auto md:w-2/3 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-50">
-					<AlertTriangleIcon aria-hidden="true" />
-					<AlertTitle>Choisissez vos dates</AlertTitle>
-					<AlertDescription className="text-amber-900 dark:text-amber-50">
-						Afin de vous proposer les produits disponibles pour vos dates ainsi
-						que le prix adapté à votre durée de location, veuillez saisir les
-						dates pour lesquelles vous souhaitez louer du matériel.
-					</AlertDescription>
-					<AlertAction>
-						<Button
-							asChild
-							size="sm"
-							className="h-10 w-full bg-amber-600 text-amber-50 hover:bg-amber-700 sm:h-8 sm:w-auto dark:bg-amber-500 dark:hover:bg-amber-400 dark:text-amber-950"
-						>
-							<Link to={storeCanonicalPath} hash="etape-1">
-								Choisir mes dates
-							</Link>
-						</Button>
-					</AlertAction>
-				</Alert>
 			)}
 
 			<div className="mt-6 grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3">

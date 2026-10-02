@@ -58,24 +58,74 @@ export const getCategories = createServerFn({ method: "GET" }).handler(
 	},
 );
 
+export const createCategory = createServerFn({ method: "POST" })
+	.inputValidator(
+		z.object({
+			name: z.string().min(1, "Le nom est requis"),
+			description: z.string().nullable().optional(),
+		}).parse,
+	)
+	.handler(async ({ data }) => {
+		await requireDashboardSession();
+		const slug = await makeUniqueSlug(data.name, async (candidate) => {
+			const [existing] = await db
+				.select({ id: schema.categories.id })
+				.from(schema.categories)
+				.where(eq(schema.categories.slug, candidate))
+				.limit(1);
+			return Boolean(existing);
+		});
+
+		const [category] = await db
+			.insert(schema.categories)
+			.values({
+				name: data.name,
+				slug,
+				description: data.description?.trim() || null,
+			})
+			.returning();
+
+		return category;
+	});
+
 export const deleteCategory = createServerFn({ method: "POST" })
 	.inputValidator((id: string) => id)
 	.handler(async ({ data }) => {
+		await requireDashboardSession();
 		await db.delete(schema.categories).where(eq(schema.categories.id, data));
 	});
 
 export const updateCategory = createServerFn({ method: "POST" })
-	.inputValidator((input: { id: string; name: string }) => input)
+	.inputValidator(
+		z.object({
+			id: z.string().uuid(),
+			name: z.string().min(1, "Le nom est requis"),
+			description: z.string().nullable().optional(),
+		}).parse,
+	)
 	.handler(async ({ data }) => {
-		const slug = data.name
-			.toLowerCase()
-			.normalize("NFD")
-			.replace(/[\u0300-\u036f]/g, "")
-			.replace(/[^a-z0-9]+/g, "-")
-			.replace(/^-+|-+$/g, "");
+		await requireDashboardSession();
+		const slug = await makeUniqueSlug(data.name, async (candidate) => {
+			const [existing] = await db
+				.select({ id: schema.categories.id })
+				.from(schema.categories)
+				.where(
+					and(
+						eq(schema.categories.slug, candidate),
+						ne(schema.categories.id, data.id),
+					),
+				)
+				.limit(1);
+			return Boolean(existing);
+		});
+
 		await db
 			.update(schema.categories)
-			.set({ name: data.name, slug })
+			.set({
+				name: data.name,
+				slug,
+				description: data.description?.trim() || null,
+			})
 			.where(eq(schema.categories.id, data.id));
 	});
 

@@ -1,5 +1,5 @@
 import { LockIcon } from "lucide-react";
-import { useCallback, useMemo } from "react";
+import { type ReactNode, useCallback, useMemo } from "react";
 import { RentalStartDatePicker } from "#/components/forms/rental-start-date-picker";
 import { Button } from "#/components/ui/button";
 import {
@@ -28,6 +28,12 @@ import { cn } from "#/lib/utils";
  * La raison d'un blocage est donc toujours fournie par l'appelant, jamais déduite
  * ici. Le composant se contente de ses conséquences : griser le bouton, afficher
  * un cadenas, et ne jamais proposer une fenêtre impossible à rendre.
+ *
+ * `durationNote` est l'emplacement de la remarque qui explique ces boutons
+ * grisés : elle est rendue entre les durées et la date de retour, juste sous les
+ * boutons qu'elle concerne. Son contenu et son existence restent la décision de
+ * l'appelant — le site public n'en affiche que sur une fiche produit, le panier
+ * ayant ses propres messages par article.
  *
  * `onChange` transmet une **durée** et non une date de retour. Le retour se
  * déduit toujours de la durée, et c'est l'appelant qui décide quoi faire quand la
@@ -63,6 +69,12 @@ export type RentalWindowFieldProps = {
 	settings?: OpeningDaysSettings;
 	/** Durées refusées pour la date de retrait choisie. */
 	blockedDurations?: readonly BlockedDuration[];
+	/**
+	 * Remarque sur les durées refusées, rendue entre les boutons de durée et la
+	 * date de retour prévue. Absente, rien ne s'intercale : le composant ignore
+	 * tout de son contenu.
+	 */
+	durationNote?: ReactNode;
 	/** Applique une nouvelle fenêtre. */
 	onChange: (change: RentalWindowChange) => void;
 	/** Remise à zéro, proposée quand une fenêtre est déjà posée. */
@@ -94,6 +106,7 @@ export function RentalWindowField({
 	durations,
 	settings,
 	blockedDurations,
+	durationNote,
 	onChange,
 	onClear,
 	isPending = false,
@@ -201,6 +214,10 @@ export function RentalWindowField({
 						</div>
 					)}
 				</div>
+
+				{/* Remarque de l'appelant sur les durées refusées : juste sous les
+				    boutons qu'elle explique, avant la date de retour. */}
+				{durationNote}
 
 				{/* Date de retour */}
 				{returnDate && (

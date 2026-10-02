@@ -9,8 +9,9 @@ export type ConfirmDeleteData = {
 };
 
 export type EditCategoryData = {
-	categoryId: string;
-	currentName: string;
+	categoryId?: string;
+	currentName?: string;
+	currentDescription?: string | null;
 };
 
 type DialogData = {

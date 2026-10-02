@@ -45,22 +45,38 @@ import { cn } from "#/lib/utils";
  */
 const HOME_FAQ: FaqEntry[] = [
 	{
-		question: "Où récupérer et rendre le matériel ?",
-		answer: `Tout se passe au comptoir location de ${store.name}, ${store.fullAddress}. Retrait ${store.pickupWindow}, retour ${store.returnWindow}, du lundi au samedi (dimanche selon la saison).`,
+		question: "Où et quand récupérer le matériel ?",
+		answer: `Au comptoir location du magasin Decathlon Mountain à Laruns (Rue d'Aiga Bèra).
+             Le retrait s'effectue dès l'ouverture le premier jour de votre réservation, et le retour avant la fermeture le dernier jour.`,
 	},
 	{
 		question: "Comment régler ma location ?",
 		answer: store.paymentNotice,
 	},
 	{
-		question: "Comment récupérer mes codes de retrait ?",
-		answer:
-			"À la réservation vous recevez un email de confirmation. Vous retrouvez vos codes à tout moment dans l'espace « Mes locations », joignable par un lien envoyé sur votre adresse email.",
+		question: "Quand et comment s'effectue le paiement ?",
+		answer: `Le paiement se fait sur place lors du retrait de votre matériel.
+Aucun règlement ni empreinte bancaire n'est demandé sur le site internet. Vous réglez directement en caisse (CB ou espèces).`,
 	},
 	{
 		question: "Le matériel est-il disponible à mes dates ?",
 		answer:
 			"La disponibilité est calculée en direct : un produit ou une durée indisponible à vos dates est grisé avant la réservation, vous n'enregistrez donc jamais une commande pour rien.",
+	},
+	{
+		question: "Que se passe-t-il en cas de mauvaise météo ou d'imprévu ?",
+		answer:
+			"Vous pouvez annuler ou modifier votre réservation sans aucun frais. Comme aucun paiement n'est prélevé en ligne, un simple e-mail ou coup de fil au magasin pour nous prévenir suffit afin de libérer le matériel pour d'autres pratiquants.",
+	},
+	{
+		question: "Comment justifier ma réservation au comptoir ?",
+		answer:
+			"Présentez simplement l'e-mail de confirmation reçu (sur votre smartphone ou imprimé) ainsi que votre nom. Vous y retrouverez le récapitulatif de votre commande et votre code de réservation.",
+	},
+	{
+		question: "Les équipements de sécurité sont-ils vérifiés ?",
+		answer:
+			"Oui, rigoureusement. Tous les équipements EPI (kits de via ferrata, casques, baudriers) ainsi que le matériel de bivouac sont contrôlés, inspectés et désinfectés entre chaque utilisation par notre équipe.",
 	},
 ];
 
@@ -148,11 +164,12 @@ function HomePage() {
 				<div className="space-y-6">
 					<p className="island-kicker">Location de matériel de montagne</p>
 					<h1 className="display-title text-4xl leading-tight font-semibold sm:text-5xl">
-						Réservez votre matériel à {store.city}, sans passer par la caisse
+						Réservez votre matériel à {store.city}, partez plus vite en montagne
 					</h1>
-					<p className="max-w-xl text-lg text-[var(--sea-ink-soft)]">
-						Escalade, randonnée, bivouac et via ferrata : choisissez vos dates,
-						réservez en ligne et retirez votre équipement au comptoir location.
+					<p className="max-w-xl text-lg text-(--sea-ink-soft)">
+						Bloquez votre équipement en ligne en 2 minutes sans avance de frais.
+						Votre commande est préparée à l'avance, réglez simplement sur place
+						lors du retrait
 					</p>
 					<div className="flex flex-wrap items-center gap-3">
 						<Button asChild size="lg" variant="outline">
@@ -163,16 +180,12 @@ function HomePage() {
 							    mobile c'est l'action utile, le panier reste à portée via
 							    l'icône du header. */}
 							<a href="#etape-1">
-								Louer du matériel
+								Choisir mon équipement
 								<ArrowRight className="size-4" aria-hidden="true" />
 							</a>
 						</Button>
 					</div>
-					<p className="text-sm text-[var(--sea-ink-soft)]">
-						{store.paymentNotice}
-					</p>
 				</div>
-
 				<PracticalInfoCard hours={hours} className="hidden lg:block" />
 			</section>
 
@@ -186,10 +199,9 @@ function HomePage() {
 							<h2 className="display-title text-2xl font-semibold">
 								Choisissez vos dates
 							</h2>
-							<p className="mt-2 text-sm text-[var(--sea-ink-soft)]">
-								Une seule fenêtre pour toute votre commande : le matériel est
-								retenu au comptoir le jour du retrait et rendu le jour du
-								retour.
+							<p className="mt-2 text-sm text-(--sea-ink-soft)">
+								Sélectionnez la date de retrait et la durée : l'ensemble de
+								votre équipement sera préparé et réservé pour cette période.
 							</p>
 						</div>
 						<RentalWindowSelector />
@@ -205,8 +217,9 @@ function HomePage() {
 							Choisissez votre pratique
 						</h2>
 					</div>
-					<p className="text-sm text-[var(--sea-ink-soft)]">
-						Tarifs et disponibilités dépendent des dates choisies.
+					<p className="text-sm text-(--sea-ink-soft)">
+						Sélectionnez vos dates ci-dessus pour afficher les disponibilités et
+						tarifs en temps réel.
 					</p>
 				</div>
 
@@ -218,7 +231,7 @@ function HomePage() {
 								key={activity.slug}
 								to="/activite/$activitySlug"
 								params={{ activitySlug: activity.slug }}
-								className="feature-card rise-in flex flex-col gap-3 rounded-2xl border border-[var(--line)] p-6 no-underline"
+								className="feature-card rise-in flex flex-col gap-3 rounded-2xl border border-(--line) p-6 no-underline"
 							>
 								<div className="flex items-start justify-between gap-2">
 									<h3 className="display-title text-xl font-semibold">
@@ -229,8 +242,8 @@ function HomePage() {
 										{activity.itemCount > 1 ? "s" : ""}
 									</Badge>
 								</div>
-								<p className="text-sm text-[var(--sea-ink-soft)]">
-									{copy.card}
+								<p className="text-sm text-(--sea-ink-soft)">
+									{activity.description || copy.card}
 								</p>
 								<span className="mt-auto inline-flex items-center gap-1 text-sm font-semibold">
 									Voir le matériel
@@ -268,18 +281,18 @@ function HomePage() {
 						{[
 							{
 								step: "1",
-								title: "Choisissez vos dates",
-								body: "La disponibilité est calculée en direct pour chaque durée proposée.",
+								title: "Choisissez vos dates & votre matériel",
+								body: "Indiquez vos dates de sortie et sélectionnez vos équipements : les disponibilités s'affichent en temps réel.",
 							},
 							{
 								step: "2",
-								title: "Réservez en ligne",
-								body: "Paiement au magasin : aucun débit en ligne, aucune donnée bancaire demandée.",
+								title: "Réservez sans avance de frais",
+								body: "Validez votre commande en 1 clic. Aucune carte bancaire requise en ligne, votre matériel est immédiatement mis de côté.",
 							},
 							{
 								step: "3",
-								title: "Retirez au comptoir",
-								body: `Présentez votre confirmation, retirez ${store.pickupWindow} et rapportez le matériel ${store.returnWindow}.`,
+								title: "Retirez et réglez en magasin",
+								body: "Venez au comptoir location à Laruns avec votre confirmation, réglez sur place et filez profiter de la montagne.",
 							},
 						].map((item) => (
 							<li key={item.step} className="space-y-2">
@@ -311,13 +324,11 @@ function HomePage() {
 								<summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold select-none [&::-webkit-details-marker]:hidden">
 									{question}
 									<ChevronDown
-										className="size-5 shrink-0 text-[var(--sea-ink-soft)] transition-transform group-open:rotate-180"
+										className="size-5 shrink-0 text-(--sea-ink-soft) transition-transform group-open:rotate-180"
 										aria-hidden="true"
 									/>
 								</summary>
-								<p className="mt-3 text-sm text-[var(--sea-ink-soft)]">
-									{answer}
-								</p>
+								<p className="mt-3 text-sm text-(--sea-ink-soft)">{answer}</p>
 							</details>
 						))}
 					</div>
@@ -352,7 +363,7 @@ function PracticalInfoCard({
 					<MapPin className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
 					<div>
 						<dt className="font-semibold">Adresse</dt>
-						<dd className="text-[var(--sea-ink-soft)]">{store.fullAddress}</dd>
+						<dd className="text-(--sea-ink-soft)">{store.fullAddress}</dd>
 					</div>
 				</div>
 				<div className="flex gap-3">
@@ -363,7 +374,7 @@ function PracticalInfoCard({
 							    d'en-tête de colonne, seulement des paires jour / horaires.
 							    Un tableau ferait annoncer aux lecteurs d'écran une grille de
 							    données qui n'existe pas. */}
-						<dd className="mt-1 text-[var(--sea-ink-soft)]">
+						<dd className="mt-1 text-(--sea-ink-soft)">
 							<dl className="space-y-1">
 								{storeOpeningHoursText(hours).map((day) => (
 									<div
@@ -381,9 +392,10 @@ function PracticalInfoCard({
 				<div className="flex gap-3">
 					<ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
 					<div>
-						<dt className="font-semibold">Matériel contrôlé</dt>
-						<dd className="text-[var(--sea-ink-soft)]">
-							Les équipements de sécurité sont vérifiés avant chaque location.
+						<dt className="font-semibold">Matériel vérifié & certifié</dt>
+						<dd className="text-(--sea-ink-soft)">
+							Tous les équipements sont inspectés et vérifiés avant chaque
+							départ.
 						</dd>
 					</div>
 				</div>

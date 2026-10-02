@@ -104,6 +104,7 @@ export const categories = pgTable("categories", {
 	id: uuid("id").defaultRandom().primaryKey(),
 	name: varchar("name", { length: 100 }).notNull().unique(),
 	slug: varchar("slug", { length: 100 }).notNull().unique(),
+	description: text("description"),
 });
 
 // Le produit "générique" ou fiche modèle

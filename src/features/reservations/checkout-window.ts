@@ -8,7 +8,7 @@ import {
 import {
 	type PriceOptionLike,
 	productDurationSupport,
-	supportsDuration,
+	unpricedDurations,
 } from "#/features/reservations/pricing";
 
 /**
@@ -108,16 +108,12 @@ export function blockedCheckoutDurations({
 	if (!priceOptions) return closed;
 
 	const support = productDurationSupport({ priceOptions, minDuration });
-	const unpriced = durations.filter(
-		(duration) =>
-			!supportsDuration(support, duration) &&
-			!closed.some((block) => block.duration === duration),
-	);
 	return [
 		...closed,
-		...unpriced.map((duration) => ({
-			duration,
-			reason: `aucun tarif ${duration}j pour ce matériel`,
-		})),
+		...unpricedDurations({
+			durations,
+			support,
+			alreadyBlocked: closed.map((block) => block.duration),
+		}),
 	];
 }

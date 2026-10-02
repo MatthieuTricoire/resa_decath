@@ -152,6 +152,7 @@ type ProductRow = {
 	categoryId: string;
 	categorySlug: string;
 	categoryName: string;
+	categoryDescription: string | null;
 	minDuration: number;
 	availableFrom: string | null;
 	availableTo: string | null;
@@ -196,6 +197,7 @@ async function loadProductBundles(
 			categoryId: schema.items.categoryId,
 			categorySlug: schema.categories.slug,
 			categoryName: schema.categories.name,
+			categoryDescription: schema.categories.description,
 			minDuration: schema.items.minDuration,
 			availableFrom: schema.items.availableFrom,
 			availableTo: schema.items.availableTo,
@@ -415,7 +417,8 @@ export const getPublicActivities = createServerFn({ method: "GET" }).handler(
 			// aujourd'hui : un article hors saison d'une catégorie mixte ne doit
 			// pas gonfler le badge.
 			if (isOutOfSeasonBundle(bundle, settings)) continue;
-			const { categorySlug, categoryName } = bundle.product;
+			const { categorySlug, categoryName, categoryDescription } =
+				bundle.product;
 			// On n'annonce une catégorie qu'une fois : `itemCount` est posé au
 			// premier bundle, les suivants se contentent d'incrémenter.
 			const current = activities.get(categorySlug);
@@ -427,7 +430,7 @@ export const getPublicActivities = createServerFn({ method: "GET" }).handler(
 			activities.set(categorySlug, {
 				slug: categorySlug,
 				name: categoryName,
-				description: copy.card,
+				description: categoryDescription?.trim() || copy.card,
 				itemCount: 1,
 			});
 		}
@@ -468,10 +471,10 @@ export const getPublicActivity = createServerFn({ method: "GET" })
 		return {
 			slug: first.product.categorySlug,
 			name: first.product.categoryName,
-			description: getActivityCopy(
-				first.product.categorySlug,
-				first.product.categoryName,
-			).card,
+			description:
+				first.product.categoryDescription?.trim() ||
+				getActivityCopy(first.product.categorySlug, first.product.categoryName)
+					.card,
 			itemCount: bundles.length,
 		};
 	});

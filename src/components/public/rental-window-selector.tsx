@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays } from "lucide-react";
-import { useCallback, useEffect } from "react";
+import { AlertCircle, Clock, Info } from "lucide-react";
+import { useCallback, useEffect, useMemo } from "react";
 import {
 	type RentalWindowChange,
 	RentalWindowField,
@@ -13,6 +13,10 @@ import {
 	closedReturnDurations,
 	resolveDuration,
 } from "#/features/reservations/opening-days";
+import {
+	type ProductDurationSupport,
+	unpricedDurations,
+} from "#/features/reservations/pricing";
 import {
 	countRentalDays,
 	DEFAULT_LAST_SAME_DAY_PICKUP_HOUR,
@@ -41,15 +45,29 @@ import { setPublicCartWindow, usePublicCart } from "#/stores/public-cart.store";
  * proposée. Les jours situés **entre** le retrait et le retour restent libres : du
  * samedi au lundi reste la location du week-end, seul le comptoir est fermé le
  * dimanche.
+ *
+ * Sur une fiche produit, `durationSupport` ajoute un second motif de refus : les
+ * durées que ce matériel ne vend pas. Les durées du catalogue restent affichées —
+ * le client y voit ce qu'il pourrait commander ailleurs, plutôt qu'une liste
+ * amputée — mais elles sont grisées, avec la raison au survol. Ce contexte sert
+ * aussi de signal : la remarque qui explique ces boutons n'est rendue que là, via
+ * l'emplacement `durationNote` du champ, entre les durées et la date de retour.
  */
 export function RentalWindowSelector({
 	className,
 	heading = "Dates de location",
-	hint = "Ces dates s’appliquent à toute votre commande.",
+	hint = "Période valable pour l'ensemble des articles sélectionnés.",
+	durationSupport,
 }: {
 	className?: string;
 	heading?: string;
 	hint?: string;
+	/**
+	 * Ce que le matériel affiché sait facturer. Absent quand la page n'a pas
+	 * d'article en tête (accueil, panier) : seules les règles calendaires
+	 * s'appliquent alors.
+	 */
+	durationSupport?: ProductDurationSupport;
 }) {
 	const pickupDate = usePublicCart((state) => state.pickupDate);
 	const returnDate = usePublicCart((state) => state.returnDate);
@@ -78,24 +96,64 @@ export function RentalWindowSelector({
 	// La coupure du jour même est dépassée : on prévient que la location ne
 	// démarre plus aujourd'hui.
 	const sameDayCutoffPassed = earliestPickupDate > todayInParis();
-	const available = durations.data ?? [];
+	const available = useMemo(() => durations.data ?? [], [durations.data]);
 	const settings = schedule.data;
 	// Tant que le catalogue ou les horaires n'ont pas répondu, aucune durée ne
 	// peut être déclarée impossible : on ne griserait que des boutons sur la base
 	// d'une information absente.
-	const blockedDurations =
-		pickupDate && settings
-			? closedReturnDurations({
-					pickupDate,
+	//
+	// Le refus calendaire dépend de la date de retrait et des horaires ; le refus
+	// tarifaire, non : une durée que le matériel ne vend pas est refusée quelle que
+	// soit la date, et le sait dès que la fiche est chargée.
+	const { closed, unpriced, blockedDurations } = useMemo(() => {
+		const closedBlocks =
+			pickupDate && settings
+				? closedReturnDurations({ pickupDate, durations: available, settings })
+				: [];
+		const unpricedBlocks = durationSupport
+			? unpricedDurations({
 					durations: available,
-					settings,
+					support: durationSupport,
+					// La fermeture primant : une durée déjà refusée pour elle garde
+					// cette raison, la plus concrète pour le client.
+					alreadyBlocked: closedBlocks.map((block) => block.duration),
 				})
 			: [];
-	// La même liste alimente les boutons grisés et l'encart qui les explique : les
-	// deux ne peuvent pas diverger. Le libellé de l'encart reste propre au site ;
-	// il faudrait le reformuler le jour où une durée y serait refusée pour une autre
-	// raison qu'un jour de fermeture.
-	const hasClosedDuration = blockedDurations.length > 0;
+		return {
+			closed: closedBlocks,
+			unpriced: unpricedBlocks,
+			// La même liste alimente les boutons grisés et l'encart qui les explique :
+			// les deux ne peuvent pas diverger.
+			blockedDurations: [...closedBlocks, ...unpricedBlocks],
+		};
+	}, [available, durationSupport, pickupDate, settings]);
+	const hasClosedDuration = closed.length > 0;
+	const hasUnpricedDuration = unpriced.length > 0;
+	// Le libellé de l'encart est déduit des refus réellement affichés : un texte
+	// qui n'annoncerait que la fermeture mentirait dès qu'une durée est refusée
+	// pour un motif tarifaire.
+	const blockedMessage = hasClosedDuration
+		? hasUnpricedDuration
+			? "Certaines durées sont désactivées : la date de retour coïncide avec un jour de fermeture, ou ce matériel n’est pas louable sur cette durée."
+			: "Certaines durées sont désactivées car la date de retour coïncide avec un jour de fermeture."
+		: "Certaines durées sont désactivées : ce matériel n’est pas louable sur ces durées-là.";
+	// L'encart n'a de sens que là où **un** matériel est en jeu : ailleurs la
+	// fenêtre vaut pour toute la commande, et le panier énumère lui-même ce qui
+	// bloque chaque ligne — un motif général y serait à la fois imprécis et
+	// redondant. `durationSupport` est exactement le signal « fiche produit ».
+	//
+	// Pas de marge propre : rendu dans la grille du champ, l'espacement vient
+	// d'elle, sinon la remarque se retrouverait à deux crans des boutons.
+	const durationNote =
+		durationSupport && (hasClosedDuration || hasUnpricedDuration) ? (
+			<div className="flex items-start gap-2.5 rounded-lg border border-amber-200/60 bg-amber-50/40 p-2.5 text-xs text-amber-900">
+				<Info
+					className="mt-0.5 size-4 shrink-0 text-amber-600"
+					aria-hidden="true"
+				/>
+				<p>{blockedMessage}</p>
+			</div>
+		) : null;
 	// Le catalogue a pu évoluer depuis le choix : on le signale plutôt que de
 	// laisser une durée non tarifable fantômer dans le récapitulatif.
 	const isOffCatalog = durationDays > 0 && !available.includes(durationDays);
@@ -156,40 +214,44 @@ export function RentalWindowSelector({
 				durations={available}
 				settings={settings}
 				blockedDurations={blockedDurations}
+				durationNote={durationNote}
 				isPending={durations.isPending}
 				minDateKey={earliestPickupDate}
 				onChange={handleChange}
 			/>
 
+			{/* 1. Règle horaire même jour : Informatif neutre */}
 			{sameDayCutoffPassed && (
-				<p className="mt-3 flex items-start gap-2 rounded-xl border border-[var(--line)] bg-white/70 p-3 text-sm">
-					<CalendarDays className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-					{String(
-						schedule.data?.lastSameDayPickupHour ??
-							DEFAULT_LAST_SAME_DAY_PICKUP_HOUR,
-					).padStart(2, "0")}
-					h passées : la location ne démarre plus le jour même. Le retrait est
-					possible à partir de demain.
-				</p>
+				<div className="mt-3 flex items-center gap-2.5 rounded-lg bg-slate-50/80 px-3 py-2 text-xs text-slate-600">
+					<Clock
+						className="size-4 shrink-0 text-slate-400"
+						aria-hidden="true"
+					/>
+					<span>
+						Retraits le jour même jusqu'à{" "}
+						{String(
+							schedule.data?.lastSameDayPickupHour ??
+								DEFAULT_LAST_SAME_DAY_PICKUP_HOUR,
+						).padStart(2, "0")}
+						h. Premier créneau disponible dès demain.
+					</span>
+				</div>
 			)}
 
-			{hasClosedDuration && (
-				<p className="mt-3 flex items-start gap-2 rounded-xl border border-[var(--line)] bg-white/70 p-3 text-sm">
-					<CalendarDays className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-					{blockedDurations.length === 1
-						? "Une durée se termine un jour de fermeture du magasin : elle est grisée."
-						: "Certaines durées se terminent un jour de fermeture du magasin : elles sont grisées."}{" "}
-					La location peut malgré tout couvrir un jour fermé, seule la date de
-					retour doit tomber un jour d’ouverture.
-				</p>
-			)}
-
+			{/* 2. Hors catalogue : Cas d'état non supporté. Contrairement à la
+			    remarque sur les durées, cet encart reste sous le champ : il
+			    concerne la fenêtre entière, pas les seuls boutons de durée. */}
 			{isOffCatalog && (
-				<p className="mt-3 flex items-start gap-2 rounded-xl border border-[var(--line)] bg-white/70 p-3 text-sm">
-					<CalendarDays className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-					La durée de {rentalDurationLabel(durationDays)} n’est plus tarifée sur
-					ce matériel. Choisissez une durée proposée ci-dessus.
-				</p>
+				<div className="mt-2.5 flex items-start gap-2.5 rounded-lg border border-orange-200/70 bg-orange-50/50 p-2.5 text-xs text-orange-800">
+					<AlertCircle
+						className="mt-0.5 size-4 shrink-0 text-orange-600"
+						aria-hidden="true"
+					/>
+					<p>
+						La durée de {rentalDurationLabel(durationDays)} n’est pas disponible
+						pour ce matériel.
+					</p>
+				</div>
 			)}
 		</div>
 	);

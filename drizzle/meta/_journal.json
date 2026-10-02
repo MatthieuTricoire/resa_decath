@@ -29,6 +29,13 @@
       "when": 1790847097854,
       "tag": "0003_configurable_same_day_cutoff",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790888628875,
+      "tag": "0004_lean_morph",
+      "breakpoints": true
     }
   ]
 }

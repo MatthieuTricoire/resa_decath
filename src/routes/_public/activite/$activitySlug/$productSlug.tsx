@@ -228,6 +228,16 @@ function ProductPage() {
 	// minimale de l'article, donc la liste proposée est toujours vendable.
 	const durationNotPriced =
 		hasWindow && product.bookable && !product.durations.includes(durationDays);
+	// Ce que le sélecteur sait déjà facturer, pour griser d'emblée les durées du
+	// catalogue que ce matériel ne vend pas. Mémoïsé : le sélecteur en fait une
+	// dépendance de mémo, qu'un objet reconstruit à chaque rendu invaliderait.
+	const durationSupport = useMemo(
+		() => ({
+			durations: product.durations,
+			priceByDuration: product.priceByDuration,
+		}),
+		[product.durations, product.priceByDuration],
+	);
 	const cartCount = usePublicCart(cartItemCount);
 
 	// Jours d'ouverture : une durée proposée ici peut se terminer un jour de
@@ -509,56 +519,98 @@ function ProductPage() {
 								{/* Les tarifs décrivent une variante : ils n'ont de sens que si l'une
 							    d'elles couvre la fenêtre choisie. */}
 								{selected && (
-									<div>
-										<h2 className="island-kicker mb-3">Tarifs</h2>
-										{selected.priceOptions.length === 0 ? (
-											<p className="text-sm text-[var(--sea-ink-soft)]">
-												Cette variante n&rsquo;est pas disponible à la location
-												en ligne. Contactez-nous pour connaître ses
-												disponibilités.
-											</p>
-										) : (
-											<ul className="space-y-2 text-sm">
-												{selected.priceOptions.map((option) => (
-													<li
-														key={option.id}
-														className="flex items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-white/70 px-3 py-2"
-													>
-														<span>{option.label}</span>
-														<strong>
-															{Number(option.price)
-																.toFixed(2)
-																.replace(".", ",")}{" "}
-															€
-														</strong>
-													</li>
-												))}
-											</ul>
-										)}
-										{hasWindow && quote.isPending ? (
-											<p className="mt-3 text-sm text-[var(--sea-ink-soft)]">
-												Calcul du total…
-											</p>
-										) : bookableQuote ? (
-											<p className="mt-3 text-sm">
-												Total pour
-												{rentalDurationLabel(
-													bookableQuote.durationDays,
-												).toLowerCase()}{" "}
-												:
-												<strong className="text-[var(--sea-ink)]">
+									<div className="rounded-2xl border border-[var(--line)] bg-white/70 p-4">
+										{bookableQuote ? (
+											<div className="flex items-baseline justify-between">
+												<span className="text-sm text-[var(--sea-ink-soft)]">
+													Total pour{" "}
+													{rentalDurationLabel(
+														bookableQuote.durationDays,
+													).toLowerCase()}
+												</span>
+												<span className="text-2xl font-bold tracking-tight text-[var(--sea-ink)]">
 													{bookableQuote.unitPrice.toFixed(2).replace(".", ",")}{" "}
 													€
-												</strong>
-											</p>
+												</span>
+											</div>
 										) : (
-											<p className="mt-3 text-sm text-[var(--sea-ink-soft)]">
-												{selectedQuote?.message ??
-													"Choisissez vos dates pour connaître le total."}
-											</p>
+											<div>
+												<h2 className="island-kicker mb-2">
+													Tarifs indicatifs
+												</h2>
+												<ul className="space-y-1.5 text-sm">
+													{selected.priceOptions.map((option) => (
+														<li
+															key={option.id}
+															className="flex justify-between py-1 border-b border-[var(--line)]/50 last:border-0"
+														>
+															<span className="text-[var(--sea-ink-soft)]">
+																{option.label}
+															</span>
+															<span className="font-semibold">
+																{Number(option.price)
+																	.toFixed(2)
+																	.replace(".", ",")}{" "}
+																€
+															</span>
+														</li>
+													))}
+												</ul>
+											</div>
 										)}
 									</div>
 								)}
+								{/* {selected && ( */}
+								{/* 	<div> */}
+								{/* 		<h2 className="island-kicker mb-3">Tarifs</h2> */}
+								{/* 		{selected.priceOptions.length === 0 ? ( */}
+								{/* 			<p className="text-sm text-[var(--sea-ink-soft)]"> */}
+								{/* 				Cette variante n&rsquo;est pas disponible à la location */}
+								{/* 				en ligne. Contactez-nous pour connaître ses */}
+								{/* 				disponibilités. */}
+								{/* 			</p> */}
+								{/* 		) : ( */}
+								{/* 			<ul className="space-y-2 text-sm"> */}
+								{/* 				{selected.priceOptions.map((option) => ( */}
+								{/* 					<li */}
+								{/* 						key={option.id} */}
+								{/* 						className="flex items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-white/70 px-3 py-2" */}
+								{/* 					> */}
+								{/* 						<span>{option.label}</span> */}
+								{/* 						<strong> */}
+								{/* 							{Number(option.price) */}
+								{/* 								.toFixed(2) */}
+								{/* 								.replace(".", ",")}{" "} */}
+								{/* 							€ */}
+								{/* 						</strong> */}
+								{/* 					</li> */}
+								{/* 				))} */}
+								{/* 			</ul> */}
+								{/* 		)} */}
+								{/* 		{hasWindow && quote.isPending ? ( */}
+								{/* 			<p className="mt-3 text-sm text-[var(--sea-ink-soft)]"> */}
+								{/* 				Calcul du total… */}
+								{/* 			</p> */}
+								{/* 		) : bookableQuote ? ( */}
+								{/* 			<p className="mt-3 text-sm"> */}
+								{/* 				Total pour */}
+								{/* 				{rentalDurationLabel( */}
+								{/* 					bookableQuote.durationDays, */}
+								{/* 				).toLowerCase()}{" "} */}
+								{/* 				: */}
+								{/* 				<strong className="text-[var(--sea-ink)]"> */}
+								{/* 					{bookableQuote.unitPrice.toFixed(2).replace(".", ",")}{" "} */}
+								{/* 					€ */}
+								{/* 				</strong> */}
+								{/* 			</p> */}
+								{/* 		) : ( */}
+								{/* 			<p className="mt-3 text-sm text-[var(--sea-ink-soft)]"> */}
+								{/* 				{selectedQuote?.message ?? */}
+								{/* 					"Choisissez vos dates pour connaître le total."} */}
+								{/* 			</p> */}
+								{/* 		)} */}
+								{/* 	</div> */}
+								{/* )} */}
 
 								{/* Plus aucune variante ne convient : on explique, et on ne laisse pas
 								    le client sans porte de sortie. */}
@@ -586,7 +638,11 @@ function ProductPage() {
 								{/* Le sélecteur reste atteignable même quand rien n'est vendable : c'est la
 						    seule sortie de la page. */}
 								<div id="choisir-dates" className="scroll-mt-24">
+									{/* Les durées du catalogue que ce matériel ne tarifie pas sont
+									    grisées : le client voit l'ensemble de ce qui est lisible chez
+									    nous, plutôt qu'une liste amputée. */}
 									<RentalWindowSelector
+										durationSupport={durationSupport}
 										hint={`Retrait ${store.pickupWindow}, retour ${store.returnWindow}. Durée minimale de ${product.minDuration} jour${product.minDuration > 1 ? "s" : ""} pour ce matériel.`}
 									/>
 								</div>

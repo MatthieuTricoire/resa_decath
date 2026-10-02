@@ -1,4 +1,5 @@
 import { minimumRentalDays } from "./availability";
+import type { BlockedDuration } from "./opening-days";
 
 /**
  * Règle de prix d'une variante pour une durée donnée, sans accès à la base.
@@ -170,6 +171,45 @@ export function supportsDuration(
 ): boolean {
 	if (!Number.isInteger(durationDays) || durationDays < 1) return false;
 	return support.priceByDuration[durationDays] !== undefined;
+}
+
+/**
+ * Durées affichées que ce matériel ne vend pas, avec le motif de leur refus.
+ *
+ * Complément de `closedReturnDurations`, qui ne connaît que les jours
+ * d'ouverture : ici le refus vient du catalogue de l'article, pas du magasin. Le
+ * site public (fiche produit) et la caisse s'en servent tous les deux, pour que
+ * « aucun tarif 2j pour ce matériel » ne se dise jamais de deux façons.
+ *
+ * Le motif ne dépend pas de la date de retrait, contrairement à la fermeture : un
+ * bouton peut donc être refusé avant même qu'une date soit choisie.
+ *
+ * `alreadyBlocked` porte les durées déjà refusées pour un autre motif. Une durée
+ * n'affiche qu'une raison — deux sur le même bouton n'en expliqueraient qu'une à
+ * l'écran, celle déjà rendue l'emporte.
+ */
+export function unpricedDurations({
+	durations,
+	support,
+	alreadyBlocked = [],
+}: {
+	/** Durées affichées à l'écran, catalogue à l'échelle de la commande. */
+	durations: readonly number[];
+	/** Ce que le matériel sait facturer. */
+	support: ProductDurationSupport;
+	/** Durées déjà refusées, à laisser avec la raison qui les a écartées. */
+	alreadyBlocked?: readonly number[];
+}): BlockedDuration[] {
+	const elsewhere = new Set(alreadyBlocked);
+	return durations
+		.filter(
+			(duration) =>
+				!supportsDuration(support, duration) && !elsewhere.has(duration),
+		)
+		.map((duration) => ({
+			duration,
+			reason: `aucun tarif ${duration}j pour ce matériel`,
+		}));
 }
 
 /**

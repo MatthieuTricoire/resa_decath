@@ -5,6 +5,7 @@ import {
 	productDurationSupport,
 	quoteVariantForDuration,
 	supportsDuration,
+	unpricedDurations,
 } from "./pricing";
 
 const options = [
@@ -185,6 +186,62 @@ describe("supportsDuration / priceForDuration", () => {
 		for (const durationDays of [1, 2, 7, 30]) {
 			expect(supportsDuration(vide, durationDays)).toBe(false);
 		}
+	});
+});
+
+describe("unpricedDurations", () => {
+	// Ce matériel ne vend que 1 et 3 jours, pour 12 € et 30 €.
+	const support = productDurationSupport({ priceOptions: options });
+
+	it("refuse les durées affichées que le matériel ne vend pas", () => {
+		const blocked = unpricedDurations({
+			durations: [1, 2, 3, 7],
+			support,
+		});
+		expect(blocked).toEqual([
+			{ duration: 2, reason: "aucun tarif 2j pour ce matériel" },
+			{ duration: 7, reason: "aucun tarif 7j pour ce matériel" },
+		]);
+	});
+
+	it("laisse une durée déjà refusée pour un autre motif garder sa raison", () => {
+		// La fermeture primant : une durée ne porte qu'un motif à l'écran.
+		const blocked = unpricedDurations({
+			durations: [1, 2, 3, 7],
+			support,
+			alreadyBlocked: [7],
+		});
+		expect(blocked.map((block) => block.duration)).toEqual([2]);
+	});
+
+	it("refuse aussi les durées sous le minimum de l'article", () => {
+		// 1 jour est bien tarifé, mais l'article en exige 2 : le refus est
+		// tarifaire, pas calendaire.
+		const deuxJoursMinimum = productDurationSupport({
+			priceOptions: [
+				...options,
+				{ id: "opt-2", duration: 2, label: "2 jours", price: "20.00" },
+			],
+			minDuration: 2,
+		});
+		const blocked = unpricedDurations({
+			durations: [1, 2, 3],
+			support: deuxJoursMinimum,
+		});
+		expect(blocked.map((block) => block.duration)).toEqual([1]);
+	});
+
+	it("ne refuse rien quand le matériel vend toutes les durées affichées", () => {
+		expect(unpricedDurations({ durations: [1, 3], support })).toEqual([]);
+	});
+
+	it("refuse tout quand le matériel n'a aucun tarif", () => {
+		const vide = productDurationSupport({ priceOptions: [] });
+		expect(
+			unpricedDurations({ durations: [1, 3], support: vide }).map(
+				(block) => block.duration,
+			),
+		).toEqual([1, 3]);
 	});
 });
 

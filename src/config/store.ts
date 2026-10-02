@@ -96,7 +96,7 @@ export function storeOpeningHoursText(hours: StoreHours): Array<{
 
 /** Un jour rendu en une chaîne : ses créneaux, ou « fermé ». */
 function storeDayHoursText(day: StoreHours[number]): string {
-	if (!day.isOpen) return "fermé";
+	if (!day.isOpen) return "Fermé";
 	return day.slots.map((slot) => `${slot.opens} – ${slot.closes}`).join(" · ");
 }
 
