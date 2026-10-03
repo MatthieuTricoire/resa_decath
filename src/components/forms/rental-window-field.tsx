@@ -1,17 +1,14 @@
-import { LockIcon } from "lucide-react";
 import { type ReactNode, useCallback, useMemo } from "react";
 import { RentalStartDatePicker } from "#/components/forms/rental-start-date-picker";
+import { DurationPicker } from "#/components/forms/rental-window/duration-picker";
+import { ReturnDateReadout } from "#/components/forms/rental-window/return-date-readout";
 import { Button } from "#/components/ui/button";
 import {
 	type BlockedDuration,
 	isOpenDay,
 	type OpeningDaysSettings,
 } from "#/features/reservations/opening-days";
-import {
-	countRentalDays,
-	formatLongDate,
-	rentalDurationLabel,
-} from "#/lib/dates";
+import { countRentalDays } from "#/lib/dates";
 import { cn } from "#/lib/utils";
 
 /**
@@ -19,83 +16,42 @@ import { cn } from "#/lib/utils";
  * et à la caisse.
  *
  * Le composant est purement présentatif : il ne lit ni store ni base. Chaque
- * appelant fournit ses durées, la règle du dimanche, et les durées qu'il refuse
- * **avec la raison** de ce refus. C'est ce qui permet au site d'écrire « retour
- * le dimanche, magasin fermé » et à la caisse « aucun tarif pour ce matériel »
- * avec le même rendu : une seule implémentation de la règle, donc pas deux
- * versions qui divergent.
- *
- * La raison d'un blocage est donc toujours fournie par l'appelant, jamais déduite
- * ici. Le composant se contente de ses conséquences : griser le bouton, afficher
- * un cadenas, et ne jamais proposer une fenêtre impossible à rendre.
+ * appelant fournit ses durées, la règle d'ouverture, et les durées qu'il refuse
+ * **avec la raison** de ce refus. La raison d'un blocage est toujours fournie par
+ * l'appelant, jamais déduite ici : le composant se contente d'en tirer les
+ * conséquences (griser le bouton, afficher un cadenas).
  *
  * `durationNote` est l'emplacement de la remarque qui explique ces boutons
- * grisés : elle est rendue entre les durées et la date de retour, juste sous les
- * boutons qu'elle concerne. Son contenu et son existence restent la décision de
- * l'appelant — le site public n'en affiche que sur une fiche produit, le panier
- * ayant ses propres messages par article.
+ * grisés, rendue juste sous eux. Son contenu et son existence restent la
+ * décision de l'appelant.
  *
- * `onChange` transmet une **durée** et non une date de retour. Le retour se
+ * `onChange` transmet une **durée** et non une date de retour : le retour se
  * déduit toujours de la durée, et c'est l'appelant qui décide quoi faire quand la
- * durée demandée n'est plus servie (prolonger, vider la fenêtre) : cette décision
- * lui appartient, pas au rendu.
+ * durée demandée n'est plus servie (prolonger, vider la fenêtre).
  */
 
-/** Nom du groupe quand l'appelant ne fournit pas de titre visible. */
 const DEFAULT_HEADING = "Dates de location";
 
-/** Une durée affichée mais non sélectionnable, et la raison de son refus. */
 export type { BlockedDuration as DurationBlock };
 
-/** Nouvelle fenêtre demandée : `null` de part ou d'autre vide la fenêtre. */
 export type RentalWindowChange = {
 	pickupDate: string | null;
-	/** Durée en jours ; `null` pour revenir à une date de départ seule. */
 	durationDays: number | null;
 };
 
 export type RentalWindowFieldProps = {
-	/** Clé de date `YYYY-MM-DD` du retrait, `null` si non renseignée. */
 	pickupDate: string | null;
-	/** Clé de date du retour, `null` si aucune durée n'est choisie. */
 	returnDate: string | null;
-	/** Durées à proposer, déjà triées. */
 	durations: number[];
-	/**
-	 * Règle d'ouverture. Absente tant que les réglages chargent : aucune date
-	 * n'est alors exclue, plutôt que d'en exclure de mauvaises sur la base d'une
-	 * information qui n'est pas encore arrivée.
-	 */
 	settings?: OpeningDaysSettings;
-	/** Durées refusées pour la date de retrait choisie. */
 	blockedDurations?: readonly BlockedDuration[];
-	/**
-	 * Remarque sur les durées refusées, rendue entre les boutons de durée et la
-	 * date de retour prévue. Absente, rien ne s'intercale : le composant ignore
-	 * tout de son contenu.
-	 */
 	durationNote?: ReactNode;
-	/** Applique une nouvelle fenêtre. */
 	onChange: (change: RentalWindowChange) => void;
-	/** Remise à zéro, proposée quand une fenêtre est déjà posée. */
 	onClear?: () => void;
-	/** Les durées ou les réglages sont encore en cours de chargement. */
 	isPending?: boolean;
-	/** Message affiché quand aucune durée n'est disponible. */
 	emptyMessage?: string;
-	/**
-	 * Titre visible du groupe. Absent, la légende reste le nom accessible du
-	 * `fieldset` mais n'est pas affichée — à utiliser quand la carte qui contient
-	 * le champ porte déjà un titre, pour ne pas le répéter.
-	 */
 	heading?: string;
-	/**
-	 * Premier jour sélectionnable, bornes incluses. Transmis tel quel au
-	 * calendrier ; absent, il s'agit d'aujourd'hui à Paris (voir
-	 * `RentalStartDatePicker`), ce que la caisse conserve.
-	 */
 	minDateKey?: string;
-	/** Précision sous les contrôles. */
 	hint?: string;
 	className?: string;
 };
@@ -140,9 +96,9 @@ export function RentalWindowField({
 				{heading ?? DEFAULT_HEADING}
 			</legend>
 
-			<div className="grid gap-4">
+			<div className="grid gap-5">
 				{/* Date de départ */}
-				<div className="space-y-1 text-sm">
+				<div className="space-y-1.5 text-sm">
 					<p className="font-semibold">Date de départ</p>
 					<RentalStartDatePicker
 						value={pickupDate}
@@ -158,7 +114,7 @@ export function RentalWindowField({
 					/>
 				</div>
 
-				{/* Sélection de durée */}
+				{/* Sélection de durée et note explicative groupées */}
 				<div className="space-y-2">
 					<div className="flex items-center justify-between gap-2">
 						<p className="text-sm font-semibold">Durée</p>
@@ -167,7 +123,7 @@ export function RentalWindowField({
 								type="button"
 								size="sm"
 								variant="ghost"
-								className="text-[var(--sea-ink-soft)]"
+								className="h-7 px-2 text-xs text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]"
 								onClick={onClear}
 							>
 								Effacer
@@ -182,56 +138,30 @@ export function RentalWindowField({
 					) : durations.length === 0 ? (
 						<p className="text-sm text-[var(--sea-ink-soft)]">
 							{emptyMessage ??
-								"Aucune durée n’est encore tarifée sur ce catalogue."}
+								"Aucune durée de location n’est proposée pour le moment."}
 						</p>
 					) : (
-						<div className="flex flex-wrap gap-2">
-							{durations.map((duration) => {
-								const reason = blockedReasons.get(duration);
-								const selected = duration === currentDuration;
-								return (
-									<Button
-										key={duration}
-										type="button"
-										size="sm"
-										variant={selected ? "default" : "outline"}
-										aria-pressed={selected}
-										disabled={reason !== undefined}
-										title={reason}
-										className="h-10 sm:h-8"
-										onClick={() =>
-											onChange({ pickupDate, durationDays: duration })
-										}
-									>
-										{rentalDurationLabel(duration)}
-										{reason && (
-											<LockIcon className="size-3.5" aria-hidden="true" />
-										)}
-										{reason && <span className="sr-only"> — {reason}</span>}
-									</Button>
-								);
-							})}
-						</div>
+						<DurationPicker
+							durations={durations}
+							currentDuration={currentDuration}
+							blockedReasons={blockedReasons}
+							onPick={(duration) =>
+								onChange({ pickupDate, durationDays: duration })
+							}
+						/>
 					)}
+
+					{/* La remarque sur les durées grisées se cale sous les boutons */}
+					{durationNote && <div className="pt-0.5">{durationNote}</div>}
 				</div>
 
-				{/* Remarque de l'appelant sur les durées refusées : juste sous les
-				    boutons qu'elle explique, avant la date de retour. */}
-				{durationNote}
-
-				{/* Date de retour */}
-				{returnDate && (
-					<div className="space-y-1 text-sm">
-						<p className="font-semibold">Date de retour prévue</p>
-						<div className="flex items-center h-10 px-3 border rounded-lg bg-gray-50 text-[var(--sea-ink-soft)]">
-							{formatLongDate(returnDate)}
-						</div>
-					</div>
-				)}
+				{returnDate && <ReturnDateReadout returnDate={returnDate} />}
 			</div>
 
 			{hint && (
-				<p className="mt-3 text-sm text-[var(--sea-ink-soft)]">{hint}</p>
+				<p className="mt-3 text-xs leading-relaxed text-[var(--sea-ink-soft)]">
+					{hint}
+				</p>
 			)}
 		</fieldset>
 	);

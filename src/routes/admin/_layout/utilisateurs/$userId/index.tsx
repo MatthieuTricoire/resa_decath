@@ -16,6 +16,7 @@ import {
 } from "#/components/ui/table";
 import { getUserDetail, getUserReservations } from "#/features/users/queries";
 import { queryKeys } from "#/features/users/query-keys";
+import { formatPriceString } from "#/stores/public-cart.store";
 
 const statusBadgeClass: Record<string, string> = {
 	PENDING_VERIFICATION:
@@ -54,11 +55,6 @@ const formatDt = (iso: string) => {
 const formatDateOnly = (iso: string) => {
 	const d = new Date(iso);
 	return format(d, "dd/MM/yyyy", { locale: frLocale });
-};
-
-const formatPrice = (val: string | null) => {
-	if (!val) return "—";
-	return `${parseFloat(val).toFixed(2).replace(".", ",")} €`;
 };
 
 export const Route = createFileRoute("/admin/_layout/utilisateurs/$userId/")({
@@ -180,7 +176,7 @@ function RouteComponent() {
 											<div>{formatDateOnly(res.returnDate)}</div>
 											<div className="text-muted-foreground">Total</div>
 											<div className="font-semibold">
-												{formatPrice(res.totalPrice)}
+												{formatPriceString(res.totalPrice)}
 											</div>
 										</div>
 										{res.items.length > 0 && (
@@ -205,7 +201,7 @@ function RouteComponent() {
 															</TableCell>
 															<TableCell>{item.quantity}</TableCell>
 															<TableCell>
-																{formatPrice(item.unitPrice)}
+																{formatPriceString(item.unitPrice)}
 															</TableCell>
 														</TableRow>
 													))}

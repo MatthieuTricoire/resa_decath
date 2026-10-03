@@ -63,12 +63,8 @@ import {
 	type RentalSettings,
 } from "#/features/settings/queries";
 import { queryKeys as settingsQueryKeys } from "#/features/settings/query-keys";
+import { formatPriceString } from "#/stores/public-cart.store";
 import { Route as AdminLayoutRoute } from "../../_layout";
-
-const formatPrice = (val: string | null) => {
-	if (!val) return "—";
-	return `${parseFloat(val).toFixed(2).replace(".", ",")} €`;
-};
 
 const statusBadgeClass: Record<string, string> = {
 	AVAILABLE:
@@ -323,7 +319,7 @@ function RouteComponent() {
 					<div className="flex flex-col gap-0.5">
 						{opts.map((o) => (
 							<span key={o.id} className="text-xs text-muted-foreground">
-								{o.label} : {formatPrice(o.price)}
+								{o.label} : {formatPriceString(o.price)}
 							</span>
 						))}
 					</div>

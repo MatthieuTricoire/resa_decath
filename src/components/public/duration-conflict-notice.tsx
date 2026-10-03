@@ -1,4 +1,4 @@
-import { TriangleAlert } from "lucide-react";
+import { Callout } from "#/components/public/shared/callout";
 import { Button } from "#/components/ui/button";
 import { rentalDurationLabel } from "#/lib/dates";
 import { formatPrice } from "#/stores/public-cart.store";
@@ -22,7 +22,6 @@ export function DurationConflictNotice({
 	durations,
 	priceByDuration,
 	onPickDuration,
-	className,
 }: {
 	/** Durée choisie dans le sélecteur global, en jours. */
 	currentDuration: number;
@@ -32,48 +31,46 @@ export function DurationConflictNotice({
 	priceByDuration: Record<number, number>;
 	/** Applique une nouvelle durée à la fenêtre partagée. */
 	onPickDuration: (durationDays: number) => void;
-	className?: string;
 }) {
 	return (
-		<section
-			className={className}
-			aria-live="polite"
-			aria-label="Durée de location indisponible"
-		>
-			<p className="flex items-start gap-2 text-sm font-semibold text-[var(--sea-ink)]">
-				<TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-				Non disponible sur {rentalDurationLabel(currentDuration).toLowerCase()}
-			</p>
-			{durations.length === 0 ? (
-				<p className="mt-2 text-sm text-[var(--sea-ink-soft)]">
-					Aucune durée n’est encore tarifée pour ce matériel. Passez au comptoir
-					location du magasin.
+		<section aria-live="polite" aria-label="Durée de location indisponible">
+			<Callout>
+				<p className="font-semibold text-[var(--sea-ink)]">
+					Non disponible sur{" "}
+					{rentalDurationLabel(currentDuration).toLowerCase()}
 				</p>
-			) : (
-				<>
-					<p className="mt-2 text-sm text-[var(--sea-ink-soft)]">
-						Pour ce matériel, la location est proposée en :
+				{durations.length === 0 ? (
+					<p className="mt-2 text-[var(--sea-ink-soft)]">
+						Aucune durée n’est encore tarifée pour ce matériel. Passez au
+						comptoir location du magasin.
 					</p>
-					<div className="mt-2 flex flex-wrap gap-2">
-						{durations.map((duration) => (
-							<Button
-								key={duration}
-								type="button"
-								size="sm"
-								variant="outline"
-								onClick={() => onPickDuration(duration)}
-							>
-								{rentalDurationLabel(duration)}
-								{priceByDuration[duration] !== undefined && (
-									<span className="text-[var(--sea-ink-soft)]">
-										· {formatPrice(priceByDuration[duration])}
-									</span>
-								)}
-							</Button>
-						))}
-					</div>
-				</>
-			)}
+				) : (
+					<>
+						<p className="mt-2 text-[var(--sea-ink-soft)]">
+							Pour ce matériel, la location est proposée en :
+						</p>
+						<div className="mt-2 flex flex-wrap gap-2">
+							{durations.map((duration) => (
+								<Button
+									key={duration}
+									type="button"
+									size="sm"
+									variant="outline"
+									className="h-10 sm:h-8"
+									onClick={() => onPickDuration(duration)}
+								>
+									{rentalDurationLabel(duration)}
+									{priceByDuration[duration] !== undefined && (
+										<span className="text-[var(--sea-ink-soft)]">
+											· {formatPrice(priceByDuration[duration])}
+										</span>
+									)}
+								</Button>
+							))}
+						</div>
+					</>
+				)}
+			</Callout>
 		</section>
 	);
 }

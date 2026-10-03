@@ -290,9 +290,13 @@ function CartPage() {
 
 						<aside className="island-shell h-fit rounded-2xl p-6">
 							<div id="choisir-dates" className="scroll-mt-24">
+								{/* Le panier énumère ci-dessus, ligne par ligne, ce qui bloque
+								    chaque article : la remarque générale sous les durées y
+								    serait redondante. */}
 								<RentalWindowSelector
 									heading="Dates de location"
 									hint={`Retrait ${store.pickupWindow}, retour ${store.returnWindow}.`}
+									hideDurationNote
 								/>
 							</div>
 

@@ -35,7 +35,11 @@ import { PUBLIC_PAGE_CACHE_CONTROL } from "#/lib/cache-control";
 import { rentalDurationLabel } from "#/lib/dates";
 import { breadcrumbJsonLd, buildPageHead, itemListJsonLd } from "#/lib/seo";
 import { cn } from "#/lib/utils";
-import { cartDurationDays, usePublicCart } from "#/stores/public-cart.store";
+import {
+	cartDurationDays,
+	formatPrice,
+	usePublicCart,
+} from "#/stores/public-cart.store";
 
 /** Page d'activité : liste des produits réservables d'une catégorie. */
 export const Route = createFileRoute("/_public/activite/$activitySlug")({
@@ -234,7 +238,7 @@ function ProductCard({
 						{price !== null ? (
 							<>
 								<strong className="text-base text-[var(--sea-ink)]">
-									{price.toFixed(2)} €
+									{formatPrice(price)}
 								</strong>{" "}
 								pour {rentalDurationLabel(durationDays).toLowerCase()}
 							</>
@@ -242,7 +246,7 @@ function ProductCard({
 							<>
 								dès{" "}
 								<strong className="text-base text-[var(--sea-ink)]">
-									{Number(product.priceFrom).toFixed(2)} €
+									{formatPrice(Number(product.priceFrom))}
 								</strong>
 							</>
 						) : (

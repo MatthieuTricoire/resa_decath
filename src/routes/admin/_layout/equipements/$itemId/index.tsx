@@ -26,11 +26,7 @@ import {
 } from "#/features/equipements/queries";
 import { queryKeys } from "#/features/equipements/query-keys";
 import { openDialog } from "#/stores/dialog.store";
-
-const formatPrice = (val: string | null) => {
-	if (!val) return "—";
-	return `${parseFloat(val).toFixed(2).replace(".", ",")} €`;
-};
+import { formatPriceString } from "#/stores/public-cart.store";
 
 const seasonLabel: Record<string, string> = {
 	all: "Toutes saisons",
@@ -344,7 +340,7 @@ function RouteComponent() {
 																			{opt.label}
 																		</div>
 																		<div className="text-muted-foreground whitespace-nowrap">
-																			{formatPrice(opt.price)}
+																			{formatPriceString(opt.price)}
 																		</div>
 																	</div>
 																	<BarcodeDisplay

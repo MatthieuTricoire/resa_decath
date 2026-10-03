@@ -171,3 +171,9 @@ export function cartTotal(state: PublicCartState): number {
 export function formatPrice(value: number): string {
 	return `${value.toFixed(2).replace(".", ",")} €`;
 }
+
+/** Prix stocké en texte (colonnes `numeric` du backoffice) ; « — » si absent. */
+export function formatPriceString(value: string | null): string {
+	if (!value) return "—";
+	return formatPrice(Number.parseFloat(value));
+}

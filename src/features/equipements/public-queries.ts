@@ -457,7 +457,7 @@ export const getPublicActivities = createServerFn({ method: "GET" }).handler(
 );
 
 export const getPublicActivity = createServerFn({ method: "GET" })
-	.inputValidator((slug: string) => categorySlugSchema.parse(slug))
+	.validator((slug: string) => categorySlugSchema.parse(slug))
 	.handler(async ({ data }): Promise<PublicActivity | null> => {
 		const settings = await getRentalSettingsRecord();
 		const bundles = (

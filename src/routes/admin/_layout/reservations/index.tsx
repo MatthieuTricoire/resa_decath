@@ -22,6 +22,7 @@ import {
 	type ReservationRow,
 } from "#/features/reservations/queries";
 import { queryKeys } from "#/features/reservations/query-keys";
+import { formatPriceString } from "#/stores/public-cart.store";
 
 const activeStatuses = new Set([
 	"PENDING_VERIFICATION",
@@ -93,11 +94,6 @@ const statusLabel: Record<string, string> = {
 	RETURNED: "Retournée",
 	CANCELLED: "Annulée",
 	EXPIRED: "Expirée",
-};
-
-const formatPrice = (val: string | null) => {
-	if (!val) return "—";
-	return `${parseFloat(val).toFixed(2).replace(".", ",")} €`;
 };
 
 /**
@@ -303,7 +299,7 @@ function RouteComponent() {
 												</div>
 											</TableCell>
 											<TableCell className="text-sm font-medium">
-												{formatPrice(r.totalPrice)}
+												{formatPriceString(r.totalPrice)}
 											</TableCell>
 											<TableCell>
 												<Button

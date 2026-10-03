@@ -21,6 +21,7 @@ import {
 	updateReservationStatus,
 } from "#/features/reservations/queries";
 import { queryKeys } from "#/features/reservations/query-keys";
+import { formatPriceString } from "#/stores/public-cart.store";
 
 const statusBadgeClass: Record<string, string> = {
 	PENDING_VERIFICATION:
@@ -41,11 +42,6 @@ const statusLabel: Record<string, string> = {
 	RETURNED: "Retournée",
 	CANCELLED: "Annulée",
 	EXPIRED: "Expirée",
-};
-
-const formatPrice = (val: string | null) => {
-	if (!val) return "—";
-	return `${parseFloat(val).toFixed(2).replace(".", ",")} €`;
 };
 
 /** Un vrai horodatage : l'heure de création de la réservation est une donnée. */
@@ -192,7 +188,7 @@ function RouteComponent() {
 						<div>{formatDt(reservation.createdAt)}</div>
 						<div className="text-muted-foreground">Total</div>
 						<div className="font-semibold">
-							{formatPrice(reservation.totalPrice)}
+							{formatPriceString(reservation.totalPrice)}
 						</div>
 					</CardContent>
 				</Card>
@@ -249,7 +245,7 @@ function RouteComponent() {
 									</TableCell>
 									<TableCell>{item.quantity}</TableCell>
 									<TableCell className="text-sm font-medium">
-										{formatPrice(item.unitPrice)}
+										{formatPriceString(item.unitPrice)}
 									</TableCell>
 									<TableCell>
 										<BarcodeDisplay

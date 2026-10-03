@@ -64,15 +64,11 @@ import {
 } from "#/features/users/queries";
 import { queryKeys } from "#/features/users/query-keys";
 import { todayInParis } from "#/lib/dates";
+import { formatPriceString } from "#/stores/public-cart.store";
 
 export const Route = createFileRoute("/admin/_layout/reservations/ajouter")({
 	component: RouteComponent,
 });
-
-const formatPrice = (val: string | null) => {
-	if (!val) return "—";
-	return `${parseFloat(val).toFixed(2).replace(".", ",")} €`;
-};
 
 function getVariantLabel(variant: VariantRow, variantCount: number): string {
 	const attributes = variant.attributes
@@ -670,7 +666,7 @@ function RouteComponent() {
 				<CardHeader className="flex flex-row items-center justify-between">
 					<CardTitle>Articles</CardTitle>
 					<Badge variant="secondary" className="text-sm">
-						Total : {formatPrice(String(totalPrice.toFixed(2)))}
+						Total : {formatPriceString(String(totalPrice.toFixed(2)))}
 					</Badge>
 				</CardHeader>
 				<CardContent className="space-y-4">
@@ -785,7 +781,7 @@ function RouteComponent() {
 									<SelectContent>
 										{filteredPriceOptions.map((o) => (
 											<SelectItem key={o.id} value={o.id}>
-												{o.label} — {formatPrice(o.price)}
+												{o.label} — {formatPriceString(o.price)}
 											</SelectItem>
 										))}
 									</SelectContent>
@@ -864,10 +860,10 @@ function RouteComponent() {
 										</TableCell>
 										<TableCell>{item.quantity}</TableCell>
 										<TableCell className="font-medium">
-											{formatPrice(item.unitPrice)}
+											{formatPriceString(item.unitPrice)}
 										</TableCell>
 										<TableCell className="font-medium">
-											{formatPrice(
+											{formatPriceString(
 												String(
 													(
 														Number.parseFloat(item.unitPrice) * item.quantity
