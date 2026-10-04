@@ -22,9 +22,7 @@ function RouteComponent() {
 	return (
 		<div className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-8 px-4 py-6 md:gap-10 md:py-8 lg:px-6">
 			<div>
-				<h2 className="text-lg font-semibold">
-					Paramètres de facturation
-				</h2>
+				<h2 className="text-lg font-semibold">Paramètres de facturation</h2>
 				<p className="text-sm text-muted-foreground">
 					Tarification, taxes et règles financières.
 				</p>

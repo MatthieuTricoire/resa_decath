@@ -80,7 +80,7 @@ export function getStoreOpeningHoursSpecification(hours: StoreHours): Array<{
 /**
  * Les horaires prêts à afficher, un jour par ligne.
  *
- * Les jours fermés sont conservés avec le mot « fermé » plutôt que retirés : un
+ * Les jours fermés sont conservés avec le mot « Fermé » plutôt que retirés : un
  * tableau qui saute le dimanche laisse croire que l'info a été oubliée, alors
  * qu'elle est la première chose qu'un client veut vérifier avant de venir.
  */
@@ -94,7 +94,7 @@ export function storeOpeningHoursText(hours: StoreHours): Array<{
 	}));
 }
 
-/** Un jour rendu en une chaîne : ses créneaux, ou « fermé ». */
+/** Un jour rendu en une chaîne : ses créneaux, ou « Fermé ». */
 function storeDayHoursText(day: StoreHours[number]): string {
 	if (!day.isOpen) return "Fermé";
 	return day.slots.map((slot) => `${slot.opens} – ${slot.closes}`).join(" · ");
@@ -106,8 +106,8 @@ function storeDayHoursText(day: StoreHours[number]): string {
  *
  * Trois choix, dans l'ordre où le pied de page est le plus contraignant :
  *
- * 1. Les jours fermés sont **absents**, pas affichés « fermé ». Une colonne
- *    d'environ 250px ne peut pas spent une ligne « fermé » par jour sans
+ * 1. Les jours fermés sont **absents**, pas affichés « Fermé ». Une colonne
+ *    d'environ 250px ne peut pas spent une ligne « Fermé » par jour sans
  *    noyer les horaires, qui sont l'information cherchée. La page ville, via
  *    `storeOpeningHoursText`, garde le détail jour par jour : c'est là qu'on vérifie
  *    si le magasin est ouvert le dimanche, et le JSON-LD fait de même.

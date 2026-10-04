@@ -107,7 +107,7 @@ describe("publication des horaires", () => {
 
 	it("ne publie rien pour un jour fermé qui porte pourtant des horaires en base", () => {
 		// Le dimanche porte 8h45–13h en base : seul isOpen décide de l'afficher.
-		expect(texte(0)).toBe("fermé");
+		expect(texte(0)).toBe("Fermé");
 	});
 
 	it("garde l'ordre d'affichage du lundi au dimanche", () => {
@@ -143,7 +143,7 @@ describe("regroupement des horaires pour le pied de page", () => {
 
 	it("ramène la semaine de référence à une seule ligne", () => {
 		// Le jour fermé disparaît : c'est la page ville qui porte le détail avec
-		// « fermé », pas le footer.
+		// « Fermé », pas le footer.
 		expect(storeOpeningHoursGrouped(semaine())).toEqual([
 			{ days: "Lundi – Samedi", hours: "09:00 – 12:30 · 14:30 – 19:00" },
 		]);
@@ -153,7 +153,7 @@ describe("regroupement des horaires pour le pied de page", () => {
 		for (const hours of storeOpeningHoursGrouped(
 			semaine({ 3: { isOpen: false } }),
 		)) {
-			expect(hours.hours).not.toBe("fermé");
+			expect(hours.hours).not.toBe("Fermé");
 			expect(hours.days).not.toContain("Mercredi");
 		}
 	});

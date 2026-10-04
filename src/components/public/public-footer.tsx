@@ -19,7 +19,7 @@ export function PublicFooter() {
 	});
 	// Vide seulement si l'admin a fermé les sept jours : sans ce cas, le bloc
 	// disparaîtrait et le footer laisserait croire qu'il n'y a pas d'horaires,
-	// alors que le magasin répond simplement « fermé ».
+	// alors que le magasin répond simplement « Fermé ».
 	const openGroups = storeOpeningHoursGrouped(
 		schedule.data?.hours ?? DEFAULT_STORE_HOURS,
 	);
