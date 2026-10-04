@@ -2,6 +2,7 @@ import { TanStackDevtools } from "@tanstack/react-devtools";
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
 	createRootRouteWithContext,
+	type ErrorComponentProps,
 	HeadContent,
 	Link,
 	Outlet,
@@ -60,6 +61,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 	notFoundComponent: RootNotFound,
 	shellComponent: RootDocument,
 	component: RootComponent,
+	errorComponent: RootError,
 });
 
 /** Enveloppe l'application avec le QueryClientProvider passé via le contexte du routeur. */
@@ -72,7 +74,39 @@ function RootComponent() {
 		</QueryClientProvider>
 	);
 }
-
+/**
+ * Composant d'erreur global (500)
+ * Capture les erreurs non gérées dans les routes enfants.
+ */
+function RootError({ error, reset }: ErrorComponentProps) {
+	return (
+		<div className="flex min-h-[80vh] flex-col items-center justify-center gap-6 px-4 py-20 text-center">
+			<p className="text-sm font-semibold uppercase tracking-wider text-destructive">
+				Erreur inattendue
+			</p>
+			<h1 className="text-3xl font-semibold sm:text-4xl text-foreground">
+				Oups, un problème est survenu
+			</h1>
+			<p className="max-w-md text-muted-foreground">
+				Nous n'avons pas pu charger cette page. Vous pouvez réessayer ou
+				retourner à l'accueil de la boutique.
+			</p>
+			{import.meta.env.DEV && (
+				<pre className="max-w-xl overflow-x-auto rounded-lg bg-muted px-4 py-3 text-left font-mono text-xs whitespace-pre-wrap text-destructive">
+					{error instanceof Error ? error.message : String(error)}
+				</pre>
+			)}
+			<div className="flex items-center gap-4">
+				<Button variant="outline" onClick={reset}>
+					Réessayer
+				</Button>
+				<Button asChild>
+					<Link to={storeCanonicalPath}>Retour à la boutique</Link>
+				</Button>
+			</div>
+		</div>
+	);
+}
 /** Page 404 : aucune ville/activité/produit ne correspond à l'URL demandée. */
 function RootNotFound() {
 	return (

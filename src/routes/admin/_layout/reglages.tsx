@@ -7,16 +7,15 @@ export const Route = createFileRoute("/admin/_layout/reglages")({
 function RouteComponent() {
 	return (
 		<>
-			<SiteHeader 
-				title="Réglages" 
+			<SiteHeader
+				title="Réglages"
 				links={[
 					{ label: "Horaires", href: "/admin/reglages/horaires" },
 					{ label: "Location", href: "/admin/reglages" },
 					{ label: "Catégories", href: "/admin/reglages/categories" },
 					{ label: "Produits", href: "/admin/reglages/produits" },
-					{ label: "Facturation", href: "/admin/reglages/facturation" }
+					{ label: "Facturation", href: "/admin/reglages/facturation" },
 				]}
-				className="overflow-x-auto"
 			/>
 			<div className="@container/main flex flex-1 flex-col gap-2">
 				<Outlet />

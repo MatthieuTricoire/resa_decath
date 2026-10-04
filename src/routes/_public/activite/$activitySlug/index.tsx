@@ -1,24 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import {
-	createFileRoute,
-	Link,
-	notFound,
-	Outlet,
-	useParams,
-} from "@tanstack/react-router";
-import {
-	AlertTriangleIcon,
-	ArrowLeft,
-	ArrowRight,
-	CalendarDays,
-	CircleAlert,
-} from "lucide-react";
-import {
-	Alert,
-	AlertAction,
-	AlertDescription,
-	AlertTitle,
-} from "#/components/ui/alert";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { ArrowLeft, ArrowRight, CalendarDays, CircleAlert } from "lucide-react";
 import { Button } from "#/components/ui/button";
 import { getActivityCopy } from "#/config/activities";
 import { store, storeCanonicalPath } from "#/config/store";
@@ -41,24 +23,26 @@ import {
 	usePublicCart,
 } from "#/stores/public-cart.store";
 
-/** Page d'activité : liste des produits réservables d'une catégorie. */
-export const Route = createFileRoute("/_public/activite/$activitySlug")({
+export const Route = createFileRoute("/_public/activite/$activitySlug/")({
 	loader: async ({ context: { queryClient }, params: { activitySlug } }) => {
-		const activity = await queryClient.ensureQueryData({
-			queryKey: ["public", "activity", activitySlug],
-			queryFn: () => getPublicActivity({ data: activitySlug }),
-		});
+		// 1. OPTIMISATION : Parallélisation des requêtes !
+		const [activity, products] = await Promise.all([
+			queryClient.ensureQueryData({
+				queryKey: ["public", "activity", activitySlug],
+				queryFn: () => getPublicActivity({ data: activitySlug }),
+			}),
+			queryClient.ensureQueryData({
+				queryKey: ["public", "activity", activitySlug, "products"],
+				queryFn: () => getPublicActivityProducts({ data: activitySlug }),
+			}),
+		]);
+
 		if (!activity) throw notFound();
-		// Le `head` a besoin de la liste pour générer le JSON-LD `ItemList`,
-		// et la page pour les cartes : une seule lecture, partagée.
-		const products = await queryClient.ensureQueryData({
-			queryKey: ["public", "activity", activitySlug, "products"],
-			queryFn: () => getPublicActivityProducts({ data: activitySlug }),
-		});
+
 		return { activity, products };
 	},
 	headers: () => ({ "Cache-Control": PUBLIC_PAGE_CACHE_CONTROL }),
-	head: ({ loaderData, matches }) => {
+	head: ({ loaderData }) => {
 		if (!loaderData?.activity) {
 			return buildPageHead({
 				meta: {
@@ -69,14 +53,12 @@ export const Route = createFileRoute("/_public/activite/$activitySlug")({
 				},
 			});
 		}
-		const activity = loaderData.activity;
+
+		const { activity, products } = loaderData;
 		const copy = getActivityCopy(activity.slug, activity.name);
-		const products = loaderData.products ?? [];
+
 		return buildPageHead({
-			// La fiche produit émet son propre canonical : on ne l'émet ici que
-			// si cette route est la plus profonde du match.
-			emitCanonical:
-				matches.at(-1)?.routeId === "/_public/activite/$activitySlug",
+			emitCanonical: true,
 			meta: {
 				title: copy.title,
 				description: copy.body,
@@ -99,36 +81,28 @@ export const Route = createFileRoute("/_public/activite/$activitySlug")({
 			],
 		});
 	},
-	component: ActivityPage,
+	component: ActivityPageIndex,
 });
 
-function ActivityPage() {
+function ActivityPageIndex() {
 	const { activitySlug } = Route.useParams();
 	const { activity } = Route.useLoaderData();
-	const products = useQuery({
+
+	// 2. OPTIMISATION : Typage strict garanti
+	const { data: catalog } = useSuspenseQuery({
 		queryKey: ["public", "activity", activitySlug, "products"],
 		queryFn: () => getPublicActivityProducts({ data: activitySlug }),
 	});
+
 	const durationDays = usePublicCart(cartDurationDays);
 	const copy = getActivityCopy(activity.slug, activity.name);
-	// La fiche produit est une route enfant : sans cet Outlet, `/activite/x/y`
-	// n'afficherait que la liste des produits.
-	const { productSlug } = useParams({ strict: false });
-	if (productSlug) return <Outlet />;
 
-	// Le catalogue est filtré sur la durée choisie : autant le dire, plutôt que
-	// de laisser le client découvrir le refus au panier.
-	const catalog = products.data ?? [];
 	const availableCount =
 		durationDays > 0
 			? catalog.filter((product) => supportsDuration(product, durationDays))
 					.length
 			: catalog.length;
 
-	// Le catalogue sans dates n'est pas une erreur, juste un état : les tarifs
-	// dépendent de la durée, donc rien ne peut être annoncé avant. L'encart reste
-	// un avertissement ambre plutôt qu'une alerte rouge : un visiteur qui n'a pas
-	// encore choisi ses dates ne vient pas d'échouer.
 	return (
 		<div className="page-wrap py-12">
 			<Button
@@ -138,26 +112,32 @@ function ActivityPage() {
 				className="mb-6 -ml-3 h-10 sm:h-8"
 			>
 				<Link to={storeCanonicalPath}>
-					<ArrowLeft className="size-4" aria-hidden="true" />
+					<ArrowLeft className="size-4 mr-2" aria-hidden="true" />
 					Toutes les activités
 				</Link>
 			</Button>
 
+			{/* 3. OPTIMISATION UI : Remplacement des couleurs dures par le thème Tailwind */}
 			<header className="rise-in max-w-3xl space-y-3">
-				<p className="island-kicker">Location {activity.name.toLowerCase()}</p>
-				<h1 className="display-title text-4xl font-semibold">{copy.title}</h1>
-				<p className="text-lg text-[var(--sea-ink-soft)]">{copy.lead}</p>
-				<p className="text-sm text-[var(--sea-ink-soft)]">{copy.body}</p>
+				<p className="island-kicker text-primary">
+					Location {activity.name.toLowerCase()}
+				</p>
+				<h1 className="display-title text-4xl font-semibold text-foreground">
+					{copy.title}
+				</h1>
+				<p className="text-lg text-muted-foreground">{copy.lead}</p>
+				<p className="text-sm text-muted-foreground">{copy.body}</p>
 			</header>
 
 			{durationDays > 0 && (
-				<p className="mt-10 flex items-center gap-2 text-sm text-[var(--sea-ink-soft)]">
+				<p className="mt-10 flex items-center gap-2 text-sm text-muted-foreground">
 					<CalendarDays className="size-4 shrink-0" aria-hidden="true" />
 					{availableCount === 0 ? (
 						<span>Aucun matériel disponible pour cette durée</span>
 					) : (
 						<span>
-							<strong>{availableCount}</strong> sur {catalog.length} équipement
+							<strong className="text-foreground">{availableCount}</strong> sur{" "}
+							{catalog.length} équipement
 							{catalog.length > 1 ? "s" : ""} disponible
 							{availableCount > 1 ? "s" : ""} pour{" "}
 							{rentalDurationLabel(durationDays).toLowerCase()}
@@ -187,12 +167,8 @@ function ProductCard({
 }: {
 	product: PublicProductSummary;
 	activitySlug: string;
-	/** Durée choisie dans le sélecteur global, `0` si aucune. */
 	durationDays: number;
 }) {
-	// Grisé mais cliquable : la fiche explique pourquoi rien n'est réservable,
-	// alors qu'une carte morte ferait croire à un site cassé. Un produit sans
-	// aucun tarif n'est pas grisé : ce n'est pas la durée choisie le problème.
 	const coversDuration = supportsDuration(product, durationDays);
 	const muted = durationDays > 0 && !coversDuration;
 	const price =
@@ -203,30 +179,30 @@ function ProductCard({
 			to="/activite/$activitySlug/$productSlug"
 			params={{ activitySlug, productSlug: product.slug }}
 			className={cn(
-				"feature-card rise-in flex flex-col overflow-hidden rounded-2xl border border-[var(--line)] no-underline",
+				"feature-card rise-in flex flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground no-underline transition-colors hover:border-primary/50",
 				muted && "opacity-70 grayscale",
 			)}
 		>
-			<div className="aspect-[4/3] w-full overflow-hidden bg-[var(--sand)]">
+			<div className="aspect-[4/3] w-full overflow-hidden bg-muted">
 				{product.image ? (
 					<img
 						src={product.image.url}
 						alt={product.image.alt ?? product.name}
 						loading="lazy"
 						decoding="async"
-						className="size-full object-cover"
+						className="size-full object-cover transition-transform duration-300 hover:scale-105"
 					/>
 				) : (
-					<div className="grid size-full place-items-center text-sm text-[var(--sea-ink-soft)]">
+					<div className="grid size-full place-items-center text-sm text-muted-foreground">
 						Image à venir
 					</div>
 				)}
 			</div>
 			<div className="flex flex-1 flex-col gap-2 p-4 sm:p-5">
-				<p className="island-kicker">{product.brand}</p>
+				<p className="island-kicker text-muted-foreground">{product.brand}</p>
 				<h2 className="font-semibold">{product.name}</h2>
 				{muted ? (
-					<p className="flex items-center gap-1.5 text-sm text-[var(--sea-ink-soft)]">
+					<p className="flex items-center gap-1.5 text-sm text-destructive">
 						<CircleAlert className="size-4 shrink-0" aria-hidden="true" />
 						{product.bookable
 							? `Aucun tarif sur ${rentalDurationLabel(durationDays).toLowerCase()}`
@@ -234,10 +210,10 @@ function ProductCard({
 					</p>
 				) : null}
 				<div className="mt-auto flex flex-col gap-1 pt-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-					<span className="text-sm text-[var(--sea-ink-soft)]">
+					<span className="text-sm text-muted-foreground">
 						{price !== null ? (
 							<>
-								<strong className="text-base text-[var(--sea-ink)]">
+								<strong className="text-base text-foreground">
 									{formatPrice(price)}
 								</strong>{" "}
 								pour {rentalDurationLabel(durationDays).toLowerCase()}
@@ -245,7 +221,7 @@ function ProductCard({
 						) : product.priceFrom ? (
 							<>
 								dès{" "}
-								<strong className="text-base text-[var(--sea-ink)]">
+								<strong className="text-base text-foreground">
 									{formatPrice(Number(product.priceFrom))}
 								</strong>
 							</>
@@ -254,7 +230,7 @@ function ProductCard({
 						)}
 					</span>
 					<ArrowRight
-						className="size-4 self-end sm:self-auto"
+						className="size-4 self-end text-muted-foreground sm:self-auto"
 						aria-hidden="true"
 					/>
 				</div>

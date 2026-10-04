@@ -1,9 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, ShoppingBasket, Trash2 } from "lucide-react";
 import { useMemo } from "react";
+import { CartDatesSummary } from "#/components/public/cart-dates-summary";
 import { useCartHydrated } from "#/components/public/cart-persistence";
-import { RentalWindowSelector } from "#/components/public/rental-window-selector";
 import { Button } from "#/components/ui/button";
 import { Separator } from "#/components/ui/separator";
 import { store, storeCanonicalPath } from "#/config/store";
@@ -15,12 +15,12 @@ import { buildPageHead } from "#/lib/seo";
 import {
 	cartTotal,
 	formatPrice,
+	type PublicCartLine,
 	removePublicCartLine,
 	setPublicCartLineQuantity,
 	usePublicCart,
 } from "#/stores/public-cart.store";
 
-/** Panier : récapitulatif, dates et passage à la réservation. */
 export const Route = createFileRoute("/_public/panier")({
 	head: () =>
 		buildPageHead({
@@ -40,14 +40,12 @@ function CartPage() {
 	const returnDate = usePublicCart((state) => state.returnDate);
 	const clientTotal = usePublicCart(cartTotal);
 	const hydrated = useCartHydrated();
+	const navigate = useNavigate();
 
 	const durationDays =
 		pickupDate && returnDate ? countRentalDays(pickupDate, returnDate) : 0;
 	const datesComplete = Boolean(pickupDate && returnDate && durationDays > 0);
 
-	// Les prix du panier sont ceux figés à l'ajout : on les re-valorise par le
-	// serveur à chaque changement de fenêtre, sinon changer la durée en laisse
-	// un total faux.
 	const quoteInput = useMemo(
 		() => ({
 			pickupDate: pickupDate ?? "",
@@ -59,14 +57,15 @@ function CartPage() {
 		}),
 		[lines, pickupDate, returnDate],
 	);
+
 	const quote = useQuery({
-		queryKey: ["public", "cart-quote", quoteInput],
+		queryKey: ["public", "cart-quote", quoteInput] as const,
 		queryFn: () => getPublicCartQuote({ data: quoteInput }),
 		enabled: datesComplete && lines.length > 0,
 		staleTime: 60 * 1000,
+		placeholderData: keepPreviousData,
 	});
-	// Le devis ne parle que par identifiant : on garde le nom affiché pour que le
-	// client sache quel article est en cause.
+
 	const lineNameByVariant = useMemo(() => {
 		const names = new Map<string, string>();
 		for (const line of lines) {
@@ -77,9 +76,8 @@ function CartPage() {
 		}
 		return names;
 	}, [lines]);
+
 	const quotesByVariant = useMemo(() => {
-		// La ligne du devis porte la quantité demandée : c'est elle qui sert à
-		// décider si la commande dépasse le stock.
 		const byVariant = new Map<
 			string,
 			PublicWindowQuote & { quantity: number }
@@ -89,43 +87,41 @@ function CartPage() {
 		}
 		return byVariant;
 	}, [quote.data]);
-	// Une ligne bloque pour deux raisons : le devis serveur la refuse, ou elle
-	// dépasse le stock restant pour la fenêtre. Les deux doivent être expliquées
-	// au client avant qu'il n'arrive sur une erreur à la soumission.
-	const blockersByVariant = new Map(
-		(quote.data?.lines ?? []).flatMap((line) => {
-			const reason = cartLineBlocker(line);
-			return reason ? [[line.variantId, reason] as const] : [];
-		}),
-	);
-	const total = quote.data?.total ?? clientTotal;
-	// On ne réserve que sur un devis complet et frais : le serveur revalide
-	// tout de même à la soumission, mais le client ne doit pas valider un total
-	// périmé.
-	const canCheckout = datesComplete && quote.isSuccess && quote.data.complete;
-	const navigate = useNavigate();
 
-	// Le CTA mobile (barre sticky) reprend le pattern de la fiche produit : sans
-	// dates, on déroule vers le sélecteur plutôt que d'échouer en silence.
+	const blockersByVariant = useMemo(() => {
+		return new Map(
+			(quote.data?.lines ?? []).flatMap((line) => {
+				const reason = cartLineBlocker(line);
+				return reason ? [[line.variantId, reason] as const] : [];
+			}),
+		);
+	}, [quote.data]);
+
+	const total = quote.data?.total ?? clientTotal;
+	const canCheckout = datesComplete && quote.isSuccess && quote.data.complete;
+
+	// Ramène doucement l'utilisateur vers le haut de la page (le bandeau global)
+	// pour qu'il puisse modifier ou ajouter ses dates.
+	const scrollToGlobalHeader = () => {
+		const reduce = window.matchMedia(
+			"(prefers-reduced-motion: reduce)",
+		).matches;
+		window.scrollTo({
+			top: 0,
+			behavior: reduce ? "auto" : "smooth",
+		});
+	};
+
 	const onStickyCheckout = () => {
 		if (!datesComplete) {
-			const target = document.getElementById("choisir-dates");
-			if (target) {
-				const reduce = window.matchMedia(
-					"(prefers-reduced-motion: reduce)",
-				).matches;
-				target.scrollIntoView({
-					behavior: reduce ? "auto" : "smooth",
-					block: "start",
-				});
-			}
+			scrollToGlobalHeader();
 			return;
 		}
 		void navigate({ to: "/reservation" });
 	};
 
 	return (
-		<div className="page-wrap pt-12 pb-32 md:pb-12">
+		<div className="container mx-auto px-4 pt-12 pb-32 sm:px-6 md:pb-12">
 			<Button
 				asChild
 				variant="ghost"
@@ -133,172 +129,56 @@ function CartPage() {
 				className="mb-6 -ml-3 h-10 sm:h-8"
 			>
 				<Link to={storeCanonicalPath}>
-					<ArrowLeft className="size-4" aria-hidden="true" />
+					<ArrowLeft className="mr-2 size-4" aria-hidden="true" />
 					Continuer mes recherches
 				</Link>
 			</Button>
 
-			<h1 className="display-title text-4xl font-semibold">Mon panier</h1>
+			<h1 className="text-4xl font-semibold tracking-tight text-foreground">
+				Mon panier
+			</h1>
 
-			{/* Avant la relecture du sessionStorage, le store est vide : afficher
-			    « panier vide » serait un faux état, et le HTML rendu par le serveur
-			    ne dit rien du panier réel. */}
 			{lines.length === 0 && hydrated ? (
-				<div className="island-shell mt-8 flex flex-col items-start gap-4 rounded-2xl p-8">
-					<ShoppingBasket className="size-8" aria-hidden="true" />
-					<p className="text-[var(--sea-ink-soft)]">
+				<div className="mt-8 flex flex-col items-start gap-4 rounded-2xl border border-border bg-card p-8 shadow-sm">
+					<ShoppingBasket
+						className="size-8 text-muted-foreground"
+						aria-hidden="true"
+					/>
+					<p className="text-muted-foreground">
 						Votre panier est vide. Choisissez du matériel pour commencer.
 					</p>
 					<Button asChild>
 						<Link to={storeCanonicalPath}>
 							Voir le catalogue
-							<ArrowRight className="size-4" aria-hidden="true" />
+							<ArrowRight className="ml-2 size-4" aria-hidden="true" />
 						</Link>
 					</Button>
 				</div>
 			) : lines.length === 0 ? (
-				<p className="mt-8 text-[var(--sea-ink-soft)]">
+				<p className="mt-8 text-muted-foreground">
 					Chargement de votre panier…
 				</p>
 			) : (
 				<>
 					<div className="mt-8 grid gap-10 lg:grid-cols-[1.4fr_0.6fr]">
 						<div className="space-y-4">
-							{lines.map((line) => {
-								const lineQuote = quotesByVariant.get(line.variantId);
-								const lineBlocker = lineQuote
-									? cartLineBlocker(lineQuote)
-									: null;
-								const quotedUnitPrice =
-									lineQuote?.status === "available"
-										? lineQuote.unitPrice
-										: null;
-								const isPriced = quotedUnitPrice !== null;
-								// Sans devis (dates absentes) on garde le prix figé à l'ajout :
-								// le bouton « Réserver » reste bloqué de toute façon.
-								const unitPrice = quotedUnitPrice ?? line.unitPrice;
-								// L'admin a pu changer le tarif de cette option depuis
-								// l'ajout : on montre alors les deux prix.
-								const priceChanged =
-									isPriced && quotedUnitPrice !== null
-										? lineQuote?.priceOptionId !== line.priceOptionId
-										: false;
-								const shownDuration =
-									durationDays > 0 ? durationDays : line.duration;
-								return (
-									<article
-										key={line.key}
-										className="island-shell flex gap-4 rounded-2xl p-4"
-									>
-										<div className="size-20 shrink-0 overflow-hidden rounded-xl bg-[var(--sand)]">
-											{line.imageUrl ? (
-												<img
-													src={line.imageUrl}
-													alt={line.productName}
-													loading="lazy"
-													className="size-full object-cover"
-												/>
-											) : null}
-										</div>
-										<div className="flex min-w-0 flex-1 flex-col gap-1">
-											<p className="island-kicker">{line.activityName}</p>
-											<Link
-												to="/activite/$activitySlug/$productSlug"
-												params={{
-													activitySlug: line.activitySlug,
-													productSlug: line.productSlug,
-												}}
-												className="font-semibold no-underline"
-											>
-												{line.productName}
-											</Link>
-											<p className="text-sm text-[var(--sea-ink-soft)]">
-												{line.variantLabel} ·{" "}
-												{rentalDurationLabel(shownDuration)} ·{" "}
-												{formatPrice(unitPrice)}
-											</p>
-											{lineBlocker ? (
-												<p className="mt-1 rounded-lg bg-amber-100 p-2 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
-													{lineBlocker}
-												</p>
-											) : null}
-											{/* Le prix reste valable même en rupture : c'est le stock qui
-									    bloque, pas le tarif. */}
-											{lineQuote?.status === "available" && !lineBlocker ? (
-												<p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
-													{lineQuote.availableQuantity} exemplaire
-													{lineQuote.availableQuantity > 1 ? "s" : ""}{" "}
-													disponible
-													{lineQuote.availableQuantity > 1 ? "s" : ""} pour ces
-													dates.
-												</p>
-											) : null}
-											<div className="mt-2 flex items-center gap-3">
-												<label className="flex items-center gap-2 text-sm">
-													Qté
-													<input
-														type="number"
-														min={1}
-														// Le plafond suit le stock restant : le serveur refuse
-														// au-delà, autant ne pas proposer une quantité futile.
-														max={
-															lineQuote
-																? Math.max(1, lineQuote.availableQuantity)
-																: 10
-														}
-														value={line.quantity}
-														onChange={(event) =>
-															setPublicCartLineQuantity(
-																line.key,
-																Number(event.target.value) || 0,
-															)
-														}
-														className="w-16 rounded-lg border border-[var(--line)] px-2 py-1.5"
-													/>
-												</label>
-												<Button
-													type="button"
-													variant="ghost"
-													size="icon"
-													aria-label={`Retirer ${line.productName} du panier`}
-													onClick={() => removePublicCartLine(line.key)}
-												>
-													<Trash2 className="size-4" aria-hidden="true" />
-												</Button>
-											</div>
-										</div>
-										<div className="flex flex-col items-end gap-1 text-right">
-											<p className="font-semibold">
-												{formatPrice(unitPrice * line.quantity)}
-											</p>
-											{priceChanged ? (
-												<p className="text-xs text-[var(--sea-ink-soft)]">
-													<s>{formatPrice(line.unitPrice * line.quantity)}</s>{" "}
-													tarif mis à jour
-												</p>
-											) : null}
-											{lineQuote && !isPriced ? (
-												<p className="text-xs text-[var(--sea-ink-soft)]">
-													<s>{formatPrice(line.unitPrice * line.quantity)}</s>
-												</p>
-											) : null}
-										</div>
-									</article>
-								);
-							})}
+							{lines.map((line) => (
+								<CartLineItem
+									key={line.key}
+									line={line}
+									durationDays={durationDays}
+									lineQuote={quotesByVariant.get(line.variantId)}
+								/>
+							))}
 						</div>
 
-						<aside className="island-shell h-fit rounded-2xl p-6">
-							<div id="choisir-dates" className="scroll-mt-24">
-								{/* Le panier énumère ci-dessus, ligne par ligne, ce qui bloque
-								    chaque article : la remarque générale sous les durées y
-								    serait redondante. */}
-								<RentalWindowSelector
-									heading="Dates de location"
-									hint={`Retrait ${store.pickupWindow}, retour ${store.returnWindow}.`}
-									hideDurationNote
-								/>
-							</div>
+						<aside className="h-fit rounded-2xl border border-border bg-card p-6 shadow-sm">
+							<CartDatesSummary
+								pickupDate={pickupDate}
+								returnDate={returnDate}
+								durationDays={durationDays}
+								onEdit={scrollToGlobalHeader}
+							/>
 
 							<Separator className="my-5" />
 
@@ -306,42 +186,42 @@ function CartPage() {
 								className="flex items-baseline justify-between"
 								aria-busy={quote.isFetching}
 							>
-								<span className="font-semibold">Total</span>
-								<span className="display-title text-2xl font-semibold">
+								<span className="font-semibold text-foreground">Total</span>
+								<span className="text-2xl font-semibold text-foreground">
 									{formatPrice(total)}
 								</span>
 							</div>
-							{quote.isFetching ? (
-								<p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
-									Vérification des disponibilités…
-								</p>
-							) : null}
+
 							{blockersByVariant.size > 0 ? (
-								<div className="mt-3 rounded-xl bg-amber-100 p-3 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+								<div className="mt-4 rounded-xl bg-destructive/10 p-4 text-sm text-destructive dark:bg-destructive/20 dark:text-red-400">
 									<p className="font-semibold">
 										Ces articles ne sont pas louables :
 									</p>
-									<ul className="mt-1 list-disc pl-4">
+									<ul className="mt-2 list-disc pl-5 space-y-1">
 										{[...blockersByVariant].map(([variantId, reason]) => (
 											<li key={variantId}>
-												{lineNameByVariant.get(variantId) ?? "Article"} —{" "}
-												{reason}
+												<span className="font-medium">
+													{lineNameByVariant.get(variantId) ?? "Article"}
+												</span>{" "}
+												— {reason}
 											</li>
 										))}
 									</ul>
 								</div>
 							) : null}
+
 							{quote.isError ? (
-								<p className="mt-3 rounded-xl bg-amber-100 p-3 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+								<p className="mt-4 rounded-xl bg-destructive/10 p-3 text-sm text-destructive dark:bg-destructive/20 dark:text-red-400">
 									Impossible de vérifier la disponibilité. Rechargez la page
 									pour réessayer.
 								</p>
 							) : null}
-							<p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
+
+							<p className="mt-3 text-xs text-muted-foreground leading-relaxed">
 								{store.paymentNotice}
 							</p>
 
-							<Button asChild size="lg" className="mt-5 hidden w-full md:block">
+							<Button asChild size="lg" className="mt-6 hidden w-full md:flex">
 								<Link
 									to="/reservation"
 									aria-disabled={!canCheckout}
@@ -350,11 +230,12 @@ function CartPage() {
 									}
 								>
 									Réserver
-									<ArrowRight className="size-4" aria-hidden="true" />
+									<ArrowRight className="ml-2 size-4" aria-hidden="true" />
 								</Link>
 							</Button>
+
 							{!canCheckout && !quote.isFetching ? (
-								<p className="mt-2 text-xs text-[var(--sea-ink-soft)]">
+								<p className="mt-3 text-center text-xs font-medium text-muted-foreground">
 									{!datesComplete
 										? "Renseignez vos dates pour continuer."
 										: quote.isError
@@ -365,15 +246,13 @@ function CartPage() {
 						</aside>
 					</div>
 
-					{/* Barre sticky mobile : total + CTA toujours visibles, compensée par
-				    le padding bas de la page. */}
-					<div className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--line)] bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] backdrop-blur supports-[padding-bottom:env(safe-area-inset-bottom)]:pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:hidden">
+					<div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 px-4 py-3 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] backdrop-blur supports-[padding-bottom:env(safe-area-inset-bottom)]:pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:hidden">
 						<div className="flex items-center gap-4">
 							<div className="flex shrink-0 flex-col">
-								<span className="text-xs text-[var(--sea-ink-soft)]">
-									Total
+								<span className="text-xs text-muted-foreground">Total</span>
+								<span className="font-semibold text-foreground">
+									{formatPrice(total)}
 								</span>
-								<span className="font-semibold">{formatPrice(total)}</span>
 							</div>
 							<Button
 								size="lg"
@@ -385,12 +264,129 @@ function CartPage() {
 								}
 							>
 								{!datesComplete ? "Choisir vos dates" : "Réserver"}
-								<ArrowRight className="size-4" aria-hidden="true" />
+								<ArrowRight className="ml-2 size-4" aria-hidden="true" />
 							</Button>
 						</div>
 					</div>
 				</>
 			)}
 		</div>
+	);
+}
+
+function CartLineItem({
+	line,
+	durationDays,
+	lineQuote,
+}: {
+	line: PublicCartLine;
+	durationDays: number;
+	lineQuote?: PublicWindowQuote & { quantity: number };
+}) {
+	const lineBlocker = lineQuote ? cartLineBlocker(lineQuote) : null;
+	const quotedUnitPrice =
+		lineQuote?.status === "available" ? lineQuote.unitPrice : null;
+	const isPriced = quotedUnitPrice !== null;
+	const unitPrice = quotedUnitPrice ?? line.unitPrice;
+
+	const priceChanged =
+		isPriced && quotedUnitPrice !== null
+			? lineQuote?.priceOptionId !== line.priceOptionId
+			: false;
+
+	const shownDuration = durationDays > 0 ? durationDays : line.duration;
+
+	return (
+		<article className="flex gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/20">
+			<div className="size-20 shrink-0 overflow-hidden rounded-xl bg-muted">
+				{line.imageUrl ? (
+					<img
+						src={line.imageUrl}
+						alt={line.productName}
+						loading="lazy"
+						className="size-full object-cover"
+					/>
+				) : null}
+			</div>
+			<div className="flex min-w-0 flex-1 flex-col gap-1">
+				<p className="text-xs font-semibold uppercase tracking-wider text-primary">
+					{line.activityName}
+				</p>
+				<Link
+					to="/activite/$activitySlug/$productSlug"
+					params={{
+						activitySlug: line.activitySlug,
+						productSlug: line.productSlug,
+					}}
+					className="font-semibold text-foreground no-underline hover:underline"
+				>
+					{line.productName}
+				</Link>
+				<p className="text-sm text-muted-foreground">
+					{line.variantLabel} · {rentalDurationLabel(shownDuration)} ·{" "}
+					{formatPrice(unitPrice)}
+				</p>
+
+				{lineBlocker ? (
+					<p className="mt-1 rounded-lg bg-destructive/10 p-2 text-xs font-medium text-destructive dark:bg-destructive/20 dark:text-red-400">
+						{lineBlocker}
+					</p>
+				) : null}
+
+				{lineQuote?.status === "available" && !lineBlocker ? (
+					<p className="mt-1 text-xs text-muted-foreground">
+						{lineQuote.availableQuantity} exemplaire
+						{lineQuote.availableQuantity > 1 ? "s" : ""} disponible
+						{lineQuote.availableQuantity > 1 ? "s" : ""} pour ces dates.
+					</p>
+				) : null}
+
+				<div className="mt-2 flex items-center gap-3">
+					<label className="flex items-center gap-2 text-sm text-foreground">
+						Qté
+						<input
+							type="number"
+							min={1}
+							max={lineQuote ? Math.max(1, lineQuote.availableQuantity) : 10}
+							value={line.quantity}
+							onChange={(event) =>
+								setPublicCartLineQuantity(
+									line.key,
+									Number(event.target.value) || 0,
+								)
+							}
+							className="w-16 rounded-lg border border-border bg-background px-2 py-1.5 text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+						/>
+					</label>
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+						aria-label={`Retirer ${line.productName} du panier`}
+						onClick={() => removePublicCartLine(line.key)}
+					>
+						<Trash2 className="size-4" aria-hidden="true" />
+					</Button>
+				</div>
+			</div>
+
+			<div className="flex flex-col items-end gap-1 text-right">
+				<p className="font-semibold text-foreground">
+					{formatPrice(unitPrice * line.quantity)}
+				</p>
+				{priceChanged ? (
+					<p className="text-xs text-muted-foreground">
+						<s>{formatPrice(line.unitPrice * line.quantity)}</s> tarif mis à
+						jour
+					</p>
+				) : null}
+				{lineQuote && !isPriced ? (
+					<p className="text-xs text-muted-foreground">
+						<s>{formatPrice(line.unitPrice * line.quantity)}</s>
+					</p>
+				) : null}
+			</div>
+		</article>
 	);
 }

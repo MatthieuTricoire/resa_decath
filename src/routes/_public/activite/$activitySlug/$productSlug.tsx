@@ -1,3 +1,4 @@
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { derivePriceSummary } from "#/components/public/product/derive-purchase";
@@ -23,28 +24,38 @@ import {
 import { PUBLIC_PAGE_CACHE_CONTROL } from "#/lib/cache-control";
 import { breadcrumbJsonLd, buildPageHead, productJsonLd } from "#/lib/seo";
 
-/** Fiche produit : variantes, prix par durée et ajout au panier. */
 export const Route = createFileRoute(
 	"/_public/activite/$activitySlug/$productSlug",
 )({
 	loader: async ({ context: { queryClient }, params }) => {
-		const product = await queryClient.ensureQueryData({
-			queryKey: ["public", "product", params.productSlug],
-			queryFn: () => getPublicProductInSeason({ data: params.productSlug }),
-		});
-		if (!product) throw notFound();
-		// L'URL doit correspondre à la catégorie réelle du matériel.
-		if (product.activitySlug !== params.activitySlug) throw notFound();
-		const activity = await queryClient.ensureQueryData({
-			queryKey: ["public", "activity", params.activitySlug],
-			queryFn: () => getPublicActivity({ data: params.activitySlug }),
-		});
+		// fetchQuery et non ensureQueryData : on attend des données fraîches à
+		// chaque navigation. Le stock bouge quand un autre utilisateur réserve,
+		// et le useSuspenseQuery du composant est figé (`staleTime: "static"`),
+		// donc le loader est le seul point de rafraîchissement.
+		const [product, activity] = await Promise.all([
+			queryClient.fetchQuery({
+				queryKey: ["public", "product", params.productSlug],
+				queryFn: () => getPublicProductInSeason({ data: params.productSlug }),
+			}),
+			queryClient.fetchQuery({
+				queryKey: ["public", "activity", params.activitySlug],
+				queryFn: () => getPublicActivity({ data: params.activitySlug }),
+			}),
+		]);
+
+		// Sécurité stricte : si l'un des deux manque, ou si la catégorie ne correspond pas -> 404
+		if (!product || !activity || product.activitySlug !== params.activitySlug) {
+			throw notFound();
+		}
+
 		return { product, activity };
 	},
 	headers: () => ({ "Cache-Control": PUBLIC_PAGE_CACHE_CONTROL }),
 	head: ({ loaderData, params }) => {
 		const product = loaderData?.product;
-		if (!product) {
+		const activity = loaderData?.activity;
+
+		if (!product || !activity) {
 			return buildPageHead({
 				meta: {
 					title: "Produit introuvable",
@@ -54,7 +65,7 @@ export const Route = createFileRoute(
 				},
 			});
 		}
-		const activityName = loaderData?.activity?.name ?? "Location";
+
 		return buildPageHead({
 			meta: {
 				title: `${product.name} à ${store.city}`,
@@ -70,7 +81,7 @@ export const Route = createFileRoute(
 				breadcrumbJsonLd([
 					{ name: store.name, path: storeCanonicalPath },
 					{
-						name: activityName,
+						name: activity.name,
 						path: `/activite/${params.activitySlug}`,
 					},
 					{
@@ -81,7 +92,7 @@ export const Route = createFileRoute(
 				productJsonLd({
 					name: product.name,
 					path: `/activite/${params.activitySlug}/${product.slug}`,
-					category: activityName,
+					category: activity.name,
 					description: product.description ?? null,
 					brand: product.brand,
 					image: product.image?.url ?? null,
@@ -95,16 +106,35 @@ export const Route = createFileRoute(
 });
 
 function ProductPage() {
-	const { product, activity } = Route.useLoaderData();
-	const { activitySlug } = Route.useParams();
-	const copy = getActivityCopy(activity?.slug ?? "", activity?.name ?? "");
+	const { activitySlug, productSlug } = Route.useParams();
+	const loaderData = Route.useLoaderData();
+
+	// Remplacement de useLoaderData par useSuspenseQuery pour le typage strict
+	// et la mise à jour des stocks en arrière-plan sans rechargement.
+	const { data: queryProduct } = useSuspenseQuery({
+		queryKey: ["public", "product", productSlug],
+		queryFn: () => getPublicProductInSeason({ data: productSlug }),
+		initialData: loaderData.product,
+		staleTime: "static",
+	});
+	const { data: queryActivity } = useSuspenseQuery({
+		queryKey: ["public", "activity", activitySlug],
+		queryFn: () => getPublicActivity({ data: activitySlug }),
+		initialData: loaderData.activity,
+		staleTime: "static",
+	});
+
+	const product = queryProduct ?? loaderData.product;
+	const activity = queryActivity ?? loaderData.activity;
+
+	const copy = getActivityCopy(activity.slug, activity.name);
 
 	const selection = useProductSelection(product);
 	const { selected, bookableQuote, notice } = selection;
 	const purchase = useProductPurchase({
-		product,
+		product: product,
 		activitySlug,
-		activityName: activity?.name ?? "",
+		activityName: activity.name,
 		selected,
 		selectedQuote: selection.selectedQuote,
 		bookableQuote,
@@ -112,9 +142,10 @@ function ProductPage() {
 		durationNotPriced: selection.durationNotPriced,
 		allSoldOut: selection.allSoldOut,
 	});
-	const switchDuration = useSwitchDuration(product.durations);
 
+	const switchDuration = useSwitchDuration(product.durations);
 	const priceSummary = derivePriceSummary(selected, bookableQuote);
+
 	const purchaseBarProps = {
 		quantity: purchase.quantity,
 		quantityMax: purchase.quantityMax,
@@ -127,7 +158,7 @@ function ProductPage() {
 	};
 
 	return (
-		<div className="page-wrap pt-12 pb-32 md:pb-12">
+		<div className="container mx-auto px-4 sm:px-6 pt-12 pb-32 md:pb-12">
 			<Button
 				asChild
 				variant="ghost"
@@ -135,8 +166,8 @@ function ProductPage() {
 				className="mb-6 -ml-3 h-10 sm:h-8"
 			>
 				<Link to="/activite/$activitySlug" params={{ activitySlug }}>
-					<ArrowLeft className="size-4" aria-hidden="true" />
-					{copy.lead ? (activity?.name ?? "Retour") : "Retour"}
+					<ArrowLeft className="mr-2 size-4" aria-hidden="true" />
+					{copy.lead ? activity.name : "Retour"}
 				</Link>
 			</Button>
 
@@ -147,10 +178,12 @@ function ProductPage() {
 					description={product.description}
 				/>
 
-				<div className="space-y-6">
+				<div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
 					<div>
-						<p className="island-kicker">{product.brand}</p>
-						<h1 className="display-title text-4xl font-semibold">
+						<p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+							{product.brand}
+						</p>
+						<h1 className="text-4xl font-semibold tracking-tight text-foreground mt-1">
 							{product.name}
 						</h1>
 					</div>
@@ -193,7 +226,6 @@ function ProductPage() {
 									durationSupport={selection.durationSupport}
 								/>
 
-								{/* Ligne d'achat desktop : la barre sticky la remplace sur mobile. */}
 								<div className="hidden md:block">
 									<ProductPurchaseBar {...purchaseBarProps} />
 								</div>

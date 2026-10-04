@@ -19,7 +19,6 @@ import { Route as PublicReservationRouteImport } from './routes/_public/reservat
 import { Route as AdminLayoutRouteImport } from './routes/admin/_layout'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as ApiSitemapRouteImport } from './routes/api/sitemap'
-import { Route as PublicActiviteActivitySlugRouteImport } from './routes/_public/activite/$activitySlug'
 import { Route as PublicReservationReferenceRouteImport } from './routes/_public/reservation/$reference'
 import { Route as AdminLayoutIndexRouteImport } from './routes/admin/_layout/index'
 import { Route as AdminLayoutDureesRouteImport } from './routes/admin/_layout/durees'
@@ -30,6 +29,7 @@ import { Route as AdminLayoutReservationsRouteImport } from './routes/admin/_lay
 import { Route as AdminLayoutStatistiquesRouteImport } from './routes/admin/_layout/statistiques'
 import { Route as AdminLayoutUtilisateursRouteImport } from './routes/admin/_layout/utilisateurs'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as PublicActiviteActivitySlugIndexRouteImport } from './routes/_public/activite/$activitySlug/index'
 import { Route as PublicActiviteActivitySlugProductSlugRouteImport } from './routes/_public/activite/$activitySlug/$productSlug'
 import { Route as AdminLayoutEquipementsIndexRouteImport } from './routes/admin/_layout/equipements/index'
 import { Route as AdminLayoutEquipementsItemIdRouteImport } from './routes/admin/_layout/equipements/$itemId'
@@ -101,12 +101,6 @@ const ApiSitemapRoute = ApiSitemapRouteImport.update({
   path: '/api/sitemap',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PublicActiviteActivitySlugRoute =
-  PublicActiviteActivitySlugRouteImport.update({
-    id: '/activite/$activitySlug',
-    path: '/activite/$activitySlug',
-    getParentRoute: () => PublicRoute,
-  } as any)
 const PublicReservationReferenceRoute =
   PublicReservationReferenceRouteImport.update({
     id: '/$reference',
@@ -158,11 +152,17 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PublicActiviteActivitySlugIndexRoute =
+  PublicActiviteActivitySlugIndexRouteImport.update({
+    id: '/activite/$activitySlug/',
+    path: '/activite/$activitySlug/',
+    getParentRoute: () => PublicRoute,
+  } as any)
 const PublicActiviteActivitySlugProductSlugRoute =
   PublicActiviteActivitySlugProductSlugRouteImport.update({
-    id: '/$productSlug',
-    path: '/$productSlug',
-    getParentRoute: () => PublicActiviteActivitySlugRoute,
+    id: '/activite/$activitySlug/$productSlug',
+    path: '/activite/$activitySlug/$productSlug',
+    getParentRoute: () => PublicRoute,
   } as any)
 const AdminLayoutEquipementsIndexRoute =
   AdminLayoutEquipementsIndexRouteImport.update({
@@ -289,7 +289,6 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminLayoutRouteWithChildren
   '/admin/login': typeof AdminLoginRoute
   '/api/sitemap': typeof ApiSitemapRoute
-  '/activite/$activitySlug': typeof PublicActiviteActivitySlugRouteWithChildren
   '/reservation/$reference': typeof PublicReservationReferenceRoute
   '/admin/durees': typeof AdminLayoutDureesRoute
   '/admin/equipements': typeof AdminLayoutEquipementsRouteWithChildren
@@ -311,6 +310,7 @@ export interface FileRoutesByFullPath {
   '/admin/reservations/ajouter': typeof AdminLayoutReservationsAjouterRoute
   '/admin/utilisateurs/$userId': typeof AdminLayoutUtilisateursUserIdRouteWithChildren
   '/admin/utilisateurs/ajouter': typeof AdminLayoutUtilisateursAjouterRoute
+  '/activite/$activitySlug/': typeof PublicActiviteActivitySlugIndexRoute
   '/admin/equipements/': typeof AdminLayoutEquipementsIndexRoute
   '/admin/reglages/': typeof AdminLayoutReglagesIndexRoute
   '/admin/reservations/': typeof AdminLayoutReservationsIndexRoute
@@ -330,7 +330,6 @@ export interface FileRoutesByTo {
   '/reservation': typeof PublicReservationRouteWithChildren
   '/admin/login': typeof AdminLoginRoute
   '/api/sitemap': typeof ApiSitemapRoute
-  '/activite/$activitySlug': typeof PublicActiviteActivitySlugRouteWithChildren
   '/reservation/$reference': typeof PublicReservationReferenceRoute
   '/admin/durees': typeof AdminLayoutDureesRoute
   '/admin/facturation': typeof AdminLayoutFacturationRoute
@@ -345,6 +344,7 @@ export interface FileRoutesByTo {
   '/admin/reglages/produits': typeof AdminLayoutReglagesProduitsRoute
   '/admin/reservations/ajouter': typeof AdminLayoutReservationsAjouterRoute
   '/admin/utilisateurs/ajouter': typeof AdminLayoutUtilisateursAjouterRoute
+  '/activite/$activitySlug': typeof PublicActiviteActivitySlugIndexRoute
   '/admin/equipements': typeof AdminLayoutEquipementsIndexRoute
   '/admin/reglages': typeof AdminLayoutReglagesIndexRoute
   '/admin/reservations': typeof AdminLayoutReservationsIndexRoute
@@ -367,7 +367,6 @@ export interface FileRoutesById {
   '/admin/_layout': typeof AdminLayoutRouteWithChildren
   '/admin/login': typeof AdminLoginRoute
   '/api/sitemap': typeof ApiSitemapRoute
-  '/_public/activite/$activitySlug': typeof PublicActiviteActivitySlugRouteWithChildren
   '/_public/reservation/$reference': typeof PublicReservationReferenceRoute
   '/admin/_layout/durees': typeof AdminLayoutDureesRoute
   '/admin/_layout/equipements': typeof AdminLayoutEquipementsRouteWithChildren
@@ -389,6 +388,7 @@ export interface FileRoutesById {
   '/admin/_layout/reservations/ajouter': typeof AdminLayoutReservationsAjouterRoute
   '/admin/_layout/utilisateurs/$userId': typeof AdminLayoutUtilisateursUserIdRouteWithChildren
   '/admin/_layout/utilisateurs/ajouter': typeof AdminLayoutUtilisateursAjouterRoute
+  '/_public/activite/$activitySlug/': typeof PublicActiviteActivitySlugIndexRoute
   '/admin/_layout/equipements/': typeof AdminLayoutEquipementsIndexRoute
   '/admin/_layout/reglages/': typeof AdminLayoutReglagesIndexRoute
   '/admin/_layout/reservations/': typeof AdminLayoutReservationsIndexRoute
@@ -411,7 +411,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin/login'
     | '/api/sitemap'
-    | '/activite/$activitySlug'
     | '/reservation/$reference'
     | '/admin/durees'
     | '/admin/equipements'
@@ -433,6 +432,7 @@ export interface FileRouteTypes {
     | '/admin/reservations/ajouter'
     | '/admin/utilisateurs/$userId'
     | '/admin/utilisateurs/ajouter'
+    | '/activite/$activitySlug/'
     | '/admin/equipements/'
     | '/admin/reglages/'
     | '/admin/reservations/'
@@ -452,7 +452,6 @@ export interface FileRouteTypes {
     | '/reservation'
     | '/admin/login'
     | '/api/sitemap'
-    | '/activite/$activitySlug'
     | '/reservation/$reference'
     | '/admin/durees'
     | '/admin/facturation'
@@ -467,6 +466,7 @@ export interface FileRouteTypes {
     | '/admin/reglages/produits'
     | '/admin/reservations/ajouter'
     | '/admin/utilisateurs/ajouter'
+    | '/activite/$activitySlug'
     | '/admin/equipements'
     | '/admin/reglages'
     | '/admin/reservations'
@@ -488,7 +488,6 @@ export interface FileRouteTypes {
     | '/admin/_layout'
     | '/admin/login'
     | '/api/sitemap'
-    | '/_public/activite/$activitySlug'
     | '/_public/reservation/$reference'
     | '/admin/_layout/durees'
     | '/admin/_layout/equipements'
@@ -510,6 +509,7 @@ export interface FileRouteTypes {
     | '/admin/_layout/reservations/ajouter'
     | '/admin/_layout/utilisateurs/$userId'
     | '/admin/_layout/utilisateurs/ajouter'
+    | '/_public/activite/$activitySlug/'
     | '/admin/_layout/equipements/'
     | '/admin/_layout/reglages/'
     | '/admin/_layout/reservations/'
@@ -602,13 +602,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSitemapRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_public/activite/$activitySlug': {
-      id: '/_public/activite/$activitySlug'
-      path: '/activite/$activitySlug'
-      fullPath: '/activite/$activitySlug'
-      preLoaderRoute: typeof PublicActiviteActivitySlugRouteImport
-      parentRoute: typeof PublicRoute
-    }
     '/_public/reservation/$reference': {
       id: '/_public/reservation/$reference'
       path: '/$reference'
@@ -679,12 +672,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_public/activite/$activitySlug/': {
+      id: '/_public/activite/$activitySlug/'
+      path: '/activite/$activitySlug'
+      fullPath: '/activite/$activitySlug/'
+      preLoaderRoute: typeof PublicActiviteActivitySlugIndexRouteImport
+      parentRoute: typeof PublicRoute
+    }
     '/_public/activite/$activitySlug/$productSlug': {
       id: '/_public/activite/$activitySlug/$productSlug'
-      path: '/$productSlug'
+      path: '/activite/$activitySlug/$productSlug'
       fullPath: '/activite/$activitySlug/$productSlug'
       preLoaderRoute: typeof PublicActiviteActivitySlugProductSlugRouteImport
-      parentRoute: typeof PublicActiviteActivitySlugRoute
+      parentRoute: typeof PublicRoute
     }
     '/admin/_layout/equipements/': {
       id: '/admin/_layout/equipements/'
@@ -833,28 +833,14 @@ const PublicReservationRouteChildren: PublicReservationRouteChildren = {
 const PublicReservationRouteWithChildren =
   PublicReservationRoute._addFileChildren(PublicReservationRouteChildren)
 
-interface PublicActiviteActivitySlugRouteChildren {
-  PublicActiviteActivitySlugProductSlugRoute: typeof PublicActiviteActivitySlugProductSlugRoute
-}
-
-const PublicActiviteActivitySlugRouteChildren: PublicActiviteActivitySlugRouteChildren =
-  {
-    PublicActiviteActivitySlugProductSlugRoute:
-      PublicActiviteActivitySlugProductSlugRoute,
-  }
-
-const PublicActiviteActivitySlugRouteWithChildren =
-  PublicActiviteActivitySlugRoute._addFileChildren(
-    PublicActiviteActivitySlugRouteChildren,
-  )
-
 interface PublicRouteChildren {
   PublicConnexionRoute: typeof PublicConnexionRoute
   PublicLocationMaterielChar123villeChar125Route: typeof PublicLocationMaterielChar123villeChar125Route
   PublicMonCompteRoute: typeof PublicMonCompteRoute
   PublicPanierRoute: typeof PublicPanierRoute
   PublicReservationRoute: typeof PublicReservationRouteWithChildren
-  PublicActiviteActivitySlugRoute: typeof PublicActiviteActivitySlugRouteWithChildren
+  PublicActiviteActivitySlugProductSlugRoute: typeof PublicActiviteActivitySlugProductSlugRoute
+  PublicActiviteActivitySlugIndexRoute: typeof PublicActiviteActivitySlugIndexRoute
 }
 
 const PublicRouteChildren: PublicRouteChildren = {
@@ -864,7 +850,9 @@ const PublicRouteChildren: PublicRouteChildren = {
   PublicMonCompteRoute: PublicMonCompteRoute,
   PublicPanierRoute: PublicPanierRoute,
   PublicReservationRoute: PublicReservationRouteWithChildren,
-  PublicActiviteActivitySlugRoute: PublicActiviteActivitySlugRouteWithChildren,
+  PublicActiviteActivitySlugProductSlugRoute:
+    PublicActiviteActivitySlugProductSlugRoute,
+  PublicActiviteActivitySlugIndexRoute: PublicActiviteActivitySlugIndexRoute,
 }
 
 const PublicRouteWithChildren =
