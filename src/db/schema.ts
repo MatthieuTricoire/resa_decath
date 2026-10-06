@@ -80,13 +80,26 @@ export const itemStatusEnum = pgEnum("item_status", [
 
 export const seasonEnum = pgEnum("season", ["winter", "summer", "all"]);
 
+/**
+ * Cycle de vie d'une réservation : quatre états, une seule direction.
+ *
+ * `CONFIRMED` est l'état d'entrée, web comme comptoir : une réservation est
+ * ligne dès qu'elle est créée, sans validation intermédiaire. On ne la supprime
+ * que si personne ne l'a retirée. `COLLECTED` est écrit quand le matériel part
+ * au comptoir, `RETURNED` quand il revient — et c'est le **seul** endroit où la
+ * base enregistre qu'un client est venu.
+ *
+ * `PENDING_VERIFICATION` et `EXPIRED` ont été retirés : aucun chemin
+ * applicatif ne les écrivait. Le premier rendait la liste des retards de retrait
+ * du back-office structurellement vide, le second n'existait que dans les données
+ * de démonstration. Ce qui distingue une annulation d'une non-présentation tient
+ * désormais dans `reservations.isNoShow`, pas dans un statut.
+ */
 export const reservationStatusEnim = pgEnum("reservation_status", [
-	"PENDING_VERIFICATION",
 	"CONFIRMED",
 	"COLLECTED",
 	"RETURNED",
 	"CANCELLED",
-	"EXPIRED",
 ]);
 
 // Canal de création de la réservation : comptoir (staff) ou site public.
@@ -292,9 +305,7 @@ export const reservations = pgTable("reservations", {
 		.references(() => user.id)
 		.notNull(),
 
-	status: reservationStatusEnim("status")
-		.default("PENDING_VERIFICATION")
-		.notNull(),
+	status: reservationStatusEnim("status").default("CONFIRMED").notNull(),
 
 	source: reservationSourceEnum("source").default("STORE").notNull(),
 
@@ -308,6 +319,16 @@ export const reservations = pgTable("reservations", {
 	expirationAtribute: timestamp("expiration_attribute").notNull(), // Deadline No-Show avant annulation
 
 	createdAt: timestamp("created_at").notNull().defaultNow(),
+
+	/**
+	 * Le client est-il venu ? 1 = non, le matériel n'est jamais sorti.
+	 *
+	 * `CANCELLED` ne dit pas pourquoi : une annulation de la veille et une
+	 * non-présentation ont le même statut. Ce drapeau est le seul endroit où la
+	 * différence subsiste — d'où son utilité pour repérer un client qui enchaîne
+	 * les non-presentations. `int` et non `boolean` par accident historique, on
+	 * n'y touche pas.
+	 */
 	isNoShow: integer("is_no_show").notNull().default(0),
 
 	totalPrice: decimal("total_price", { precision: 10, scale: 2 })

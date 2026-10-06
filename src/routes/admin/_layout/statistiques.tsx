@@ -55,12 +55,10 @@ const RANGE_OPTIONS: Array<{ key: StatsRange; label: string }> = [
 ];
 
 const STATUS_LABELS: Record<string, string> = {
-	PENDING_VERIFICATION: "En attente de vérification",
 	CONFIRMED: "Confirmée",
 	COLLECTED: "Récupérée",
 	RETURNED: "Retournée",
 	CANCELLED: "Annulée",
-	EXPIRED: "Expirée",
 };
 
 const WEEKDAY_ORDER = ["L", "M", "M", "J", "V", "S", "D"];
@@ -158,14 +156,10 @@ function RouteComponent() {
 	const { points, weekdays } = useSeries(data);
 
 	const statusData = useMemo(() => {
-		const all = [
-			"PENDING_VERIFICATION",
-			"CONFIRMED",
-			"COLLECTED",
-			"RETURNED",
-			"CANCELLED",
-			"EXPIRED",
-		];
+		// Les quatre statuts du cycle de vie, dans l'ordre où l'on veut les
+		// voir. Un statut sans aucune réservation est écarté plutôt que laissé à
+		// zéro : le graphique ne doit pas compter des colonnes vides.
+		const all = ["CONFIRMED", "COLLECTED", "RETURNED", "CANCELLED"];
 		const map = new Map(
 			(data?.statusDistribution ?? []).map((s) => [s.status, s.count]),
 		);

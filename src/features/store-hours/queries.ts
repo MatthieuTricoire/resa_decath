@@ -172,7 +172,7 @@ const updateStoreHoursSchema = z
 export type UpdateStoreHoursInput = z.infer<typeof updateStoreHoursSchema>;
 
 export const updateStoreHours = createServerFn({ method: "POST" })
-	.inputValidator(updateStoreHoursSchema.parse)
+	.validator(updateStoreHoursSchema.parse)
 	.handler(async ({ data }): Promise<StoreHours> => {
 		await requireDashboardSession();
 		const updatedAt = new Date();

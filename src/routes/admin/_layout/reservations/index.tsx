@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { format, isSameDay, startOfDay } from "date-fns";
+import { format } from "date-fns";
 import { fr as frLocale } from "date-fns/locale";
 import { Eye, Search } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -22,50 +22,58 @@ import {
 	type ReservationRow,
 } from "#/features/reservations/queries";
 import { queryKeys } from "#/features/reservations/query-keys";
+import { classifyScheduleRow } from "#/features/reservations/today-schedule";
+import { toParisDateKey } from "#/lib/dates";
 import { formatPriceString } from "#/stores/public-cart.store";
 
-const activeStatuses = new Set([
-	"PENDING_VERIFICATION",
-	"CONFIRMED",
-	"COLLECTED",
-]);
+const activeStatuses = new Set(["CONFIRMED", "COLLECTED"]);
+
+/**
+ * Jour civil (Paris) d'une date de réservation.
+ *
+ * Les comparaisons passent par la clé `YYYY-MM-DD` de Paris plutôt que par
+ * `startOfDay` de la machine : la base tourne en GMT, un serveur en UTC, et le
+ * comptoir regarde des dates, pas des instants. Une clé se compare comme une
+ * chaîne sans arithmétique de dates.
+ */
+const dayOf = (iso: string) => toParisDateKey(new Date(iso));
+const todayKey = () => toParisDateKey(new Date());
 
 function isTodayFilter(r: ReservationRow) {
-	const pickup = new Date(r.pickupDate);
-	const ret = new Date(r.returnDate);
-	const now = new Date();
-	if (isSameDay(pickup, now)) return true;
-	if (isSameDay(ret, now)) return true;
-	if (startOfDay(ret) < startOfDay(now) && activeStatuses.has(r.status))
-		return true;
-	return false;
+	const key = todayKey();
+	if (dayOf(r.pickupDate) === key) return true;
+	if (dayOf(r.returnDate) === key) return true;
+	return dayOf(r.returnDate) < key && activeStatuses.has(r.status);
 }
 
 function isActiveFilter(r: ReservationRow) {
 	return activeStatuses.has(r.status);
 }
 
-function isLateReturn(r: ReservationRow) {
-	return (
-		r.status === "COLLECTED" &&
-		startOfDay(new Date(r.returnDate)) < startOfDay(new Date())
+/**
+ * Classe la ligne dans le même tableau que le tableau de bord, en réutilisant
+ * la règle du serveur : la définition de « en retard » n'existe qu'à un seul
+ * endroit, et les deux écrans ne peuvent pas diverger sur un jour de décalage.
+ */
+function bucketOf(r: ReservationRow) {
+	return classifyScheduleRow(
+		r.status,
+		new Date(r.pickupDate),
+		new Date(r.returnDate),
+		todayKey(),
 	);
 }
 
-function isExpiredPickup(r: ReservationRow) {
-	return (
-		r.status === "PENDING_VERIFICATION" &&
-		startOfDay(new Date(r.pickupDate)) < startOfDay(new Date())
-	);
-}
-
-function isOverdue(r: ReservationRow) {
-	return isLateReturn(r) || isExpiredPickup(r);
-}
+const isLateReturn = (r: ReservationRow) => bucketOf(r) === "lateReturns";
+const isLatePickup = (r: ReservationRow) => bucketOf(r) === "latePickups";
+const isOverdue = (r: ReservationRow) => isLateReturn(r) || isLatePickup(r);
 
 function overdueDays(r: ReservationRow) {
-	const ref = isLateReturn(r) ? new Date(r.returnDate) : new Date(r.pickupDate);
-	const diff = startOfDay(new Date()).getTime() - startOfDay(ref).getTime();
+	const refKey = isLateReturn(r) ? dayOf(r.returnDate) : dayOf(r.pickupDate);
+	// La différence se calcule sur des jours civils, en secondes nominales, ce
+	// qui évite qu'une heure d'été ou un changement de fuseau modifie le nombre.
+	const diff =
+		Date.parse(`${todayKey()}T00:00:00Z`) - Date.parse(`${refKey}T00:00:00Z`);
 	return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
 }
 
@@ -76,24 +84,19 @@ function overdueLabel(r: ReservationRow) {
 }
 
 const statusBadgeClass: Record<string, string> = {
-	PENDING_VERIFICATION:
-		"bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
 	CONFIRMED: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
 	COLLECTED:
 		"bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
 	RETURNED:
 		"bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
 	CANCELLED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-	EXPIRED: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400",
 };
 
 const statusLabel: Record<string, string> = {
-	PENDING_VERIFICATION: "À vérifier",
 	CONFIRMED: "Confirmée",
 	COLLECTED: "En cours",
 	RETURNED: "Retournée",
 	CANCELLED: "Annulée",
-	EXPIRED: "Expirée",
 };
 
 /**

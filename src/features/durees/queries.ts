@@ -45,7 +45,7 @@ const durationInputSchema = z.object({
 });
 
 export const createRentalDuration = createServerFn({ method: "POST" })
-	.inputValidator(durationInputSchema.parse)
+	.validator(durationInputSchema.parse)
 	.handler(async ({ data }) => {
 		await requireDashboardSession();
 		try {
@@ -73,7 +73,7 @@ export const createRentalDuration = createServerFn({ method: "POST" })
 	});
 
 export const updateRentalDuration = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z
 			.object({
 				id: z.string().min(1),
@@ -117,7 +117,7 @@ export const updateRentalDuration = createServerFn({ method: "POST" })
 	});
 
 export const deleteRentalDuration = createServerFn({ method: "POST" })
-	.inputValidator((id: string) => id)
+	.validator((id: string) => id)
 	.handler(async ({ data }) => {
 		await requireDashboardSession();
 		await db.transaction(async (tx) => {
@@ -144,7 +144,7 @@ export const deleteRentalDuration = createServerFn({ method: "POST" })
 	});
 
 export const setRentalDurationOrder = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.array(z.object({ id: z.string().min(1), sortOrder: z.number().int() })),
 	)
 	.handler(async ({ data }) => {

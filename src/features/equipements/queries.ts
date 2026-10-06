@@ -50,6 +50,7 @@ export type VariantRow = {
 
 export const getCategories = createServerFn({ method: "GET" }).handler(
 	async () => {
+		await requireDashboardSession();
 		const categories = await db
 			.select()
 			.from(schema.categories)
@@ -59,7 +60,7 @@ export const getCategories = createServerFn({ method: "GET" }).handler(
 );
 
 export const createCategory = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			name: z.string().min(1, "Le nom est requis"),
 			description: z.string().nullable().optional(),
@@ -89,14 +90,14 @@ export const createCategory = createServerFn({ method: "POST" })
 	});
 
 export const deleteCategory = createServerFn({ method: "POST" })
-	.inputValidator((id: string) => id)
+	.validator((id: string) => id)
 	.handler(async ({ data }) => {
 		await requireDashboardSession();
 		await db.delete(schema.categories).where(eq(schema.categories.id, data));
 	});
 
 export const updateCategory = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			id: z.string().uuid(),
 			name: z.string().min(1, "Le nom est requis"),
@@ -221,7 +222,13 @@ async function loadVariants(): Promise<VariantRow[]> {
 }
 
 export const getVariants = createServerFn({ method: "GET" }).handler(
-	loadVariants,
+	async () => {
+		// Le garde est dans le handler, pas dans `loadVariants` : ce helper est aussi
+		// appelé par `getReservableVariants`, qui a son propre contrôle. Le mettre ici
+		// ferait porter le contrôle à un chemin qui a le sien.
+		await requireDashboardSession();
+		return loadVariants();
+	},
 );
 
 const reservableVariantsSchema = z.object({
@@ -230,7 +237,7 @@ const reservableVariantsSchema = z.object({
 });
 
 export const getReservableVariants = createServerFn({ method: "GET" })
-	.inputValidator(reservableVariantsSchema.parse)
+	.validator(reservableVariantsSchema.parse)
 	.handler(
 		async ({
 			data,
@@ -317,8 +324,9 @@ async function resolveItemSlug(
 }
 
 export const getItem = createServerFn({ method: "GET" })
-	.inputValidator((id: string) => id)
+	.validator((id: string) => id)
 	.handler(async ({ data }): Promise<ItemDetail | null> => {
+		await requireDashboardSession();
 		const [row] = await db
 			.select({
 				id: schema.items.id,
@@ -358,8 +366,9 @@ export const getItem = createServerFn({ method: "GET" })
 	});
 
 export const getItemVariants = createServerFn({ method: "GET" })
-	.inputValidator((itemId: string) => itemId)
+	.validator((itemId: string) => itemId)
 	.handler(async ({ data }): Promise<VariantRow[]> => {
+		await requireDashboardSession();
 		const raw = await db
 			.select({
 				id: schema.itemVariants.id,
@@ -517,8 +526,9 @@ const createItemSchema = z.object({
 export type CreateItemInput = z.infer<typeof createItemSchema>;
 
 export const createItem = createServerFn({ method: "POST" })
-	.inputValidator(createItemSchema.parse)
+	.validator(createItemSchema.parse)
 	.handler(async ({ data }) => {
+		await requireDashboardSession();
 		const [item] = await db
 			.insert(schema.items)
 			.values({
@@ -650,8 +660,9 @@ const updateItemSchema = z.object({
 });
 
 export const updateItem = createServerFn({ method: "POST" })
-	.inputValidator(updateItemSchema.parse)
+	.validator(updateItemSchema.parse)
 	.handler(async ({ data }) => {
+		await requireDashboardSession();
 		await db
 			.update(schema.items)
 			.set({
@@ -863,8 +874,9 @@ const itemIdSchema = z.string().min(1);
  * location active.
  */
 export const retireItem = createServerFn({ method: "POST" })
-	.inputValidator((itemId: string) => itemIdSchema.parse(itemId))
+	.validator((itemId: string) => itemIdSchema.parse(itemId))
 	.handler(async ({ data: itemId }) => {
+		await requireDashboardSession();
 		const variantIds = await variantIdsOfItem(itemId);
 		if (variantIds.length === 0) {
 			throw new Error("Article introuvable.");
@@ -904,8 +916,9 @@ export const retireItem = createServerFn({ method: "POST" })
  * au moment du retrait.
  */
 export const reactivateItem = createServerFn({ method: "POST" })
-	.inputValidator((itemId: string) => itemIdSchema.parse(itemId))
+	.validator((itemId: string) => itemIdSchema.parse(itemId))
 	.handler(async ({ data: itemId }) => {
+		await requireDashboardSession();
 		const variantIds = await variantIdsOfItem(itemId);
 		if (variantIds.length === 0) {
 			throw new Error("Article introuvable.");

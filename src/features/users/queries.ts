@@ -13,6 +13,7 @@ import {
 import { z } from "zod";
 import { db } from "#/db";
 import * as schema from "#/db/schema";
+import { requireDashboardSession } from "#/features/auth/queries";
 
 export type UserRow = {
 	id: string;
@@ -41,12 +42,13 @@ export type UserReservationRow = {
 };
 
 export const getUsers = createServerFn({ method: "GET" })
-	.inputValidator(
+	.validator(
 		z.object({
 			search: z.string().optional(),
 		}),
 	)
 	.handler(async ({ data }): Promise<UserRow[]> => {
+		await requireDashboardSession();
 		const conditions: SQL[] = [];
 
 		if (data.search) {
@@ -92,8 +94,9 @@ const createUserSchema = z.object({
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 
 export const createUser = createServerFn({ method: "POST" })
-	.inputValidator(createUserSchema.parse)
+	.validator(createUserSchema.parse)
 	.handler(async ({ data }): Promise<{ id: string }> => {
+		await requireDashboardSession();
 		const existing = await db
 			.select({ id: schema.user.id })
 			.from(schema.user)
@@ -123,8 +126,9 @@ export const createUser = createServerFn({ method: "POST" })
 	});
 
 export const getUserDetail = createServerFn({ method: "GET" })
-	.inputValidator((userId: string) => userId)
+	.validator((userId: string) => userId)
 	.handler(async ({ data }): Promise<UserRow | null> => {
+		await requireDashboardSession();
 		const [row] = await db
 			.select({
 				id: schema.user.id,
@@ -148,8 +152,9 @@ export const getUserDetail = createServerFn({ method: "GET" })
 	});
 
 export const getUserReservations = createServerFn({ method: "GET" })
-	.inputValidator((userId: string) => userId)
+	.validator((userId: string) => userId)
 	.handler(async ({ data }): Promise<UserReservationRow[]> => {
+		await requireDashboardSession();
 		const rows = await db
 			.select({
 				id: schema.reservations.id,
@@ -226,8 +231,9 @@ const updateUserSchema = z.object({
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 
 export const updateUser = createServerFn({ method: "POST" })
-	.inputValidator(updateUserSchema.parse)
+	.validator(updateUserSchema.parse)
 	.handler(async ({ data }) => {
+		await requireDashboardSession();
 		const existing = await db
 			.select({ id: schema.user.id })
 			.from(schema.user)

@@ -197,6 +197,111 @@ export const getMyReservations = createServerOnlyFn(
 	},
 );
 
+/**
+ * Statuts qu'un client peut annuler depuis son compte.
+ *
+ * `COLLECTED` est absent : le matériel est sorti, l'annulation n'a plus de sens.
+ * Cette liste est le pendant client de `statusTransitions` dans `queries.ts`, qui
+ * reste la machine de référence côté magasin — les deux ne partagent pas leur
+ * source parce qu'elles ne protègent pas la même chose : celle-ci une
+ * réservation, celle-là un rôle.
+ */
+const CLIENT_CANCELLABLE_STATUSES = ["CONFIRMED"] as const;
+
+/**
+ * Annule une réservation du client connecté.
+ *
+ * La propriété et le droit d'annuler sont dans le **même `WHERE`**, pas dans un
+ * test JavaScript ensuite : une seule instruction, donc atomique. Sans cela, deux
+ * onglets ouverts pourraient faire passer la vérification avant que l'autre
+ * n'écrive, et une réservation pourrait être annulée après coup.
+ *
+ * On ne réutilise pas `updateReservationStatus` : celle-ci exige un rôle du
+ * back-office et ne vérifie pas la propriété. Deux fonctions, deux gardes — les
+ * mélanger dispenserait l'une ou l'autre.
+ *
+ * Le stock n'a rien à libérer : `STOCK_CONSUMING_STATUSES` exclut `CANCELLED`, la
+ * disponibilité se recalcule donc à la prochaine lecture.
+ *
+ * @returns la référence annulée, ou `null` si rien n'a été modifié — réserve
+ * inexistante, appartenance à quelqu'un d'autre, ou déjà annulée. Les trois cas
+ * sont indistinguables volontairement : distinguer « pas à vous » de « pas
+ * existante » confirmerait l'existence d'une réservation qui ne vous concerne
+ * pas.
+ */
+export const cancelMyReservation = createServerOnlyFn(
+	async (id: string): Promise<{ reference: string } | null> => {
+		const userId = await requireUser();
+
+		const [cancelled] = await db
+			.update(schema.reservations)
+			.set({ status: "CANCELLED" })
+			.where(
+				and(
+					eq(schema.reservations.id, id),
+					eq(schema.reservations.userId, userId),
+					inArray(schema.reservations.status, [...CLIENT_CANCELLABLE_STATUSES]),
+				),
+			)
+			.returning({ reference: schema.reservations.reference });
+
+		return cancelled ?? null;
+	},
+);
+
+/**
+ * Prévient le client que sa réservation est annulée.
+ *
+ * Appelée après l'écriture, jamais avant : si l'annulation échoue, aucun mail
+ * ne part. Comme pour la confirmation, les erreurs sont attrapées ici et le
+ * module email importé dynamiquement — la réservation est déjà annulée, un mail
+ * en échec ne doit pas la remettre en cause.
+ */
+export const notifyReservationCancellation = createServerOnlyFn(
+	async (reference: string): Promise<void> => {
+		try {
+			const userId = await requireUser();
+			const [reservation] = await db
+				.select({
+					email: schema.user.email,
+					name: schema.user.name,
+					pickupDate: schema.reservations.pickupDate,
+					returnDate: schema.reservations.returnDate,
+				})
+				.from(schema.reservations)
+				.innerJoin(schema.user, eq(schema.reservations.userId, schema.user.id))
+				.where(
+					and(
+						eq(schema.reservations.reference, reference),
+						eq(schema.reservations.userId, userId),
+					),
+				);
+			if (!reservation) {
+				console.error(
+					`✉️ [EMAIL] Réservation ${reference} introuvable après annulation — email non envoyé`,
+				);
+				return;
+			}
+			const { sendReservationCancellationEmail } = await import(
+				"#/lib/email/reservation-email"
+			);
+			const [firstName] = (reservation.name ?? "").split(" ");
+			await sendReservationCancellationEmail({
+				reference,
+				firstName: firstName ?? "",
+				email: reservation.email,
+				pickupDate: toDateKey(reservation.pickupDate),
+				returnDate: toDateKey(reservation.returnDate),
+			});
+		} catch (error) {
+			const reason = error instanceof Error ? error.message : String(error);
+			console.error(
+				`✉️ [EMAIL] Réservation ${reference} annulée mais email non envoyé — ${reason}`,
+			);
+		}
+	},
+);
+
 /** Attributs de variantes, groupés par variante. */
 async function variantAttributes(variantIds: string[]) {
 	const unique = [...new Set(variantIds)];

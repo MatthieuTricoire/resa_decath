@@ -119,7 +119,7 @@ export type UpdateRentalSettingsInput = z.infer<
 >;
 
 export const updateRentalSettings = createServerFn({ method: "POST" })
-	.inputValidator(updateRentalSettingsSchema.parse)
+	.validator(updateRentalSettingsSchema.parse)
 	.handler(async ({ data }): Promise<RentalSettings> => {
 		await requireDashboardSession();
 		const updatedAt = new Date();

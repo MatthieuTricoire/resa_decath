@@ -13,6 +13,7 @@ import {
 import { z } from "zod";
 import { db } from "#/db";
 import * as schema from "#/db/schema";
+import { requireDashboardSession } from "#/features/auth/queries";
 
 export const statsRangeSchema = z.enum(["7d", "30d", "3m", "12m"]);
 export type StatsRange = z.infer<typeof statsRangeSchema>;
@@ -70,8 +71,9 @@ export type StatsData = {
 };
 
 export const getStatsData = createServerFn({ method: "GET" })
-	.inputValidator(statsRangeSchema.parse)
+	.validator(statsRangeSchema.parse)
 	.handler(async ({ data }): Promise<StatsData> => {
+		await requireDashboardSession();
 		const to = new Date();
 		to.setHours(23, 59, 59, 999);
 		const from = new Date(
@@ -82,7 +84,9 @@ export const getStatsData = createServerFn({ method: "GET" })
 		const period = and(
 			gte(schema.reservations.pickupDate, from),
 			lte(schema.reservations.pickupDate, to),
-			notInArray(schema.reservations.status, ["CANCELLED", "EXPIRED"]),
+			// Une réservation annulée n'a rien consommé : la compter ferait baisser
+			// le chiffre d'affaires sans qu'aucun matériel soit sorti.
+			notInArray(schema.reservations.status, ["CANCELLED"]),
 		);
 
 		const [

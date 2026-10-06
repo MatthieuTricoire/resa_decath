@@ -306,6 +306,7 @@ function buildHtml(data: ReservationEmailData, codes: string): string {
 								<a href="${escapeHtml(url)}" style="color:${INK};font-weight:600;">Consulter cette réservation en ligne</a>
 							</p>`,
 						)}
+						${section(cancelHintHtml())}
 						${row(`
 							<p style="margin:20px 0 0;padding-top:16px;border-top:1px solid ${BORDER};font:400 12px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:${INK_SOFT};">
 								${escapeHtml(store.name)} — ${escapeHtml(store.fullAddress)}<br />
@@ -353,7 +354,35 @@ function buildText(data: ReservationEmailData): string {
 		store.phone,
 		"",
 		confirmationUrl(data),
+		cancelHintText(),
 	].join("\n");
+}
+
+/** Espace client : c'est là que se.Connecte la session, pas via un lien. */
+function accountUrl(): string {
+	return `${store.siteOrigin}/mon-compte`;
+}
+
+/**
+ * Rappel que la réservation peut être annulée en ligne.
+ *
+ * Le lien de cette section est volontairement l'espace client, et non la page de
+ * confirmation : `/reservation/{ref}?token=…` repose sur un jeton qui circule par
+ * mail, alors que l'annulation se prouve par session. Le client doit donc se
+ * connecter **avec l'email de la réservation** — c'est dit explicitement, sinon il
+ * se connecte, ne voit rien, et conclut que l'annulation est impossible.
+ */
+function cancelHintHtml(): string {
+	return `<p style="margin:0;font:400 14px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:${INK_SOFT};">
+						Vous pouvez annuler cette réservation sans frais depuis votre espace,
+						en vous connectant avec l'adresse email utilisée pour la réserver :
+						<a href="${escapeHtml(accountUrl())}" style="color:${INK};font-weight:600;">${escapeHtml(accountUrl())}</a>.
+					</p>`;
+}
+
+/** Même information que `cancelHintHtml`, en version texte. */
+function cancelHintText(): string {
+	return `Vous pouvez annuler cette reservation sans frais depuis votre espace : ${accountUrl()} (connectez-vous avec l'email de la reservation).`;
 }
 
 export type BuiltReservationEmail = {
@@ -395,4 +424,122 @@ export async function sendReservationConfirmationEmail(
 		attachments,
 		idempotencyKey: `reservation-web-${data.reference}`,
 	});
+}
+
+/** Ce qu'on sait d'une réservation annulée, pour l'email d'annulation. */
+export type CancellationEmailData = {
+	reference: string;
+	firstName: string;
+	email: string;
+	pickupDate: string;
+	returnDate: string;
+};
+
+function buildCancellationHtml(data: CancellationEmailData): string {
+	// Le bloc encadré est construit à part : imbriquer un gabarit multiligne dans
+	// une interpolation court-circuite le gabarit externe.
+	const referencePanel = panel(`
+		<p style="margin:0 0 2px;font:400 12px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:${INK_SOFT};">Référence</p>
+		<p style="margin:0 0 12px;font:600 20px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:${INK};letter-spacing:.06em;">${escapeHtml(data.reference)}</p>
+		<p style="margin:0;font:400 14px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:${INK};">
+			Retrait ${escapeHtml(formatLongDate(data.pickupDate))} · retour ${escapeHtml(formatLongDate(data.returnDate))}
+		</p>
+	`);
+
+	const againHint = section(
+		`<p style="margin:0;font:400 14px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:${INK_SOFT};">
+			Vous pouvez refaire une réservation à tout moment depuis le site.
+		</p>`,
+	);
+
+	const footer = row(
+		`<p style="margin:20px 0 0;padding-top:16px;border-top:1px solid ${BORDER};font:400 12px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:${INK_SOFT};">
+			${escapeHtml(store.name)} — ${escapeHtml(store.fullAddress)}<br />
+			${escapeHtml(store.phone)}<br />
+			Ce mail est généré automatiquement, merci de ne pas y répondre.
+		</p>`,
+	);
+
+	const body = row(`
+		<p style="margin:0 0 4px;font:600 18px/1.3 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:${INK};">${escapeHtml(store.name)}</p>
+		<p style="margin:0 0 16px;font:400 13px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:${INK_SOFT};">Réservation annulée</p>
+		<h1 style="margin:0 0 12px;font:600 22px/1.3 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:${INK};">Bonjour ${escapeHtml(data.firstName)},</h1>
+		<p style="margin:0 0 16px;font:400 15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:${INK};">
+			Votre réservation a bien été annulée. Le matériel est de nouveau disponible à la location.
+		</p>
+	`);
+
+	return `<!doctype html>
+<html lang="fr">
+	<body style="margin:0;padding:0;background:${SAND};">
+		<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${SAND};">
+			<tr>
+				<td align="center" style="padding:24px 12px;">
+					<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;">
+						${body}
+						${referencePanel}
+						${againHint}
+						${footer}
+					</table>
+					</td>
+			</tr>
+		</table>
+	</body>
+</html>`;
+}
+
+function buildCancellationText(data: CancellationEmailData): string {
+	return [
+		`Bonjour ${data.firstName},`,
+		"",
+		`Votre reservation ${data.reference} a bien ete annulee. Le materiel est de nouveau disponible a la location.`,
+		"",
+		`Retrait : ${formatLongDate(data.pickupDate)}`,
+		`Retour : ${formatLongDate(data.returnDate)}`,
+		"",
+		`Vous pouvez refaire une reservation a tout moment depuis le site.`,
+		"",
+		`${store.name} - ${store.fullAddress}`,
+		store.phone,
+	].join("\n");
+}
+
+/**
+ * Confirme l'annulation au client.
+ *
+ * Même règle que l'email de confirmation : ne lève jamais. La réservation est
+ * déjà annulée en base quand on arrive ici, un mail en échec ne doit pas la
+ * remittre en cause. La clé d'idempotence est distincte de celle de la
+ * confirmation pour que les deux envois d'une même réservation passent tous les
+ * deux — c'est la même logique de données, pas le même message.
+ */
+export async function sendReservationCancellationEmail(
+	data: CancellationEmailData,
+): Promise<void> {
+	const { subject, html, text } = buildReservationCancellationEmail(data);
+	await sendEmail({
+		to: data.email,
+		subject,
+		html,
+		text,
+		idempotencyKey: `reservation-cancel-${data.reference}`,
+	});
+}
+
+/**
+ * Assemble l'email d'annulation. Séparé de l'envoi pour être vérifiable : un
+ * gabarit cassé ne se voit pas à la lecture, il se voit au rendu en boîte mail.
+ */
+export function buildReservationCancellationEmail(
+	data: CancellationEmailData,
+): {
+	subject: string;
+	html: string;
+	text: string;
+} {
+	return {
+		subject: `Réservation ${data.reference} annulée — ${store.name}`,
+		html: buildCancellationHtml(data),
+		text: buildCancellationText(data),
+	};
 }

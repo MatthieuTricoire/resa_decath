@@ -2,8 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getSession } from "#/features/auth/session.server";
 import {
+	cancelMyReservation,
 	getMyReservations,
 	getMyReservationWithCodes,
+	notifyReservationCancellation,
 } from "#/features/reservations/my-queries.server";
 import type { PublicReservationWithCodes } from "#/features/reservations/public-queries";
 
@@ -48,11 +50,32 @@ const reservationIdInput = z.object({
  * seul ne donne accès à rien.
  */
 export const getMyReservationCodes = createServerFn({ method: "POST" })
-	.inputValidator(reservationIdInput.parse)
+	.validator(reservationIdInput.parse)
 	.handler(
 		async ({ data }): Promise<PublicReservationWithCodes | null> =>
 			getMyReservationWithCodes(data.id),
 	);
+
+/**
+ * Annule une réservation du client connecté.
+ *
+ * Renvoie la référence annulée, ou `null` si rien ne l'a été : le client a alors
+ * cliqué sur un bouton devenu faux — le matériel a pu être retiré entre le
+ * rendu et le clic. L'appelant rafraîchit la liste dans ce cas, plutôt que
+ * d'annoncer un échec : du point de vue de l'écran, il n'y a rien à signaler,
+ * la carte a simplement changé d'état.
+ */
+export const cancelReservation = createServerFn({ method: "POST" })
+	.validator(reservationIdInput.parse)
+	.handler(async ({ data }): Promise<{ reference: string } | null> => {
+		const cancelled = await cancelMyReservation(data.id);
+		// Le mail part seulement si l'annulation a réellement eu lieu : annoncer
+		// une annulation qui n'a pas eu lieu serait pire que pas de mail du tout.
+		if (cancelled) {
+			await notifyReservationCancellation(cancelled.reference);
+		}
+		return cancelled;
+	});
 
 export type {
 	MyReservationLine,

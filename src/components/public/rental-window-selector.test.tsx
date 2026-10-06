@@ -187,3 +187,69 @@ describe("RentalWindowSelector — durée hors catalogue", () => {
 		expect(screen.queryByText(/n’est pas disponible/)).toBeNull();
 	});
 });
+
+/**
+ * Sans date de retrait, les durées sont inactives : la durée se déduit du retrait,
+ * alors les laisser choisir reviendrait à poser un retrait à la place du client —
+ * le jour même, qui peut être un jour de fermeture. Le former laisserait un champ
+ * date rempli d'un jour que personne n'a choisi, avec aucun retour derrière.
+ */
+describe("RentalWindowSelector — durée sans date de départ", () => {
+	const AWAITING = "Choisissez d'abord une date de départ.";
+
+	/** Rend le sélecteur sur un panier vide, sans fenêtre pré-remplie. */
+	function renderWithoutDates(
+		props: ComponentProps<typeof RentalWindowSelector> = {},
+	) {
+		setPublicCartDates({ pickupDate: null, returnDate: null });
+		const client = new QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		});
+		return render(
+			<QueryClientProvider client={client}>
+				<RentalWindowSelector {...props} />
+			</QueryClientProvider>,
+		);
+	}
+
+	it("rend les durées inactives et le dit", async () => {
+		mocks.schedule = scheduleOf(true);
+		renderWithoutDates();
+		await awaitDurations();
+		expect(durationButton(3).disabled).toBe(true);
+		expect(screen.getByText(AWAITING)).toBeDefined();
+	});
+
+	/**
+	 * La garantie de fond : aucune date ne peut être écrite sans que l'utilisateur
+	 * en choisisse une. C'est ce qui empêche un repli sur « aujourd'hui » de
+	 * revenir — il se lirait comme un simple `applyWindow`.
+	 */
+	it("n'écrit aucune date dans le panier", async () => {
+		mocks.schedule = scheduleOf(true);
+		renderWithoutDates();
+		await awaitDurations();
+
+		durationButton(3).click();
+
+		await waitFor(() => {
+			expect(publicCartStore.state.pickupDate).toBeNull();
+		});
+		expect(publicCartStore.state.returnDate).toBeNull();
+	});
+
+	it("libère les durées dès qu'une date est choisie", async () => {
+		mocks.schedule = scheduleOf(true);
+		renderWithoutDates();
+		await awaitDurations();
+		expect(durationButton(3).disabled).toBe(true);
+
+		const friday = aFriday();
+		setPublicCartDates({ pickupDate: friday, returnDate: friday });
+
+		await waitFor(() => {
+			expect(durationButton(3).disabled).toBe(false);
+		});
+		expect(screen.queryByText(AWAITING)).toBeNull();
+	});
+});

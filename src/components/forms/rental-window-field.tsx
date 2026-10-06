@@ -54,7 +54,23 @@ export type RentalWindowFieldProps = {
 	minDateKey?: string;
 	hint?: string;
 	className?: string;
+	/**
+	 * Faut-il une date de départ avant de pouvoir choisir une durée ?
+	 *
+	 * La durée se déduit du retrait, alors le laisser choisir sans date
+	 * reviendrait à inventer un retrait à sa place — le jour même, qui peut être
+	 * un jour de fermeture. Vrai des deux côtés du comptoir : public et caisse
+	 * demandent la date d'abord. Seul le seuil de 15h diffère, la caisse gardant
+	 * le retrait le jour même possible en boutique (`RentalStartDatePicker`).
+	 *
+	 * `false` rend les durées cliquables sans date, l'appelant qui décide alors
+	 * de la date par défaut.
+	 */
+	requirePickupDate?: boolean;
 };
+
+/** Rappel affiché tant qu'aucune date de départ n'a été choisie. */
+const AWAITING_PICKUP_DATE_REASON = "Choisissez d'abord une date de départ.";
 
 export function RentalWindowField({
 	pickupDate,
@@ -71,17 +87,27 @@ export function RentalWindowField({
 	hint,
 	minDateKey,
 	className,
+	requirePickupDate = true,
 }: RentalWindowFieldProps) {
 	const currentDuration =
 		pickupDate && returnDate ? countRentalDays(pickupDate, returnDate) : 0;
 
-	const blockedReasons = useMemo(
-		() =>
-			new Map(
-				(blockedDurations ?? []).map((block) => [block.duration, block.reason]),
-			),
-		[blockedDurations],
-	);
+	// Le prérequis passe par le même canal qu'un refus calendaire : `DurationPicker`
+	// ne fait qu'en tirer les conséquences (bouton inactif, cadenas). La raison est
+	// écrite ici, jamais déduite du rendu.
+	const awaitingPickupDate = requirePickupDate && !pickupDate;
+
+	const blockedReasons = useMemo(() => {
+		const reasons = new Map(
+			(blockedDurations ?? []).map((block) => [block.duration, block.reason]),
+		);
+		if (awaitingPickupDate) {
+			for (const duration of durations) {
+				reasons.set(duration, AWAITING_PICKUP_DATE_REASON);
+			}
+		}
+		return reasons;
+	}, [awaitingPickupDate, blockedDurations, durations]);
 
 	const isUnavailableDate = useCallback(
 		(dateKey: string) => !settings || !isOpenDay(dateKey, settings),
@@ -149,6 +175,12 @@ export function RentalWindowField({
 								onChange({ pickupDate, durationDays: duration })
 							}
 						/>
+					)}
+
+					{awaitingPickupDate && durations.length > 0 && (
+						<p className="text-sm text-[var(--sea-ink-soft)]">
+							{AWAITING_PICKUP_DATE_REASON}
+						</p>
 					)}
 
 					{/* La remarque sur les durées grisées se cale sous les boutons */}

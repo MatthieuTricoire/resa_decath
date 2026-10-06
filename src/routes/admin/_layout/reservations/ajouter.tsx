@@ -63,7 +63,6 @@ import {
 	getUsers,
 } from "#/features/users/queries";
 import { queryKeys } from "#/features/users/query-keys";
-import { todayInParis } from "#/lib/dates";
 import { formatPriceString } from "#/stores/public-cart.store";
 
 export const Route = createFileRoute("/admin/_layout/reservations/ajouter")({
@@ -247,11 +246,12 @@ function RouteComponent() {
 	 * proposer un retour impossible.
 	 */
 	const applyWindow = (change: RentalWindowChange) => {
-		// Cliquer une durée sans avoir choisi de date part d'aujourd'hui, comme sur
-		// le site : sinon le bouton resterait inerte et la saisie partirait de nulle
-		// part.
-		const nextPickup =
-			change.pickupDate ?? (change.durationDays ? todayInParis() : "");
+		// Le champ refuse une durée tant qu'aucune date de départ n'est choisie,
+		// donc ce cas n'est plus atteignable. On ne part pas d'aujourd'hui non plus :
+		// un jour de fermeture produirait une date affichée sans fenêtre derrière,
+		// et le texte « Choisissez une date de départ » contredirait le champ date.
+		if (!change.pickupDate) return;
+		const nextPickup = change.pickupDate;
 		const window = resolveCheckoutWindow({
 			pickupDate: nextPickup,
 			requestedDuration: change.durationDays,

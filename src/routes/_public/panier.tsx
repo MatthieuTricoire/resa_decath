@@ -1,9 +1,10 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, ShoppingBasket, Trash2 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { CartDatesSummary } from "#/components/public/cart-dates-summary";
 import { useCartHydrated } from "#/components/public/cart-persistence";
+import { RentalWindowSelector } from "#/components/public/rental-window-selector";
 import { Button } from "#/components/ui/button";
 import { Separator } from "#/components/ui/separator";
 import { store, storeCanonicalPath } from "#/config/store";
@@ -41,6 +42,8 @@ function CartPage() {
 	const clientTotal = usePublicCart(cartTotal);
 	const hydrated = useCartHydrated();
 	const navigate = useNavigate();
+	const [datesOpen, setDatesOpen] = useState(false);
+	const datesRef = useRef<HTMLElement>(null);
 
 	const durationDays =
 		pickupDate && returnDate ? countRentalDays(pickupDate, returnDate) : 0;
@@ -100,21 +103,26 @@ function CartPage() {
 	const total = quote.data?.total ?? clientTotal;
 	const canCheckout = datesComplete && quote.isSuccess && quote.data.complete;
 
-	// Ramène doucement l'utilisateur vers le haut de la page (le bandeau global)
-	// pour qu'il puisse modifier ou ajouter ses dates.
-	const scrollToGlobalHeader = () => {
+	// Le panier est le seul endroit où la fenêtre se modifie : le sélecteur est
+	// donc monté ici, et son ouverture suit le ScrollIntoView plutôt qu'un retour
+	// en haut de page. Sur mobile l'encart est sous la liste des articles, ouvrir
+	// sans défiler laisserait le clic sans effet visible.
+	const toggleDates = () => setDatesOpen((open) => !open);
+
+	const revealDates = () => {
+		setDatesOpen(true);
 		const reduce = window.matchMedia(
 			"(prefers-reduced-motion: reduce)",
 		).matches;
-		window.scrollTo({
-			top: 0,
+		datesRef.current?.scrollIntoView({
+			block: "nearest",
 			behavior: reduce ? "auto" : "smooth",
 		});
 	};
 
 	const onStickyCheckout = () => {
 		if (!datesComplete) {
-			scrollToGlobalHeader();
+			revealDates();
 			return;
 		}
 		void navigate({ to: "/reservation" });
@@ -172,13 +180,24 @@ function CartPage() {
 							))}
 						</div>
 
-						<aside className="h-fit rounded-2xl border border-border bg-card p-6 shadow-sm">
+						<aside
+							ref={datesRef}
+							className="h-fit scroll-mt-24 rounded-2xl border border-border bg-card p-6 shadow-sm"
+						>
 							<CartDatesSummary
 								pickupDate={pickupDate}
 								returnDate={returnDate}
 								durationDays={durationDays}
-								onEdit={scrollToGlobalHeader}
+								onEdit={toggleDates}
 							/>
+
+							{datesOpen ? (
+								<RentalWindowSelector
+									className="mt-5"
+									heading="Modifier vos dates"
+									hideDurationNote
+								/>
+							) : null}
 
 							<Separator className="my-5" />
 

@@ -460,9 +460,9 @@ function RouteComponent() {
 		},
 	});
 
-	const overdueReturns = schedule?.overdueReturns ?? [];
-	const expiredPickups = schedule?.expiredPickups ?? [];
-	const hasAlerts = overdueReturns.length > 0 || expiredPickups.length > 0;
+	const lateReturns = schedule?.lateReturns ?? [];
+	const latePickups = schedule?.latePickups ?? [];
+	const hasAlerts = lateReturns.length > 0 || latePickups.length > 0;
 
 	return (
 		<>
@@ -477,14 +477,14 @@ function RouteComponent() {
 									Retards à gérer
 								</h2>
 								<Badge className="bg-red-600 text-white">
-									{overdueReturns.length + expiredPickups.length}
+									{lateReturns.length + latePickups.length}
 								</Badge>
 							</div>
-							{overdueReturns.length > 0 && (
+							{lateReturns.length > 0 && (
 								<LateSection
 									titleId="late-returns"
 									title="Retours en retard"
-									rows={overdueReturns}
+									rows={lateReturns}
 									dateField="returnDate"
 									actionLabel={(row) =>
 										`Marquer le retour de ${row.clientName} comme effectué`
@@ -494,11 +494,11 @@ function RouteComponent() {
 									isActionPending={returnMutation.isPending}
 								/>
 							)}
-							{expiredPickups.length > 0 && (
+							{latePickups.length > 0 && (
 								<LateSection
 									titleId="late-pickups"
 									title="Retraits dépassés — matériel à libérer"
-									rows={expiredPickups}
+									rows={latePickups}
 									dateField="pickupDate"
 									actionLabel={(row) =>
 										`Annuler la réservation de ${row.clientName} et libérer le matériel`

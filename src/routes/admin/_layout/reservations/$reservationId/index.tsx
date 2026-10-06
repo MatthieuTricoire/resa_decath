@@ -24,24 +24,19 @@ import { queryKeys } from "#/features/reservations/query-keys";
 import { formatPriceString } from "#/stores/public-cart.store";
 
 const statusBadgeClass: Record<string, string> = {
-	PENDING_VERIFICATION:
-		"bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
 	CONFIRMED: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
 	COLLECTED:
 		"bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
 	RETURNED:
 		"bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
 	CANCELLED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-	EXPIRED: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400",
 };
 
 const statusLabel: Record<string, string> = {
-	PENDING_VERIFICATION: "À vérifier",
 	CONFIRMED: "Confirmée",
 	COLLECTED: "En cours",
 	RETURNED: "Retournée",
 	CANCELLED: "Annulée",
-	EXPIRED: "Expirée",
 };
 
 /** Un vrai horodatage : l'heure de création de la réservation est une donnée. */
@@ -78,10 +73,8 @@ const statusActions: Record<
 	string,
 	Array<{ status: string; label: string; variant?: "default" | "destructive" }>
 > = {
-	PENDING_VERIFICATION: [
-		{ status: "CONFIRMED", label: "Confirmer" },
-		{ status: "CANCELLED", label: "Annuler", variant: "destructive" },
-	],
+	// « Confirmer » n'existe pas : une réservation est confirmée dès sa
+	// création. La seule issue d'un retrait non effectué est l'annulation.
 	CONFIRMED: [
 		{ status: "COLLECTED", label: "Marquer comme retiré" },
 		{ status: "CANCELLED", label: "Annuler", variant: "destructive" },
@@ -89,7 +82,6 @@ const statusActions: Record<
 	COLLECTED: [{ status: "RETURNED", label: "Marquer comme retourné" }],
 	RETURNED: [],
 	CANCELLED: [],
-	EXPIRED: [],
 };
 
 function RouteComponent() {
@@ -107,12 +99,10 @@ function RouteComponent() {
 				data: {
 					id: reservationId,
 					status: newStatus as
-						| "PENDING_VERIFICATION"
 						| "CONFIRMED"
 						| "COLLECTED"
 						| "RETURNED"
-						| "CANCELLED"
-						| "EXPIRED",
+						| "CANCELLED",
 				},
 			}),
 		onSuccess: () => {

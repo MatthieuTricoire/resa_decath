@@ -107,7 +107,7 @@ const duplicateError = (message: string) => (err: unknown) => {
 };
 
 export const createAttributeDefinition = createServerFn({ method: "POST" })
-	.inputValidator(definitionNameSchema.parse)
+	.validator(definitionNameSchema.parse)
 	.handler(async ({ data }) => {
 		await requireDashboardSession();
 		try {
@@ -130,9 +130,7 @@ export const createAttributeDefinition = createServerFn({ method: "POST" })
 	});
 
 export const updateAttributeDefinition = createServerFn({ method: "POST" })
-	.inputValidator(
-		z.object({ id: z.string().min(1) }).merge(definitionNameSchema),
-	)
+	.validator(z.object({ id: z.string().min(1) }).merge(definitionNameSchema))
 	.handler(async ({ data }) => {
 		await requireDashboardSession();
 		try {
@@ -163,7 +161,7 @@ export const updateAttributeDefinition = createServerFn({ method: "POST" })
 	});
 
 export const deleteAttributeDefinition = createServerFn({ method: "POST" })
-	.inputValidator((id: string) => id)
+	.validator((id: string) => id)
 	.handler(async ({ data }) => {
 		await requireDashboardSession();
 		await db.transaction(async (tx) => {
@@ -183,7 +181,7 @@ export const deleteAttributeDefinition = createServerFn({ method: "POST" })
 	});
 
 export const setAttributeDefinitionOrder = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.array(z.object({ id: z.string().min(1), sortOrder: z.number().int() })),
 	)
 	.handler(async ({ data }) => {
@@ -204,7 +202,7 @@ const attributeValueSchema = z.object({
 });
 
 export const createAttributeValue = createServerFn({ method: "POST" })
-	.inputValidator(attributeValueSchema.parse)
+	.validator(attributeValueSchema.parse)
 	.handler(async ({ data }) => {
 		await requireDashboardSession();
 		try {
@@ -232,7 +230,7 @@ export const createAttributeValue = createServerFn({ method: "POST" })
 	});
 
 export const updateAttributeValue = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({ id: z.string().min(1) }).merge(
 			z.object({
 				value: z.string().trim().min(1, "La valeur est requise"),
@@ -283,7 +281,7 @@ export const updateAttributeValue = createServerFn({ method: "POST" })
 	});
 
 export const deleteAttributeValue = createServerFn({ method: "POST" })
-	.inputValidator((id: string) => id)
+	.validator((id: string) => id)
 	.handler(async ({ data }) => {
 		await requireDashboardSession();
 		await db.transaction(async (tx) => {

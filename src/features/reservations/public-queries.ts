@@ -119,7 +119,7 @@ export type PublicReservationWithCodes = PublicReservation & {
 };
 
 export const reservePublicReservation = createServerFn({ method: "POST" })
-	.inputValidator(reserveInputSchema.parse)
+	.validator(reserveInputSchema.parse)
 	.handler(async ({ data }): Promise<ReserveResult> => {
 		const { durationDays, pickup, returnDate, resolved } =
 			await resolveLines(data);
@@ -157,11 +157,11 @@ const publicReservationLookup = z.object({
 });
 
 export const getPublicReservation = createServerFn({ method: "GET" })
-	.inputValidator(publicReservationLookup.parse)
+	.validator(publicReservationLookup.parse)
 	.handler(async ({ data }) => fetchPublicReservation(data));
 
 export const getPublicReservationWithCodes = createServerFn({ method: "GET" })
-	.inputValidator(publicReservationLookup.parse)
+	.validator(publicReservationLookup.parse)
 	.handler(async ({ data }): Promise<PublicReservationWithCodes | null> => {
 		const reservation = await fetchPublicReservation(data);
 		if (!reservation) return null;

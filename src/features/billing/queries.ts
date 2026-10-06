@@ -61,7 +61,7 @@ const updateSettingsSchema = z.object({
 });
 
 export const updateBillingSettings = createServerFn({ method: "POST" })
-	.inputValidator(updateSettingsSchema.parse)
+	.validator(updateSettingsSchema.parse)
 	.handler(async ({ data }): Promise<BillingSettings> => {
 		await requireAdminSession();
 		const values = {

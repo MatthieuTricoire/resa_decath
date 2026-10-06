@@ -480,7 +480,7 @@ export const getPublicActivity = createServerFn({ method: "GET" })
 	});
 
 export const getPublicActivityProducts = createServerFn({ method: "GET" })
-	.inputValidator((slug: string) => categorySlugSchema.parse(slug))
+	.validator((slug: string) => categorySlugSchema.parse(slug))
 	.handler(async ({ data }): Promise<PublicProductSummary[]> => {
 		const settings = await getRentalSettingsRecord();
 		const bundles = (
@@ -493,7 +493,7 @@ export const getPublicActivityProducts = createServerFn({ method: "GET" })
 	});
 
 export const getPublicProduct = createServerFn({ method: "GET" })
-	.inputValidator((slug: string) => productSlugSchema.parse(slug))
+	.validator((slug: string) => productSlugSchema.parse(slug))
 	.handler(async ({ data }): Promise<PublicProduct | null> => {
 		const bundle = (await loadProductBundles(eq(schema.items.slug, data)))[0];
 		if (!bundle) return null;
@@ -510,7 +510,7 @@ export const getPublicProduct = createServerFn({ method: "GET" })
  * qu'un « introuvable » au moment de payer.
  */
 export const getPublicProductInSeason = createServerFn({ method: "GET" })
-	.inputValidator((slug: string) => productSlugSchema.parse(slug))
+	.validator((slug: string) => productSlugSchema.parse(slug))
 	.handler(async ({ data }): Promise<PublicProduct | null> => {
 		const bundle = (await loadProductBundles(eq(schema.items.slug, data)))[0];
 		if (!bundle) return null;
@@ -963,7 +963,7 @@ function quoteOneVariant(
  * de la sélectionner.
  */
 export const getPublicWindowQuotes = createServerFn({ method: "GET" })
-	.inputValidator(windowQuoteSchema)
+	.validator(windowQuoteSchema)
 	.handler(async ({ data }): Promise<PublicWindowQuote[]> => {
 		const quotes = await loadWindowQuotes(data.variantIds, {
 			pickupDate: data.pickupDate,
@@ -976,7 +976,7 @@ export const getPublicWindowQuotes = createServerFn({ method: "GET" })
 
 /** Toute la commande, pour re-valoriser le panier quand la fenêtre change. */
 export const getPublicCartQuote = createServerFn({ method: "GET" })
-	.inputValidator(cartQuoteSchema)
+	.validator(cartQuoteSchema)
 	.handler(async ({ data }): Promise<PublicCartQuote> => {
 		const durationDays = countRentalDays(data.pickupDate, data.returnDate);
 		const quotes = await loadWindowQuotes(
@@ -1050,7 +1050,7 @@ export type PublicCartLineIdentity = {
  * réparation n'ayant rien à faire dans un panier.
  */
 export const getPublicCartIdentities = createServerFn({ method: "GET" })
-	.inputValidator(
+	.validator(
 		z.object({ variantIds: z.array(z.string().uuid()).min(1).max(50) }),
 	)
 	.handler(async ({ data }): Promise<PublicCartLineIdentity[]> => {

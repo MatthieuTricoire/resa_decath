@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import {
+	type AnyColumn,
 	and,
 	asc,
 	desc,
@@ -21,6 +22,28 @@ import {
 	availableQuantity,
 } from "#/features/reservations/availability";
 import { reserveEquipment } from "#/features/reservations/reserve.server";
+import { classifyScheduleRow } from "#/features/reservations/today-schedule";
+import { toParisDateKey } from "#/lib/dates";
+
+/**
+ * Jour civil d'une colonne de date, vu depuis Paris.
+ *
+ * Les colonnes `timestamp` de la base sont naïves et portent de l'UTC — le
+ * retrait du site est écrit à midi UTC, celui du comptoir à minuit UTC. Il faut
+ * donc dire explicitement qu'elles valent UTC (`AT TIME ZONE 'UTC'`), sinon
+ * Postgres les lit comme des heures de Paris et décale tout d'une heure.
+ *
+ * On ne peut pas non plus laisser Postgres trancher le jour avec
+ * `CURRENT_DATE` : il renvoie le jour de la session, et la base de production
+ * tourne en GMT. Entre 22 h et minuit heure de Paris, « aujourd'hui » en SQL et
+ * « aujourd'hui » en JavaScript désignent deux jours différents, et une
+ * réservation passe d'un tableau à l'autre.
+ */
+const parisDayOf = (column: AnyColumn) =>
+	sql`(${column} AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Paris')::date`;
+
+/** Le jour civil courant à Paris — le même que celui calculé en JavaScript. */
+const parisToday = sql`(now() AT TIME ZONE 'Europe/Paris')::date`;
 
 export type ReservationLineItem = {
 	id: string;
@@ -52,7 +75,7 @@ export type ReservationRow = {
 };
 
 export const getReservations = createServerFn({ method: "GET" })
-	.inputValidator(
+	.validator(
 		z.object({
 			status: z.string().optional(),
 			search: z.string().optional(),
@@ -60,6 +83,7 @@ export const getReservations = createServerFn({ method: "GET" })
 		}),
 	)
 	.handler(async ({ data }): Promise<ReservationRow[]> => {
+		await requireDashboardSession();
 		const conditions: SQL[] = [];
 
 		if (data.period === "today") {
@@ -184,8 +208,9 @@ export const getReservations = createServerFn({ method: "GET" })
 	});
 
 export const getReservation = createServerFn({ method: "GET" })
-	.inputValidator((id: string) => id)
+	.validator((id: string) => id)
 	.handler(async ({ data }): Promise<ReservationRow | null> => {
+		await requireDashboardSession();
 		const [row] = await db
 			.select({
 				id: schema.reservations.id,
@@ -276,7 +301,7 @@ const createReservationSchema = z
 export type CreateReservationInput = z.infer<typeof createReservationSchema>;
 
 export const createReservation = createServerFn({ method: "POST" })
-	.inputValidator(createReservationSchema.parse)
+	.validator(createReservationSchema.parse)
 	.handler(async ({ data }) => {
 		await requireDashboardSession();
 		return reserveEquipment({
@@ -288,30 +313,34 @@ export const createReservation = createServerFn({ method: "POST" })
 		});
 	});
 
+/**
+ * Transitions autorisées, et seules celles-là : `updateReservationStatus`
+ * refuse tout ce qui n'y figure pas.
+ *
+ * La chaîne est linéaire — `CONFIRMED` puis `COLLECTED` puis `RETURNED` — sauf
+ * l'annulation, possible tant que le matériel n'est pas sorti. Une réservation
+ * retirée ne peut plus être annulée, ni par le client ni par le comptoir : elle
+ * est en cours, et seul son retour la clôt.
+ *
+ * `COLLECTED` est la **seule** écriture qui enregistre qu'un client est venu.
+ * Un clic oublié au comptoir et cette information n'existe nulle part ailleurs.
+ */
 const statusTransitions: Record<string, string[]> = {
-	PENDING_VERIFICATION: ["CONFIRMED", "CANCELLED"],
 	CONFIRMED: ["COLLECTED", "CANCELLED"],
 	COLLECTED: ["RETURNED"],
 	RETURNED: [],
 	CANCELLED: [],
-	EXPIRED: [],
 };
 
 export const updateReservationStatus = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			id: z.string().min(1),
-			status: z.enum([
-				"PENDING_VERIFICATION",
-				"CONFIRMED",
-				"COLLECTED",
-				"RETURNED",
-				"CANCELLED",
-				"EXPIRED",
-			]),
+			status: z.enum(["CONFIRMED", "COLLECTED", "RETURNED", "CANCELLED"]),
 		}),
 	)
 	.handler(async ({ data }) => {
+		await requireDashboardSession();
 		const [reservation] = await db
 			.select({
 				id: schema.reservations.id,
@@ -348,7 +377,10 @@ export type DashboardKPIs = {
 
 export const getDashboardKPIs = createServerFn({ method: "GET" }).handler(
 	async (): Promise<DashboardKPIs> => {
-		const today = sql`CURRENT_DATE`;
+		await requireDashboardSession();
+		// Le début de mois reste calculé par Postgres sur sa propre session : il
+		// ne s'agit que d'un découpage mensuel, où une heure de décalage est sans
+		// conséquence. Les comparaisons de *jours*, elles, passent par Paris.
 		const monthStart = sql`date_trunc('month', CURRENT_DATE)`;
 
 		const [todayCount, activeCount, monthlyRevenue, pendingPickup] =
@@ -356,7 +388,7 @@ export const getDashboardKPIs = createServerFn({ method: "GET" }).handler(
 				db
 					.select({ count: sql<number>`count(*)::int` })
 					.from(schema.reservations)
-					.where(sql`DATE(${schema.reservations.pickupDate}) = ${today}`)
+					.where(eq(parisDayOf(schema.reservations.pickupDate), parisToday))
 					.then((r) => Number(r[0]?.count ?? 0)),
 
 				db
@@ -380,13 +412,16 @@ export const getDashboardKPIs = createServerFn({ method: "GET" }).handler(
 					)
 					.then((r) => r[0]?.revenue ?? "0"),
 
+				// Retraits attendus aujourd'hui : confirmados et pas encore sortis.
+				// C'est la suite directe de `pickups` — les deux chiffres doivent
+				// dire la même chose.
 				db
 					.select({ count: sql<number>`count(*)::int` })
 					.from(schema.reservations)
 					.where(
 						and(
-							sql`DATE(${schema.reservations.pickupDate}) = ${today}`,
-							eq(schema.reservations.status, "PENDING_VERIFICATION"),
+							eq(parisDayOf(schema.reservations.pickupDate), parisToday),
+							eq(schema.reservations.status, "CONFIRMED"),
 						),
 					)
 					.then((r) => Number(r[0]?.count ?? 0)),
@@ -401,7 +436,6 @@ export type TodayReservationRow = {
 	clientName: string;
 	clientEmail: string;
 	clientPhone: string | null;
-	time: string;
 	pickupDate: string;
 	returnDate: string;
 	status: string;
@@ -411,18 +445,25 @@ export type TodayReservationRow = {
 export type TodaySchedule = {
 	pickups: TodayReservationRow[];
 	returns: TodayReservationRow[];
-	overdueReturns: TodayReservationRow[];
-	expiredPickups: TodayReservationRow[];
+	lateReturns: TodayReservationRow[];
+	latePickups: TodayReservationRow[];
 };
 
 export const getTodaySchedule = createServerFn({ method: "GET" }).handler(
 	async (): Promise<TodaySchedule> => {
-		const now = new Date();
-		const today = sql`CURRENT_DATE`;
-		const dayOf = (d: Date) =>
-			new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+		await requireDashboardSession();
+		const todayKey = toParisDateKey(new Date());
 
-		const todayReservations = await db
+		// On ramène toutes les réservations non clôturées, sans filtre de date en
+		// SQL, et c'est `classifyScheduleRow` qui décide de leur sort. La date du
+		// jour ne change pas beaucoup entre deux requêtes, et le classement se
+		// teste sans base de données.
+		//
+		// Pas de borne basse sur la date : une réservation bloquée au statut
+		// `COLLECTED` par une saisie oubliée doit rester visible au tableau des
+		// retours en retard, même six mois plus tard. L'ensemble reste petit par
+		// nature — ce sont les seules réservations en cours, jamais supprimées.
+		const openReservations = await db
 			.select({
 				id: schema.reservations.id,
 				clientName: schema.user.name,
@@ -434,30 +475,10 @@ export const getTodaySchedule = createServerFn({ method: "GET" }).handler(
 			})
 			.from(schema.reservations)
 			.innerJoin(schema.user, eq(schema.reservations.userId, schema.user.id))
-			.where(
-				and(
-					or(
-						sql`DATE(${schema.reservations.pickupDate}) = ${today}`,
-						sql`DATE(${schema.reservations.returnDate}) = ${today}`,
-						and(
-							eq(schema.reservations.status, "COLLECTED"),
-							sql`${schema.reservations.returnDate} < ${today}`,
-						),
-						and(
-							eq(schema.reservations.status, "PENDING_VERIFICATION"),
-							sql`${schema.reservations.pickupDate} < ${today}`,
-						),
-					),
-					inArray(schema.reservations.status, [
-						"PENDING_VERIFICATION",
-						"CONFIRMED",
-						"COLLECTED",
-					]),
-				),
-			)
+			.where(inArray(schema.reservations.status, ["CONFIRMED", "COLLECTED"]))
 			.orderBy(asc(schema.reservations.pickupDate));
 
-		const reservationIds = todayReservations.map((r) => r.id);
+		const reservationIds = openReservations.map((r) => r.id);
 
 		const itemCounts: Array<{
 			reservationId: string;
@@ -478,88 +499,35 @@ export const getTodaySchedule = createServerFn({ method: "GET" }).handler(
 
 		const countMap = new Map(itemCounts.map((r) => [r.reservationId, r.count]));
 
-		const pickups: TodayReservationRow[] = [];
-		const returns: TodayReservationRow[] = [];
-		const overdueReturns: TodayReservationRow[] = [];
-		const expiredPickups: TodayReservationRow[] = [];
+		const schedule: TodaySchedule = {
+			pickups: [],
+			returns: [],
+			lateReturns: [],
+			latePickups: [],
+		};
 
-		for (const r of todayReservations) {
-			const itemCount = countMap.get(r.id) ?? 0;
+		for (const r of openReservations) {
+			const bucket = classifyScheduleRow(
+				r.status,
+				r.pickupDate,
+				r.returnDate,
+				todayKey,
+			);
+			if (!bucket) continue;
 
-			if (r.status === "PENDING_VERIFICATION") {
-				if (dayOf(r.pickupDate) < dayOf(now)) {
-					expiredPickups.push({
-						id: r.id,
-						clientName: r.clientName,
-						clientEmail: r.clientEmail,
-						clientPhone: r.clientPhone,
-						time: r.pickupDate.toLocaleTimeString("fr-FR", {
-							hour: "2-digit",
-							minute: "2-digit",
-						}),
-						pickupDate: r.pickupDate.toISOString(),
-						returnDate: r.returnDate.toISOString(),
-						status: r.status,
-						itemCount,
-					});
-				} else {
-					pickups.push({
-						id: r.id,
-						clientName: r.clientName,
-						clientEmail: r.clientEmail,
-						clientPhone: r.clientPhone,
-						time: r.pickupDate.toLocaleTimeString("fr-FR", {
-							hour: "2-digit",
-							minute: "2-digit",
-						}),
-						pickupDate: r.pickupDate.toISOString(),
-						returnDate: r.returnDate.toISOString(),
-						status: r.status,
-						itemCount,
-					});
-				}
-			} else if (r.status === "CONFIRMED") {
-				pickups.push({
-					id: r.id,
-					clientName: r.clientName,
-					clientEmail: r.clientEmail,
-					clientPhone: r.clientPhone,
-					time: r.pickupDate.toLocaleTimeString("fr-FR", {
-						hour: "2-digit",
-						minute: "2-digit",
-					}),
-					pickupDate: r.pickupDate.toISOString(),
-					returnDate: r.returnDate.toISOString(),
-					status: r.status,
-					itemCount,
-				});
-			}
-
-			if (r.status === "COLLECTED") {
-				const row: TodayReservationRow = {
-					id: r.id,
-					clientName: r.clientName,
-					clientEmail: r.clientEmail,
-					clientPhone: r.clientPhone,
-					time: r.returnDate.toLocaleTimeString("fr-FR", {
-						hour: "2-digit",
-						minute: "2-digit",
-					}),
-					pickupDate: r.pickupDate.toISOString(),
-					returnDate: r.returnDate.toISOString(),
-					status: r.status,
-					itemCount,
-				};
-
-				if (dayOf(r.returnDate) < dayOf(now)) {
-					overdueReturns.push(row);
-				} else {
-					returns.push(row);
-				}
-			}
+			schedule[bucket].push({
+				id: r.id,
+				clientName: r.clientName,
+				clientEmail: r.clientEmail,
+				clientPhone: r.clientPhone,
+				pickupDate: r.pickupDate.toISOString(),
+				returnDate: r.returnDate.toISOString(),
+				status: r.status,
+				itemCount: countMap.get(r.id) ?? 0,
+			});
 		}
 
-		return { pickups, returns, overdueReturns, expiredPickups };
+		return schedule;
 	},
 );
 
@@ -570,7 +538,7 @@ const getAvailableStockSchema = z.object({
 });
 
 export const getAvailableStock = createServerFn({ method: "GET" })
-	.inputValidator(getAvailableStockSchema.parse)
+	.validator(getAvailableStockSchema.parse)
 	.handler(async ({ data }) => {
 		await requireDashboardSession();
 		const [variant] = await db

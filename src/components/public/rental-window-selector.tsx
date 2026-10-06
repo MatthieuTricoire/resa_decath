@@ -93,8 +93,13 @@ export function RentalWindowSelector({
 	]);
 
 	const handleChange = (change: RentalWindowChange) => {
+		// Le champ refuse une durée sans date de départ, donc ce cas n'est plus
+		// atteignable. On ne retombe pas sur la première date proposable : ce serait
+		// choisir un retrait à la place de l'utilisateur, sur un jour de fermeture
+		// compris, et la fenêtre affichée serait une date qui n'a jamais été choisie.
+		if (!change.pickupDate) return;
 		applyWindow(
-			change.pickupDate ?? earliestPickupDate,
+			change.pickupDate,
 			change.durationDays ?? catalogDurations[0] ?? 1,
 		);
 	};

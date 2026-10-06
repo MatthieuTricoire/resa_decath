@@ -33,13 +33,14 @@ export function minimumRentalDays(minDuration?: number | null): number {
 /**
  * Statuts de réservation qui immobilisent du matériel. Toute autre source de
  * stock : ces réservations se chevauchent sur la fenêtre demandée, les
- * Exemplaires sont donc déjà sortis ou réservés.
+ * exemplaires sont donc déjà sortis ou réservés.
+ *
+ * `CANCELLED` et `RETURNED` en sont absents, et c'est ce qui rend l'annulation
+ * et le retour gratuits à côté : dans les deux cas la réservation cesse de
+ * bloquer quoi que ce soit, et la disponibilité se recalcule à la lecture.
+ * Aucun compteur n'est décompté ni remis — il n'y en a pas.
  */
-export const STOCK_CONSUMING_STATUSES = [
-	"PENDING_VERIFICATION",
-	"CONFIRMED",
-	"COLLECTED",
-] as const;
+export const STOCK_CONSUMING_STATUSES = ["CONFIRMED", "COLLECTED"] as const;
 
 /** Exemplaires encore réservables une fois les réservations actives déduites. */
 export function availableQuantity(

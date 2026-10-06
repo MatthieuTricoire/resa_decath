@@ -338,15 +338,20 @@ async function main() {
 			);
 
 			const inFuture = pickup.getTime() > nowMs;
+			// Une non-présentation est une annulation comme une autre : le statut
+			// ne la distingue plus, seul `isNoShow` le fait.
+			let noShow = false;
 			let status: typeof schema.reservations.$inferInsert.status;
 			if (inFuture) {
-				status = rng() < 0.25 ? "PENDING_VERIFICATION" : "CONFIRMED";
+				// Tout le monde est confirmé d'entrée : il n'y a plus d'état
+				// intermédiaire avant le retrait.
+				status = "CONFIRMED";
 			} else if (retour.getTime() > nowMs) {
 				status = rng() < 0.15 ? "COLLECTED" : "RETURNED";
 			} else {
 				const roll = rng();
-				status =
-					roll < 0.68 ? "RETURNED" : roll < 0.86 ? "CANCELLED" : "EXPIRED";
+				status = roll < 0.68 ? "RETURNED" : "CANCELLED";
+				noShow = roll >= 0.86;
 			}
 
 			const expiration = new Date(pickup);
@@ -377,7 +382,7 @@ async function main() {
 				});
 			}
 
-			const isExpired = status === "EXPIRED";
+			const isNoShow = noShow ? 1 : 0;
 			reservations.push({
 				row: {
 					id: randomUUID(),
@@ -389,7 +394,7 @@ async function main() {
 					expirationAtribute: expiration,
 					totalPrice: totalPrice.toFixed(2),
 					createdAt,
-					isNoShow: isExpired ? 1 : 0,
+					isNoShow,
 				},
 				lineItems,
 			});
