@@ -173,9 +173,9 @@ function RouteComponent() {
 				</DropdownMenu>
 			</div>
 
-			<div className="rounded-md border">
+			<div className="overflow-hidden rounded-lg border">
 				<Table>
-					<TableHeader className="bg-muted">
+					<TableHeader className="bg-muted/50">
 						{table.getHeaderGroups().map((hg) => (
 							<TableRow key={hg.id}>
 								{hg.headers.map((header) => (

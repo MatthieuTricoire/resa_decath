@@ -293,7 +293,7 @@ function RouteComponent() {
 								</div>
 							) : variants && variants.length > 0 ? (
 								<Table>
-									<TableHeader className="bg-muted">
+									<TableHeader className="bg-muted/50">
 										<TableRow>
 											<TableHead>Attributs</TableHead>
 											<TableHead>SKU</TableHead>

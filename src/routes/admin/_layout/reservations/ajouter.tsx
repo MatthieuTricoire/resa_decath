@@ -798,7 +798,7 @@ function RouteComponent() {
 										max={effectiveAvailable || 1}
 										value={quantity}
 										onChange={(e) => setQuantity(Number(e.target.value))}
-										className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors"
+										className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors"
 									/>
 									{selectedVariantId &&
 										hasDates &&
@@ -835,57 +835,59 @@ function RouteComponent() {
 					</div>
 
 					{lineItems.length > 0 && (
-						<Table>
-							<TableHeader className="bg-muted">
-								<TableRow>
-									<TableHead>Article</TableHead>
-									<TableHead>Option</TableHead>
-									<TableHead>Qté</TableHead>
-									<TableHead>Prix unitaire</TableHead>
-									<TableHead>Sous-total</TableHead>
-									<TableHead />
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{lineItems.map((item, i) => (
-									<TableRow key={item.key}>
-										<TableCell className="text-sm">
-											{item.itemName}
-											<div className="text-xs text-muted-foreground">
-												{item.variantLabel}
-											</div>
-										</TableCell>
-										<TableCell className="text-sm">
-											{item.priceOptionLabel}
-										</TableCell>
-										<TableCell>{item.quantity}</TableCell>
-										<TableCell className="font-medium">
-											{formatPriceString(item.unitPrice)}
-										</TableCell>
-										<TableCell className="font-medium">
-											{formatPriceString(
-												String(
-													(
-														Number.parseFloat(item.unitPrice) * item.quantity
-													).toFixed(2),
-												),
-											)}
-										</TableCell>
-										<TableCell>
-											<Button
-												type="button"
-												variant="ghost"
-												size="icon"
-												className="size-8"
-												onClick={() => removeItem(i)}
-											>
-												<Trash2 className="size-4" />
-											</Button>
-										</TableCell>
+						<div className="overflow-hidden rounded-lg border">
+							<Table>
+								<TableHeader className="bg-muted/50">
+									<TableRow>
+										<TableHead>Article</TableHead>
+										<TableHead>Option</TableHead>
+										<TableHead>Qté</TableHead>
+										<TableHead>Prix unitaire</TableHead>
+										<TableHead>Sous-total</TableHead>
+										<TableHead />
 									</TableRow>
-								))}
-							</TableBody>
-						</Table>
+								</TableHeader>
+								<TableBody>
+									{lineItems.map((item, i) => (
+										<TableRow key={item.key}>
+											<TableCell className="text-sm">
+												{item.itemName}
+												<div className="text-xs text-muted-foreground">
+													{item.variantLabel}
+												</div>
+											</TableCell>
+											<TableCell className="text-sm">
+												{item.priceOptionLabel}
+											</TableCell>
+											<TableCell>{item.quantity}</TableCell>
+											<TableCell className="font-medium">
+												{formatPriceString(item.unitPrice)}
+											</TableCell>
+											<TableCell className="font-medium">
+												{formatPriceString(
+													String(
+														(
+															Number.parseFloat(item.unitPrice) * item.quantity
+														).toFixed(2),
+													),
+												)}
+											</TableCell>
+											<TableCell>
+												<Button
+													type="button"
+													variant="ghost"
+													size="icon"
+													className="size-8"
+													onClick={() => removeItem(i)}
+												>
+													<Trash2 className="size-4" />
+												</Button>
+											</TableCell>
+										</TableRow>
+									))}
+								</TableBody>
+							</Table>
+						</div>
 					)}
 				</CardContent>
 			</Card>

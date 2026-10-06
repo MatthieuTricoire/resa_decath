@@ -207,7 +207,7 @@ function RouteComponent() {
 				</CardHeader>
 				<CardContent>
 					<Table>
-						<TableHeader className="bg-muted">
+						<TableHeader className="bg-muted/50">
 							<TableRow>
 								<TableHead>Article</TableHead>
 								<TableHead>SKU</TableHead>

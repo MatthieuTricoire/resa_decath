@@ -223,7 +223,7 @@ function RouteComponent() {
 				<TabsContent value={period}>
 					<div className="overflow-hidden rounded-lg border">
 						<Table>
-							<TableHeader className="bg-muted">
+							<TableHeader className="bg-muted/50">
 								<TableRow>
 									<TableHead>Client</TableHead>
 									<TableHead>Téléphone</TableHead>
