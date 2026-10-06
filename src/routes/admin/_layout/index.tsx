@@ -410,10 +410,16 @@ function RouteComponent() {
 			updateReservationStatus({
 				data: { id, status: "COLLECTED" },
 			}),
-		onSuccess: () => {
+		onSuccess: (_data, variables) => {
 			queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.kpis });
 			queryClient.invalidateQueries({
 				queryKey: queryKeys.dashboard.todaySchedule,
+			});
+			queryClient.invalidateQueries({
+				queryKey: queryKeys.reservations.detail(variables),
+			});
+			queryClient.invalidateQueries({
+				queryKey: queryKeys.reservations.all,
 			});
 			toast.success("Location récupérée");
 		},
@@ -429,10 +435,16 @@ function RouteComponent() {
 			updateReservationStatus({
 				data: { id, status: "RETURNED" },
 			}),
-		onSuccess: () => {
+		onSuccess: (_data, variables) => {
 			queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.kpis });
 			queryClient.invalidateQueries({
 				queryKey: queryKeys.dashboard.todaySchedule,
+			});
+			queryClient.invalidateQueries({
+				queryKey: queryKeys.reservations.detail(variables),
+			});
+			queryClient.invalidateQueries({
+				queryKey: queryKeys.reservations.all,
 			});
 			toast.success("Location retournée");
 		},
@@ -446,10 +458,16 @@ function RouteComponent() {
 			updateReservationStatus({
 				data: { id, status: "CANCELLED" },
 			}),
-		onSuccess: () => {
+		onSuccess: (_data, variables) => {
 			queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.kpis });
 			queryClient.invalidateQueries({
 				queryKey: queryKeys.dashboard.todaySchedule,
+			});
+			queryClient.invalidateQueries({
+				queryKey: queryKeys.reservations.detail(variables),
+			});
+			queryClient.invalidateQueries({
+				queryKey: queryKeys.reservations.all,
 			});
 			toast.success("Réservation annulée, matériel libéré");
 		},
