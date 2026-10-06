@@ -109,6 +109,9 @@ function RouteComponent() {
 			queryClient.invalidateQueries({
 				queryKey: queryKeys.reservations.all,
 			});
+			queryClient.invalidateQueries({
+				queryKey: queryKeys.reservations.detail(reservationId),
+			});
 			toast.success("Statut mis à jour");
 		},
 		onError: (err) => {
