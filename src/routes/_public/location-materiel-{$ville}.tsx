@@ -358,17 +358,17 @@ function PracticalInfoCard({
 	return (
 		<aside className={cn("island-shell rounded-2xl p-6", className)}>
 			<h2 className="island-kicker">Informations pratiques</h2>
-			<dl className="mt-4 space-y-4 text-sm">
+			<div className="mt-4 space-y-4 text-sm">
 				<div className="flex gap-3">
 					<MapPin className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-					<div>
+					<dl>
 						<dt className="font-semibold">Adresse</dt>
 						<dd className="text-(--sea-ink-soft)">{store.fullAddress}</dd>
-					</div>
+					</dl>
 				</div>
 				<div className="flex gap-3">
 					<CalendarDays className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-					<div>
+					<dl>
 						<dt className="font-semibold">Horaires</dt>
 						{/* Une liste de définitions plutôt qu'un tableau : il n'y a pas
 							    d'en-tête de colonne, seulement des paires jour / horaires.
@@ -387,19 +387,19 @@ function PracticalInfoCard({
 								))}
 							</dl>
 						</dd>
-					</div>
+					</dl>
 				</div>
 				<div className="flex gap-3">
 					<ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-					<div>
+					<dl>
 						<dt className="font-semibold">Matériel vérifié & certifié</dt>
 						<dd className="text-(--sea-ink-soft)">
 							Tous les équipements sont inspectés et vérifiés avant chaque
 							départ.
 						</dd>
-					</div>
+					</dl>
 				</div>
-			</dl>
+			</div>
 		</aside>
 	);
 }
