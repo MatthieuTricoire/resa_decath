@@ -8,7 +8,6 @@ import {
 	Outlet,
 	Scripts,
 } from "@tanstack/react-router";
-import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { Toaster } from "sonner";
 import { Button } from "#/components/ui/button";
 import { store, storeCanonicalPath } from "#/config/store";
@@ -141,10 +140,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 						position: "bottom-right",
 					}}
 					plugins={[
-						{
-							name: "Tanstack Router",
-							render: <TanStackRouterDevtoolsPanel />,
-						},
+						// Le panneau TanStack Router devtools n'est plus proposé : sa
+						// dépendance (`router.stores.pendingMatches`) a disparu du
+						// routeur 1.170 et aucune version publiée n'est compatible.
 						TanStackQueryDevtools,
 					]}
 				/>
