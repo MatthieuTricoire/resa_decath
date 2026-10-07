@@ -1,10 +1,8 @@
+import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { ConfirmDeleteDialog } from "#/components/dialogs/ConfirmDeleteDialog";
 import { useAppForm } from "#/components/forms/app-form";
-import { Button } from "#/components/ui/button";
 import { authClient } from "#/lib/auth-client";
 import { cn } from "#/lib/utils";
-import { openDialog } from "#/stores/dialog.store";
 import { Field, FieldGroup } from "@/components/ui/field";
 import { loginSchema } from "../login.schema";
 
@@ -14,8 +12,8 @@ export function LogInForm({
 }: React.ComponentProps<"div">) {
 	const form = useAppForm({
 		defaultValues: {
-			email: "admin@decathlon.com",
-			password: "SuperSecretPassword123!",
+			email: "",
+			password: "",
 		},
 		validators: {
 			onChange: loginSchema,
@@ -96,23 +94,14 @@ export function LogInForm({
 				</FieldGroup>
 			</form>
 
-			<Button
-				variant="outline"
-				onClick={() =>
-					openDialog("confirmDelete", {
-						title: "Tester la dialog",
-						description:
-							"Ceci est un test pour vérifier que la dialog fonctionne.",
-						onConfirm: async () => {
-							toast.success("Test réussi !");
-						},
-					})
-				}
-			>
-				Tester la dialog
-			</Button>
-
-			<ConfirmDeleteDialog />
+			<p className="text-center text-sm text-muted-foreground">
+				<Link
+					to="/admin/mot-de-passe-oublie"
+					className="font-medium text-foreground underline-offset-4 hover:underline"
+				>
+					Mot de passe oublié ?
+				</Link>
+			</p>
 		</div>
 	);
 }

@@ -81,16 +81,34 @@ export const auth = betterAuth({
 
 		emailOTP({
 			async sendVerificationOTP({ email, otp, type }) {
+				if (type === "forget-password") {
+					// Mot de passe oublié : le code part par email (Resend) via le
+					// module dédié, avec le même garde-fou de quota que les liens
+					// magiques (plafonds par adresse et global sur 24 h). Seuls les
+					// comptes à mot de passe (admin/gérant) sont concernés.
+					// Import dynamique comme pour les liens magiques : le code du
+					// mail ne doit pas être chargé quand personne ne demande de code.
+					const { canSendResetOtp, sendResetOtpEmail } = await import(
+						"#/lib/email/reset-password"
+					);
+					const decision = await canSendResetOtp(email);
+					if (!decision.ok) {
+						// La ligne `verification` du plugin est déjà écrite et la
+						// réponse restera 200 : refuser ici ne révèle rien au demandeur.
+						console.log(
+							`✉️ [RESET OTP] Envoi ignoré pour ${email} (${decision.reason}) — quota préservé.`,
+						);
+						return;
+					}
+					await sendResetOtpEmail({ to: email.trim(), otp });
+					return;
+				}
 				if (type === "sign-in") {
 					// C'est ce bloc précis qui servira pour le flux de réservation fluide du client
 					console.log(`✉️ [CONNEXION] Code secret pour ${email} : ${otp}`);
 				} else if (type === "email-verification") {
 					console.log(
 						`✉️ [VÉRIFICATION] Code de validation pour ${email} : ${otp}`,
-					);
-				} else {
-					console.log(
-						`✉️ [PASSWORD_RESET] Code de récupération pour ${email} : ${otp}`,
 					);
 				}
 			},

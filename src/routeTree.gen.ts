@@ -18,9 +18,12 @@ import { Route as PublicPanierRouteImport } from './routes/_public/panier'
 import { Route as PublicReservationRouteImport } from './routes/_public/reservation'
 import { Route as AdminLayoutRouteImport } from './routes/admin/_layout'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
+import { Route as AdminMotDePasseOublieRouteImport } from './routes/admin/mot-de-passe-oublie'
+import { Route as AdminReinitialiserMotDePasseRouteImport } from './routes/admin/reinitialiser-mot-de-passe'
 import { Route as ApiSitemapRouteImport } from './routes/api/sitemap'
 import { Route as PublicReservationReferenceRouteImport } from './routes/_public/reservation/$reference'
 import { Route as AdminLayoutIndexRouteImport } from './routes/admin/_layout/index'
+import { Route as AdminLayoutCompteRouteImport } from './routes/admin/_layout/compte'
 import { Route as AdminLayoutDureesRouteImport } from './routes/admin/_layout/durees'
 import { Route as AdminLayoutEquipementsRouteImport } from './routes/admin/_layout/equipements'
 import { Route as AdminLayoutFacturationRouteImport } from './routes/admin/_layout/facturation'
@@ -96,6 +99,17 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
   path: '/admin/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminMotDePasseOublieRoute = AdminMotDePasseOublieRouteImport.update({
+  id: '/admin/mot-de-passe-oublie',
+  path: '/admin/mot-de-passe-oublie',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminReinitialiserMotDePasseRoute =
+  AdminReinitialiserMotDePasseRouteImport.update({
+    id: '/admin/reinitialiser-mot-de-passe',
+    path: '/admin/reinitialiser-mot-de-passe',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiSitemapRoute = ApiSitemapRouteImport.update({
   id: '/api/sitemap',
   path: '/api/sitemap',
@@ -110,6 +124,11 @@ const PublicReservationReferenceRoute =
 const AdminLayoutIndexRoute = AdminLayoutIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AdminLayoutRoute,
+} as any)
+const AdminLayoutCompteRoute = AdminLayoutCompteRouteImport.update({
+  id: '/compte',
+  path: '/compte',
   getParentRoute: () => AdminLayoutRoute,
 } as any)
 const AdminLayoutDureesRoute = AdminLayoutDureesRouteImport.update({
@@ -288,8 +307,11 @@ export interface FileRoutesByFullPath {
   '/reservation': typeof PublicReservationRouteWithChildren
   '/admin': typeof AdminLayoutRouteWithChildren
   '/admin/login': typeof AdminLoginRoute
+  '/admin/mot-de-passe-oublie': typeof AdminMotDePasseOublieRoute
+  '/admin/reinitialiser-mot-de-passe': typeof AdminReinitialiserMotDePasseRoute
   '/api/sitemap': typeof ApiSitemapRoute
   '/reservation/$reference': typeof PublicReservationReferenceRoute
+  '/admin/compte': typeof AdminLayoutCompteRoute
   '/admin/durees': typeof AdminLayoutDureesRoute
   '/admin/equipements': typeof AdminLayoutEquipementsRouteWithChildren
   '/admin/facturation': typeof AdminLayoutFacturationRoute
@@ -329,8 +351,11 @@ export interface FileRoutesByTo {
   '/panier': typeof PublicPanierRoute
   '/reservation': typeof PublicReservationRouteWithChildren
   '/admin/login': typeof AdminLoginRoute
+  '/admin/mot-de-passe-oublie': typeof AdminMotDePasseOublieRoute
+  '/admin/reinitialiser-mot-de-passe': typeof AdminReinitialiserMotDePasseRoute
   '/api/sitemap': typeof ApiSitemapRoute
   '/reservation/$reference': typeof PublicReservationReferenceRoute
+  '/admin/compte': typeof AdminLayoutCompteRoute
   '/admin/durees': typeof AdminLayoutDureesRoute
   '/admin/facturation': typeof AdminLayoutFacturationRoute
   '/admin/statistiques': typeof AdminLayoutStatistiquesRoute
@@ -366,8 +391,11 @@ export interface FileRoutesById {
   '/_public/reservation': typeof PublicReservationRouteWithChildren
   '/admin/_layout': typeof AdminLayoutRouteWithChildren
   '/admin/login': typeof AdminLoginRoute
+  '/admin/mot-de-passe-oublie': typeof AdminMotDePasseOublieRoute
+  '/admin/reinitialiser-mot-de-passe': typeof AdminReinitialiserMotDePasseRoute
   '/api/sitemap': typeof ApiSitemapRoute
   '/_public/reservation/$reference': typeof PublicReservationReferenceRoute
+  '/admin/_layout/compte': typeof AdminLayoutCompteRoute
   '/admin/_layout/durees': typeof AdminLayoutDureesRoute
   '/admin/_layout/equipements': typeof AdminLayoutEquipementsRouteWithChildren
   '/admin/_layout/facturation': typeof AdminLayoutFacturationRoute
@@ -410,8 +438,11 @@ export interface FileRouteTypes {
     | '/reservation'
     | '/admin'
     | '/admin/login'
+    | '/admin/mot-de-passe-oublie'
+    | '/admin/reinitialiser-mot-de-passe'
     | '/api/sitemap'
     | '/reservation/$reference'
+    | '/admin/compte'
     | '/admin/durees'
     | '/admin/equipements'
     | '/admin/facturation'
@@ -451,8 +482,11 @@ export interface FileRouteTypes {
     | '/panier'
     | '/reservation'
     | '/admin/login'
+    | '/admin/mot-de-passe-oublie'
+    | '/admin/reinitialiser-mot-de-passe'
     | '/api/sitemap'
     | '/reservation/$reference'
+    | '/admin/compte'
     | '/admin/durees'
     | '/admin/facturation'
     | '/admin/statistiques'
@@ -487,8 +521,11 @@ export interface FileRouteTypes {
     | '/_public/reservation'
     | '/admin/_layout'
     | '/admin/login'
+    | '/admin/mot-de-passe-oublie'
+    | '/admin/reinitialiser-mot-de-passe'
     | '/api/sitemap'
     | '/_public/reservation/$reference'
+    | '/admin/_layout/compte'
     | '/admin/_layout/durees'
     | '/admin/_layout/equipements'
     | '/admin/_layout/facturation'
@@ -526,6 +563,8 @@ export interface RootRouteChildren {
   PublicRoute: typeof PublicRouteWithChildren
   AdminLayoutRoute: typeof AdminLayoutRouteWithChildren
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminMotDePasseOublieRoute: typeof AdminMotDePasseOublieRoute
+  AdminReinitialiserMotDePasseRoute: typeof AdminReinitialiserMotDePasseRoute
   ApiSitemapRoute: typeof ApiSitemapRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -595,6 +634,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/mot-de-passe-oublie': {
+      id: '/admin/mot-de-passe-oublie'
+      path: '/admin/mot-de-passe-oublie'
+      fullPath: '/admin/mot-de-passe-oublie'
+      preLoaderRoute: typeof AdminMotDePasseOublieRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/reinitialiser-mot-de-passe': {
+      id: '/admin/reinitialiser-mot-de-passe'
+      path: '/admin/reinitialiser-mot-de-passe'
+      fullPath: '/admin/reinitialiser-mot-de-passe'
+      preLoaderRoute: typeof AdminReinitialiserMotDePasseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/sitemap': {
       id: '/api/sitemap'
       path: '/api/sitemap'
@@ -614,6 +667,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminLayoutIndexRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
+    '/admin/_layout/compte': {
+      id: '/admin/_layout/compte'
+      path: '/compte'
+      fullPath: '/admin/compte'
+      preLoaderRoute: typeof AdminLayoutCompteRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
     '/admin/_layout/durees': {
@@ -986,6 +1046,7 @@ const AdminLayoutUtilisateursRouteWithChildren =
   )
 
 interface AdminLayoutRouteChildren {
+  AdminLayoutCompteRoute: typeof AdminLayoutCompteRoute
   AdminLayoutDureesRoute: typeof AdminLayoutDureesRoute
   AdminLayoutEquipementsRoute: typeof AdminLayoutEquipementsRouteWithChildren
   AdminLayoutFacturationRoute: typeof AdminLayoutFacturationRoute
@@ -997,6 +1058,7 @@ interface AdminLayoutRouteChildren {
 }
 
 const AdminLayoutRouteChildren: AdminLayoutRouteChildren = {
+  AdminLayoutCompteRoute: AdminLayoutCompteRoute,
   AdminLayoutDureesRoute: AdminLayoutDureesRoute,
   AdminLayoutEquipementsRoute: AdminLayoutEquipementsRouteWithChildren,
   AdminLayoutFacturationRoute: AdminLayoutFacturationRoute,
@@ -1016,6 +1078,8 @@ const rootRouteChildren: RootRouteChildren = {
   PublicRoute: PublicRouteWithChildren,
   AdminLayoutRoute: AdminLayoutRouteWithChildren,
   AdminLoginRoute: AdminLoginRoute,
+  AdminMotDePasseOublieRoute: AdminMotDePasseOublieRoute,
+  AdminReinitialiserMotDePasseRoute: AdminReinitialiserMotDePasseRoute,
   ApiSitemapRoute: ApiSitemapRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
