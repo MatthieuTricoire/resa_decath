@@ -34,6 +34,7 @@ import { Route as AdminLayoutUtilisateursRouteImport } from './routes/admin/_lay
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as PublicActiviteActivitySlugIndexRouteImport } from './routes/_public/activite/$activitySlug/index'
 import { Route as PublicActiviteActivitySlugProductSlugRouteImport } from './routes/_public/activite/$activitySlug/$productSlug'
+import { Route as AdminLayoutEquipeIndexRouteImport } from './routes/admin/_layout/equipe/index'
 import { Route as AdminLayoutEquipementsIndexRouteImport } from './routes/admin/_layout/equipements/index'
 import { Route as AdminLayoutEquipementsItemIdRouteImport } from './routes/admin/_layout/equipements/$itemId'
 import { Route as AdminLayoutEquipementsAjouterRouteImport } from './routes/admin/_layout/equipements/ajouter'
@@ -183,6 +184,11 @@ const PublicActiviteActivitySlugProductSlugRoute =
     path: '/activite/$activitySlug/$productSlug',
     getParentRoute: () => PublicRoute,
   } as any)
+const AdminLayoutEquipeIndexRoute = AdminLayoutEquipeIndexRouteImport.update({
+  id: '/equipe/',
+  path: '/equipe/',
+  getParentRoute: () => AdminLayoutRoute,
+} as any)
 const AdminLayoutEquipementsIndexRoute =
   AdminLayoutEquipementsIndexRouteImport.update({
     id: '/',
@@ -333,6 +339,7 @@ export interface FileRoutesByFullPath {
   '/admin/utilisateurs/$userId': typeof AdminLayoutUtilisateursUserIdRouteWithChildren
   '/admin/utilisateurs/ajouter': typeof AdminLayoutUtilisateursAjouterRoute
   '/activite/$activitySlug/': typeof PublicActiviteActivitySlugIndexRoute
+  '/admin/equipe/': typeof AdminLayoutEquipeIndexRoute
   '/admin/equipements/': typeof AdminLayoutEquipementsIndexRoute
   '/admin/reglages/': typeof AdminLayoutReglagesIndexRoute
   '/admin/reservations/': typeof AdminLayoutReservationsIndexRoute
@@ -370,6 +377,7 @@ export interface FileRoutesByTo {
   '/admin/reservations/ajouter': typeof AdminLayoutReservationsAjouterRoute
   '/admin/utilisateurs/ajouter': typeof AdminLayoutUtilisateursAjouterRoute
   '/activite/$activitySlug': typeof PublicActiviteActivitySlugIndexRoute
+  '/admin/equipe': typeof AdminLayoutEquipeIndexRoute
   '/admin/equipements': typeof AdminLayoutEquipementsIndexRoute
   '/admin/reglages': typeof AdminLayoutReglagesIndexRoute
   '/admin/reservations': typeof AdminLayoutReservationsIndexRoute
@@ -417,6 +425,7 @@ export interface FileRoutesById {
   '/admin/_layout/utilisateurs/$userId': typeof AdminLayoutUtilisateursUserIdRouteWithChildren
   '/admin/_layout/utilisateurs/ajouter': typeof AdminLayoutUtilisateursAjouterRoute
   '/_public/activite/$activitySlug/': typeof PublicActiviteActivitySlugIndexRoute
+  '/admin/_layout/equipe/': typeof AdminLayoutEquipeIndexRoute
   '/admin/_layout/equipements/': typeof AdminLayoutEquipementsIndexRoute
   '/admin/_layout/reglages/': typeof AdminLayoutReglagesIndexRoute
   '/admin/_layout/reservations/': typeof AdminLayoutReservationsIndexRoute
@@ -464,6 +473,7 @@ export interface FileRouteTypes {
     | '/admin/utilisateurs/$userId'
     | '/admin/utilisateurs/ajouter'
     | '/activite/$activitySlug/'
+    | '/admin/equipe/'
     | '/admin/equipements/'
     | '/admin/reglages/'
     | '/admin/reservations/'
@@ -501,6 +511,7 @@ export interface FileRouteTypes {
     | '/admin/reservations/ajouter'
     | '/admin/utilisateurs/ajouter'
     | '/activite/$activitySlug'
+    | '/admin/equipe'
     | '/admin/equipements'
     | '/admin/reglages'
     | '/admin/reservations'
@@ -547,6 +558,7 @@ export interface FileRouteTypes {
     | '/admin/_layout/utilisateurs/$userId'
     | '/admin/_layout/utilisateurs/ajouter'
     | '/_public/activite/$activitySlug/'
+    | '/admin/_layout/equipe/'
     | '/admin/_layout/equipements/'
     | '/admin/_layout/reglages/'
     | '/admin/_layout/reservations/'
@@ -745,6 +757,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/activite/$activitySlug/$productSlug'
       preLoaderRoute: typeof PublicActiviteActivitySlugProductSlugRouteImport
       parentRoute: typeof PublicRoute
+    }
+    '/admin/_layout/equipe/': {
+      id: '/admin/_layout/equipe/'
+      path: '/equipe'
+      fullPath: '/admin/equipe/'
+      preLoaderRoute: typeof AdminLayoutEquipeIndexRouteImport
+      parentRoute: typeof AdminLayoutRoute
     }
     '/admin/_layout/equipements/': {
       id: '/admin/_layout/equipements/'
@@ -1055,6 +1074,7 @@ interface AdminLayoutRouteChildren {
   AdminLayoutStatistiquesRoute: typeof AdminLayoutStatistiquesRoute
   AdminLayoutUtilisateursRoute: typeof AdminLayoutUtilisateursRouteWithChildren
   AdminLayoutIndexRoute: typeof AdminLayoutIndexRoute
+  AdminLayoutEquipeIndexRoute: typeof AdminLayoutEquipeIndexRoute
 }
 
 const AdminLayoutRouteChildren: AdminLayoutRouteChildren = {
@@ -1067,6 +1087,7 @@ const AdminLayoutRouteChildren: AdminLayoutRouteChildren = {
   AdminLayoutStatistiquesRoute: AdminLayoutStatistiquesRoute,
   AdminLayoutUtilisateursRoute: AdminLayoutUtilisateursRouteWithChildren,
   AdminLayoutIndexRoute: AdminLayoutIndexRoute,
+  AdminLayoutEquipeIndexRoute: AdminLayoutEquipeIndexRoute,
 }
 
 const AdminLayoutRouteWithChildren = AdminLayoutRoute._addFileChildren(

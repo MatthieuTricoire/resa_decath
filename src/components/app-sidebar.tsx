@@ -9,6 +9,7 @@ import {
 	IconSettings,
 	IconStack3,
 	IconUser,
+	IconUserShield,
 	IconUsers,
 } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
@@ -113,6 +114,11 @@ const data = {
 			title: "Réglages",
 			url: "/admin/reglages",
 			icon: IconSettings,
+		},
+		{
+			title: "Équipe",
+			url: "/admin/equipe",
+			icon: IconUserShield,
 		},
 		{
 			title: "Mon compte",

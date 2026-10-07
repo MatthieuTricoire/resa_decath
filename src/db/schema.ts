@@ -24,6 +24,9 @@ export const user = pgTable("user", {
 	phone: varchar("phone", { length: 20 }),
 	loyaltyCard: varchar("loyalty_card", { length: 50 }),
 	image: text(),
+	banned: boolean().default(false),
+	banReason: text(),
+	banExpires: timestamp(),
 	createdAt: timestamp().notNull(),
 	updatedAt: timestamp().notNull(),
 });
