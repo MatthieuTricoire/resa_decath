@@ -1,4 +1,9 @@
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap");
+/* Polices auto-hébergées (Fontsource) : plus d'appel réseau vers
+   fonts.googleapis.com / fonts.gstatic.com — le rendu initial n'attend plus
+   la chaîne de requêtes bloquante. Manrope (sans) + Fraunces (serif, axes
+   wght+opsz) sont servis depuis notre domaine en parallèle du CSS principal. */
+@import "@fontsource-variable/manrope";
+@import "@fontsource-variable/fraunces/standard.css";
 @import "tailwindcss";
 @plugin '@tailwindcss/typography';
 
@@ -120,7 +125,7 @@
 }
 
 @theme inline {
-  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -281,7 +286,7 @@ pre code {
 }
 
 .display-title {
-  font-family: "Fraunces", Georgia, serif;
+  font-family: "Fraunces Variable", Georgia, serif;
 }
 
 .island-shell {
