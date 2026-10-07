@@ -1,3 +1,9 @@
+// Polices critiques (sous-ensemble latin, texte français) : préchargées dès
+// la réception du HTML pour casser la cascade HTML → CSS → polices du
+// Critical Rendering Path. Mêmes fichiers que ceux référencés par le CSS,
+// donc mêmes hash d'assets côté build (pas de double téléchargement).
+import frauncesLatin from "@fontsource-variable/fraunces/files/fraunces-latin-standard-normal.woff2?url";
+import manropeLatin from "@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2?url";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -41,6 +47,23 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			{
 				rel: "stylesheet",
 				href: appCss,
+			},
+			// Preload des polices critiques : téléchargement immédiat, en
+			// parallèle du CSS, au lieu d'attendre leur découverte dans le CSS
+			// (le navigateur ne charge les @font-face qu'après le CSS entier).
+			{
+				rel: "preload",
+				href: manropeLatin,
+				as: "font",
+				type: "font/woff2",
+				crossOrigin: "anonymous",
+			},
+			{
+				rel: "preload",
+				href: frauncesLatin,
+				as: "font",
+				type: "font/woff2",
+				crossOrigin: "anonymous",
 			},
 			// Icônes : favicon classique + tuile des écrans d'accueil iOS.
 			{
