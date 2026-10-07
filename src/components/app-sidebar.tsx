@@ -8,6 +8,7 @@ import {
 	IconReceiptEuro,
 	IconSettings,
 	IconStack3,
+	IconUser,
 	IconUsers,
 } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
@@ -112,6 +113,11 @@ const data = {
 			title: "Réglages",
 			url: "/admin/reglages",
 			icon: IconSettings,
+		},
+		{
+			title: "Mon compte",
+			url: "/admin/compte",
+			icon: IconUser,
 		},
 	],
 };
