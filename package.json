@@ -23,6 +23,7 @@
     "db:push": "drizzle-kit push",
     "db:pull": "drizzle-kit pull",
     "db:seed": "NODE_ENV=development tsx src/db/seed.ts",
+    "db:rotate-credentials": "NODE_ENV=development tsx scripts/rotate-credentials.ts",
     "db:seed:history": "NODE_ENV=development tsx src/db/seed-historical.ts",
     "db:seed:demo": "NODE_ENV=development tsx src/db/seed-demo.ts",
     "db:audit:public": "NODE_ENV=development tsx src/db/audit-public.ts",
