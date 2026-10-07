@@ -147,9 +147,16 @@ function RouteComponent() {
 								<Card key={res.id} className="border border-border/50">
 									<CardContent className="pt-6">
 										<div className="flex items-center justify-between mb-3">
-											<Badge className={statusBadgeClass[res.status] ?? ""}>
-												{statusLabel[res.status] ?? res.status}
-											</Badge>
+											<div className="flex items-center gap-2">
+												<Badge className={statusBadgeClass[res.status] ?? ""}>
+													{statusLabel[res.status] ?? res.status}
+												</Badge>
+												{res.isNoShow === 1 && (
+													<Badge className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
+														Non présenté
+													</Badge>
+												)}
+											</div>
 											<Button
 												variant="ghost"
 												size="icon"

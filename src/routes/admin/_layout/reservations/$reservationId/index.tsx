@@ -17,10 +17,18 @@ import {
 	TableRow,
 } from "#/components/ui/table";
 import {
+	isLatePickup,
+	isLateReturn,
+	isOverdue,
+	overdueLabel,
+} from "#/features/reservations/late-status";
+import {
 	getReservation,
 	updateReservationStatus,
 } from "#/features/reservations/queries";
 import { queryKeys } from "#/features/reservations/query-keys";
+import { todayInParis, toParisDateKey } from "#/lib/dates";
+import { openDialog, type ReservationActionData } from "#/stores/dialog.store";
 import { formatPriceString } from "#/stores/public-cart.store";
 
 const statusBadgeClass: Record<string, string> = {
@@ -69,20 +77,44 @@ export const Route = createFileRoute(
 	component: RouteComponent,
 });
 
+type StatusValue = "CONFIRMED" | "COLLECTED" | "RETURNED" | "CANCELLED";
+
+/**
+ * Le statut visé par une action, et le type de dialogue qu'elle ouvre.
+ *
+ * Les libellés restent ici, sur la fiche : c'est le seul écran qui parle en
+ * « marquer comme retiré », le tableau du jour ayant ses propres tournures.
+ */
 const statusActions: Record<
 	string,
-	Array<{ status: string; label: string; variant?: "default" | "destructive" }>
+	Array<{
+		status: StatusValue;
+		label: string;
+		kind: ReservationActionData["kind"];
+		variant?: "default" | "destructive";
+	}>
 > = {
 	// « Confirmer » n'existe pas : une réservation est confirmée dès sa
 	// création. La seule issue d'un retrait non effectué est l'annulation.
 	CONFIRMED: [
-		{ status: "COLLECTED", label: "Marquer comme retiré" },
-		{ status: "CANCELLED", label: "Annuler", variant: "destructive" },
+		{ status: "COLLECTED", label: "Marquer comme retiré", kind: "pickup" },
+		{
+			status: "CANCELLED",
+			label: "Annuler",
+			kind: "cancel",
+			variant: "destructive",
+		},
 	],
-	COLLECTED: [{ status: "RETURNED", label: "Marquer comme retourné" }],
+	COLLECTED: [
+		{ status: "RETURNED", label: "Marquer comme retourné", kind: "return" },
+	],
 	RETURNED: [],
 	CANCELLED: [],
 };
+
+/** Le retrait prévu est-il déjà passé ? Clés de Paris, comme partout ailleurs. */
+const isPickupLate = (iso: string) =>
+	toParisDateKey(new Date(iso)) < todayInParis();
 
 function RouteComponent() {
 	const { reservationId } = Route.useParams();
@@ -94,25 +126,30 @@ function RouteComponent() {
 	});
 
 	const statusMutation = useMutation({
-		mutationFn: (newStatus: string) =>
+		mutationFn: ({
+			status,
+			noShow,
+		}: {
+			status: StatusValue;
+			noShow?: boolean;
+		}) =>
 			updateReservationStatus({
-				data: {
-					id: reservationId,
-					status: newStatus as
-						| "CONFIRMED"
-						| "COLLECTED"
-						| "RETURNED"
-						| "CANCELLED",
-				},
+				data: { id: reservationId, status, noShow },
 			}),
-		onSuccess: () => {
+		onSuccess: (_data, variables) => {
 			queryClient.invalidateQueries({
 				queryKey: queryKeys.reservations.all,
 			});
 			queryClient.invalidateQueries({
 				queryKey: queryKeys.reservations.detail(reservationId),
 			});
-			toast.success("Statut mis à jour");
+			toast.success(
+				variables.status === "CANCELLED"
+					? variables.noShow
+						? "Réservation annulée, client marqué non présenté"
+						: "Réservation annulée, matériel libéré"
+					: "Statut mis à jour",
+			);
 		},
 		onError: (err) => {
 			toast.error(
@@ -135,6 +172,25 @@ function RouteComponent() {
 
 	const actions = statusActions[reservation.status] ?? [];
 
+	/**
+	 * Rien ne s'exécute au clic : le bouton énonce l'action, la dialogue la
+	 * confirme. Même parcours que le tableau du jour du dashboard, pour que le
+	 * comptoir ne découvre jamais une annulation déjà produite.
+	 */
+	const openAction = (action: (typeof statusActions)[string][number]) => {
+		openDialog("reservationAction", {
+			kind: action.kind,
+			clientName: reservation.clientName,
+			defaultNoShow: isPickupLate(reservation.pickupDate),
+			onConfirm: async (noShow) => {
+				await statusMutation.mutateAsync({
+					status: action.status,
+					noShow: action.kind === "cancel" ? noShow : undefined,
+				});
+			},
+		});
+	};
+
 	return (
 		<div className="flex flex-col gap-6">
 			<div className="flex items-center gap-4">
@@ -147,6 +203,16 @@ function RouteComponent() {
 				<Badge className={statusBadgeClass[reservation.status] ?? ""}>
 					{statusLabel[reservation.status] ?? reservation.status}
 				</Badge>
+				{isOverdue(reservation) && (
+					<Badge className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
+						{overdueLabel(reservation)}
+					</Badge>
+				)}
+				{reservation.isNoShow === 1 && (
+					<Badge className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
+						Non présenté
+					</Badge>
+				)}
 			</div>
 
 			<div className="grid grid-cols-2 gap-6">
@@ -174,9 +240,25 @@ function RouteComponent() {
 					</CardHeader>
 					<CardContent className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
 						<div className="text-muted-foreground">Retrait prévu</div>
-						<div>{formatDateOnly(reservation.pickupDate)}</div>
+						<div
+							className={
+								isLatePickup(reservation)
+									? "font-semibold text-red-600 dark:text-red-400"
+									: undefined
+							}
+						>
+							{formatDateOnly(reservation.pickupDate)}
+						</div>
 						<div className="text-muted-foreground">Retour prévu</div>
-						<div>{formatDateOnly(reservation.returnDate)}</div>
+						<div
+							className={
+								isLateReturn(reservation)
+									? "font-semibold text-red-600 dark:text-red-400"
+									: undefined
+							}
+						>
+							{formatDateOnly(reservation.returnDate)}
+						</div>
 						<div className="text-muted-foreground">Créée le</div>
 						<div>{formatDt(reservation.createdAt)}</div>
 						<div className="text-muted-foreground">Total</div>
@@ -199,7 +281,7 @@ function RouteComponent() {
 									variant={
 										action.variant === "destructive" ? "destructive" : "default"
 									}
-									onClick={() => statusMutation.mutate(action.status)}
+									onClick={() => openAction(action)}
 									disabled={statusMutation.isPending}
 								>
 									{action.label}

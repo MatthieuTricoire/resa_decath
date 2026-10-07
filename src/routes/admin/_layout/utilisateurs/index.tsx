@@ -47,6 +47,13 @@ import {
 import { getUsers, type UserRow } from "#/features/users/queries";
 import { queryKeys } from "#/features/users/query-keys";
 
+/**
+ * À partir de combien de non-présentations un client est signalé en rouge dans
+ * la colonne « Blame » : réserver puis ne jamais venir est la base du litige
+ * à regarder avant d'accepter une nouvelle réservation pour ce client.
+ */
+const BLAME_LIMIT = 3;
+
 export const Route = createFileRoute("/admin/_layout/utilisateurs/")({
 	loader: async ({ context: { queryClient } }) => {
 		await queryClient.prefetchQuery({
@@ -104,6 +111,27 @@ function RouteComponent() {
 			accessorKey: "loyaltyCard",
 			header: "Carte Decathlon",
 			cell: ({ row }) => row.original.loyaltyCard ?? "—",
+		},
+		{
+			accessorKey: "noShowCount",
+			header: "Blame",
+			cell: ({ row }) => {
+				const count = row.original.noShowCount;
+				if (count === 0) {
+					return <span className="text-muted-foreground">0</span>;
+				}
+				return (
+					<span
+						className={
+							count >= BLAME_LIMIT
+								? "font-semibold text-destructive"
+								: undefined
+						}
+					>
+						{count}
+					</span>
+				);
+			},
 		},
 		{
 			id: "actions",

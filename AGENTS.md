@@ -67,6 +67,8 @@ src/
 | `npm run dev`     | Start dev server (port 3000)              |
 | `npm run build`   | Production build                          |
 | `npm run db:seed` | Seed database (bypasses env during ESM)   |
+| `npm run db:seed:history` | Seed 1 year of historical reservations |
+| `npm run db:seed:demo` | Seed today's demo schedule (10 pickups, 10 returns, 10 late returns, 10 late pickups, 3 no-shows) — idempotent, run after the two seeds above |
 | `npm run check`   | Biome lint + format (add `--write`)       |
 | `npm run test`    | Vitest suite                              |
 | `npm run lint`    | Run Biome lint (use `--fix` to auto-fix)  |

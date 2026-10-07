@@ -59,6 +59,7 @@ const STATUS_LABELS: Record<string, string> = {
 	COLLECTED: "Récupérée",
 	RETURNED: "Retournée",
 	CANCELLED: "Annulée",
+	NO_SHOW: "Non présenté",
 };
 
 const WEEKDAY_ORDER = ["L", "M", "M", "J", "V", "S", "D"];
@@ -156,10 +157,11 @@ function RouteComponent() {
 	const { points, weekdays } = useSeries(data);
 
 	const statusData = useMemo(() => {
-		// Les quatre statuts du cycle de vie, dans l'ordre où l'on veut les
-		// voir. Un statut sans aucune réservation est écarté plutôt que laissé à
-		// zéro : le graphique ne doit pas compter des colonnes vides.
-		const all = ["CONFIRMED", "COLLECTED", "RETURNED", "CANCELLED"];
+		// Les statuts du cycle de vie, dans l'ordre où l'on veut les voir ; le
+		// no-show est la part « client jamais venu » des annulations. Un état
+		// sans aucune réservation est écarté plutôt que laissé à zéro : le
+		// graphique ne doit pas compter des colonnes vides.
+		const all = ["CONFIRMED", "COLLECTED", "RETURNED", "CANCELLED", "NO_SHOW"];
 		const map = new Map(
 			(data?.statusDistribution ?? []).map((s) => [s.status, s.count]),
 		);
@@ -169,7 +171,9 @@ function RouteComponent() {
 				key: s,
 				label: STATUS_LABELS[s] ?? s,
 				value: map.get(s) ?? 0,
-				color: PALETTE[idx % PALETTE.length],
+				// Rouge dédié à la non-présentation : elle coûte une location
+				// sans matériel sorti, à distinguer de l'annulation simple.
+				color: s === "NO_SHOW" ? "#dc2626" : PALETTE[idx % PALETTE.length],
 			}));
 	}, [data]);
 
@@ -243,7 +247,7 @@ function RouteComponent() {
 						<div className="text-sm text-muted-foreground">Chargement...</div>
 					) : (
 						<>
-							<div className="grid grid-cols-1 gap-4 *:data-[slot=card]:shadow-xs @xl:grid-cols-2 @5xl:grid-cols-4">
+							<div className="grid grid-cols-1 gap-4 *:data-[slot=card]:shadow-xs @xl:grid-cols-3 @5xl:grid-cols-5">
 								<KpiCard
 									label="Chiffre d'affaires"
 									value={
@@ -275,6 +279,10 @@ function RouteComponent() {
 											? `${data.kpis.occupancyRate.toLocaleString("fr-FR")} %`
 											: "—"
 									}
+								/>
+								<KpiCard
+									label="Non présentés"
+									value={data ? data.kpis.noShows.toLocaleString("fr-FR") : "—"}
 								/>
 							</div>
 

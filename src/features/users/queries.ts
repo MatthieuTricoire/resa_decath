@@ -21,6 +21,12 @@ export type UserRow = {
 	email: string;
 	phone: string | null;
 	loyaltyCard: string | null;
+	/**
+	 * Nombre de non-présentations de ce client (réservations `is_no_show = 1`).
+	 * C'est le « blame » : un client qui réserve puis ne vient jamais, signal
+	 * à regarder avant d'accepter une nouvelle réservation.
+	 */
+	noShowCount: number;
 	createdAt: string;
 	updatedAt: string;
 };
@@ -32,6 +38,12 @@ export type UserReservationRow = {
 	returnDate: string;
 	totalPrice: string;
 	createdAt: string;
+	/**
+	 * Non-présentation constatée (1) ou non (0). Le drapeau vit sur la
+	 * réservation, mais c'est sur la fiche client qu'il prend tout son sens :
+	 * c'est là qu'on repère un client qui enchaîne les commandes jamais venues.
+	 */
+	isNoShow: number;
 	items: Array<{
 		id: string;
 		itemName: string;
@@ -63,22 +75,40 @@ export const getUsers = createServerFn({ method: "GET" })
 
 		const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-		const rows = await db
-			.select({
-				id: schema.user.id,
-				name: schema.user.name,
-				email: schema.user.email,
-				phone: schema.user.phone,
-				loyaltyCard: schema.user.loyaltyCard,
-				createdAt: schema.user.createdAt,
-				updatedAt: schema.user.updatedAt,
-			})
-			.from(schema.user)
-			.where(where)
-			.orderBy(asc(schema.user.name));
+		// Comptage des non-présentations en deux passes : pas de sous-requête
+		// corrélée dans le select — Drizzle retire le qualificatif des colonnes
+		// imbriquées (`where "user_id" = "id"`), ce qui cassait la corrélation
+		// et produisait une erreur `text = uuid`. L'agrégat par utilisateur se
+		// calcule en une passe, puis on fusionne par Map, sans toucher au tri.
+		const [blameCounts, rows] = await Promise.all([
+			db
+				.select({
+					userId: schema.reservations.userId,
+					count: sql<number>`count(*)::int`,
+				})
+				.from(schema.reservations)
+				.where(eq(schema.reservations.isNoShow, 1))
+				.groupBy(schema.reservations.userId),
+			db
+				.select({
+					id: schema.user.id,
+					name: schema.user.name,
+					email: schema.user.email,
+					phone: schema.user.phone,
+					loyaltyCard: schema.user.loyaltyCard,
+					createdAt: schema.user.createdAt,
+					updatedAt: schema.user.updatedAt,
+				})
+				.from(schema.user)
+				.where(where)
+				.orderBy(asc(schema.user.name)),
+		]);
+
+		const blame = new Map(blameCounts.map((r) => [r.userId, r.count]));
 
 		return rows.map((r) => ({
 			...r,
+			noShowCount: blame.get(r.id) ?? 0,
 			createdAt: r.createdAt.toISOString(),
 			updatedAt: r.updatedAt.toISOString(),
 		}));
@@ -144,8 +174,23 @@ export const getUserDetail = createServerFn({ method: "GET" })
 
 		if (!row) return null;
 
+		// Même approche que `getUsers` : le compte se lit dans un select séparé
+		// (une sous-requête corrélée perdrait son qualificatif chez Drizzle).
+		const [blame] = await db
+			.select({
+				count: sql<number>`count(*)::int`,
+			})
+			.from(schema.reservations)
+			.where(
+				and(
+					eq(schema.reservations.userId, data),
+					eq(schema.reservations.isNoShow, 1),
+				),
+			);
+
 		return {
 			...row,
+			noShowCount: blame?.count ?? 0,
 			createdAt: row.createdAt.toISOString(),
 			updatedAt: row.updatedAt.toISOString(),
 		};
@@ -163,6 +208,7 @@ export const getUserReservations = createServerFn({ method: "GET" })
 				returnDate: schema.reservations.returnDate,
 				totalPrice: schema.reservations.totalPrice,
 				createdAt: schema.reservations.createdAt,
+				isNoShow: schema.reservations.isNoShow,
 			})
 			.from(schema.reservations)
 			.where(eq(schema.reservations.userId, data))
@@ -216,6 +262,7 @@ export const getUserReservations = createServerFn({ method: "GET" })
 			returnDate: r.returnDate.toISOString(),
 			totalPrice: r.totalPrice,
 			createdAt: r.createdAt.toISOString(),
+			isNoShow: r.isNoShow,
 			items: itemsByReservation.get(r.id) ?? [],
 		}));
 	});

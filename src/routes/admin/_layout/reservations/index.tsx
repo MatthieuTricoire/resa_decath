@@ -16,13 +16,13 @@ import {
 	TableRow,
 } from "#/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
+import { isOverdue, overdueLabel } from "#/features/reservations/late-status";
 import {
 	getReservations,
 	type ReservationLineItem,
 	type ReservationRow,
 } from "#/features/reservations/queries";
 import { queryKeys } from "#/features/reservations/query-keys";
-import { classifyScheduleRow } from "#/features/reservations/today-schedule";
 import { toParisDateKey } from "#/lib/dates";
 import { formatPriceString } from "#/stores/public-cart.store";
 
@@ -50,38 +50,9 @@ function isActiveFilter(r: ReservationRow) {
 	return activeStatuses.has(r.status);
 }
 
-/**
- * Classe la ligne dans le même tableau que le tableau de bord, en réutilisant
- * la règle du serveur : la définition de « en retard » n'existe qu'à un seul
- * endroit, et les deux écrans ne peuvent pas diverger sur un jour de décalage.
- */
-function bucketOf(r: ReservationRow) {
-	return classifyScheduleRow(
-		r.status,
-		new Date(r.pickupDate),
-		new Date(r.returnDate),
-		todayKey(),
-	);
-}
-
-const isLateReturn = (r: ReservationRow) => bucketOf(r) === "lateReturns";
-const isLatePickup = (r: ReservationRow) => bucketOf(r) === "latePickups";
-const isOverdue = (r: ReservationRow) => isLateReturn(r) || isLatePickup(r);
-
-function overdueDays(r: ReservationRow) {
-	const refKey = isLateReturn(r) ? dayOf(r.returnDate) : dayOf(r.pickupDate);
-	// La différence se calcule sur des jours civils, en secondes nominales, ce
-	// qui évite qu'une heure d'été ou un changement de fuseau modifie le nombre.
-	const diff =
-		Date.parse(`${todayKey()}T00:00:00Z`) - Date.parse(`${refKey}T00:00:00Z`);
-	return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
-}
-
-function overdueLabel(r: ReservationRow) {
-	const kind = isLateReturn(r) ? "Retour" : "Retrait";
-	const days = overdueDays(r);
-	return `${kind} en retard${days > 1 ? ` · ${days} j` : ""}`;
-}
+// La règle « en retard » (retrait dépassé, retour en retard) est partagée avec
+// la fiche réservation dans `late-status.ts`, qui porte `classifyScheduleRow` :
+// la liste et la fiche ne peuvent pas diverger sur un jour de décalage.
 
 const statusBadgeClass: Record<string, string> = {
 	CONFIRMED: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",

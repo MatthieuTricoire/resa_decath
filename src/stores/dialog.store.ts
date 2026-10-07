@@ -14,10 +14,31 @@ export type EditCategoryData = {
 	currentDescription?: string | null;
 };
 
+/**
+ * Une action de comptoir sur une réservation : retrait, retour, annulation.
+ *
+ * La dialogue ne déclenche rien par elle-même — elle affiche le libellé adapté
+ * au `kind` et remonte le choix de l'agent via `onConfirm`. C'est le seul
+ * endroit où une action du tableau du jour se confirme : le clic direct sur le
+ * bouton n'ouvre plus que cette dialogue.
+ */
+export type ReservationActionData = {
+	kind: "pickup" | "return" | "cancel";
+	clientName: string;
+	/**
+	 * Pré-coche « Client non présenté » — un retrait déjà dépassé est le cas
+	 * d'école d'une non-présentation, mais l'agent garde la main.
+	 */
+	defaultNoShow?: boolean;
+	/** `noShow` n'est porteur que pour `kind: "cancel"`. */
+	onConfirm: (noShow: boolean) => void | Promise<void>;
+};
+
 type DialogData = {
 	confirmDelete: ConfirmDeleteData;
 	createUser: Record<string, never>;
 	editCategory: EditCategoryData;
+	reservationAction: ReservationActionData;
 };
 
 type DialogId = keyof DialogData;

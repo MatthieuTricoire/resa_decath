@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { format, startOfDay } from "date-fns";
 import { fr as frLocale } from "date-fns/locale";
-import { AlertTriangle, Check, Eye, Undo2, X } from "lucide-react";
+import { AlertTriangle, Eye, PackageCheck, Undo2, UserX } from "lucide-react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { KpiCard } from "#/components/kpi-card";
@@ -19,12 +19,19 @@ import {
 	TableRow,
 } from "#/components/ui/table";
 import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "#/components/ui/tooltip";
+import {
 	getDashboardKPIs,
 	getTodaySchedule,
 	type TodayReservationRow,
 	updateReservationStatus,
 } from "#/features/reservations/queries";
 import { queryKeys } from "#/features/reservations/query-keys";
+import { todayInParis, toParisDateKey } from "#/lib/dates";
+import { openDialog, type ReservationActionData } from "#/stores/dialog.store";
 
 /**
  * Une date de réservation, sans heure.
@@ -47,6 +54,15 @@ function daysLate(iso: string) {
 function lateLabel(iso: string, days: number = daysLate(iso)) {
 	return days <= 1 ? "il y a 1 jour" : `il y a ${days} jours`;
 }
+
+/**
+ * Le retrait prévu est-il déjà passé ?
+ *
+ * La comparaison se fait sur les clés `YYYY-MM-DD` de Paris, comme pour le
+ * classement des tableaux : le comptoir regarde des jours, pas des instants.
+ */
+const isPickupLate = (iso: string) =>
+	toParisDateKey(new Date(iso)) < todayInParis();
 
 function MobileReservationList({
 	rows,
@@ -102,44 +118,69 @@ function MobileReservationList({
 	);
 }
 
+function ActionTooltip({
+	label,
+	children,
+}: {
+	label: string;
+	children: ReactNode;
+}) {
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>{children}</TooltipTrigger>
+			<TooltipContent>{label}</TooltipContent>
+		</Tooltip>
+	);
+}
+
 function ReservationActions({
 	row,
 	actionLabel,
 	actionIcon,
 	onAction,
 	isPending,
+	actionDestructive = false,
 }: {
 	row: TodayReservationRow;
 	actionLabel: (row: TodayReservationRow) => string;
 	actionIcon: ReactNode;
-	onAction: (id: string) => void;
+	onAction: (row: TodayReservationRow) => void;
 	isPending: boolean;
+	/**
+	 * Le bouton d'action est-il celui d'une action lourde (annuler) ? Il prend
+	 * alors la variante destructive : la même forme outline que les actions
+	 * anodines laisserait une commande supprimable d'un clic dans le flot des
+	 * tableaux, sans aucune signalétique.
+	 */
+	actionDestructive?: boolean;
 }) {
 	const accessibleActionLabel = actionLabel(row);
 
 	return (
 		<>
-			<Button variant="ghost" size="icon-lg" asChild>
-				<Link
-					to="/admin/reservations/$reservationId"
-					params={{ reservationId: row.id }}
-					aria-label={`Voir la réservation de ${row.clientName}`}
-					title="Voir la réservation"
+			<ActionTooltip label="Voir la réservation">
+				<Button variant="ghost" size="icon-lg" asChild>
+					<Link
+						to="/admin/reservations/$reservationId"
+						params={{ reservationId: row.id }}
+						aria-label={`Voir la réservation de ${row.clientName}`}
+					>
+						<Eye className="size-4" />
+					</Link>
+				</Button>
+			</ActionTooltip>
+			<ActionTooltip label={accessibleActionLabel}>
+				<Button
+					type="button"
+					variant={actionDestructive ? "destructive" : "outline"}
+					size="icon-lg"
+					disabled={isPending}
+					onClick={() => onAction(row)}
+					aria-label={accessibleActionLabel}
 				>
-					<Eye className="size-4" />
-				</Link>
-			</Button>
-			<Button
-				type="button"
-				variant="outline"
-				size="icon-lg"
-				disabled={isPending}
-				onClick={() => onAction(row.id)}
-				aria-label={accessibleActionLabel}
-				title={accessibleActionLabel}
-			>
-				{actionIcon}
-			</Button>
+					{actionIcon}
+				</Button>
+			</ActionTooltip>
 		</>
 	);
 }
@@ -153,6 +194,7 @@ function LateSection({
 	actionIcon,
 	onAction,
 	isActionPending,
+	actionDestructive = false,
 }: {
 	titleId: string;
 	title: string;
@@ -160,8 +202,9 @@ function LateSection({
 	dateField: "pickupDate" | "returnDate";
 	actionLabel: (row: TodayReservationRow) => string;
 	actionIcon: ReactNode;
-	onAction: (id: string) => void;
+	onAction: (row: TodayReservationRow) => void;
 	isActionPending: boolean;
+	actionDestructive?: boolean;
 }) {
 	return (
 		<section
@@ -205,6 +248,7 @@ function LateSection({
 						actionIcon={actionIcon}
 						onAction={onAction}
 						isPending={isActionPending}
+						actionDestructive={actionDestructive}
 					/>
 				)}
 			/>
@@ -248,6 +292,7 @@ function LateSection({
 											actionIcon={actionIcon}
 											onAction={onAction}
 											isPending={isActionPending}
+											actionDestructive={actionDestructive}
 										/>
 									</div>
 								</TableCell>
@@ -270,6 +315,7 @@ function ScheduleSection({
 	actionIcon,
 	onAction,
 	isActionPending,
+	actionDestructive = false,
 }: {
 	id: string;
 	title: string;
@@ -278,8 +324,9 @@ function ScheduleSection({
 	emptyLabel: string;
 	actionLabel: (row: TodayReservationRow) => string;
 	actionIcon: ReactNode;
-	onAction: (id: string) => void;
+	onAction: (row: TodayReservationRow) => void;
 	isActionPending: boolean;
+	actionDestructive?: boolean;
 }) {
 	return (
 		<section
@@ -310,6 +357,7 @@ function ScheduleSection({
 						actionIcon={actionIcon}
 						onAction={onAction}
 						isPending={isActionPending}
+						actionDestructive={actionDestructive}
 					/>
 				)}
 			/>
@@ -363,6 +411,7 @@ function ScheduleSection({
 												actionIcon={actionIcon}
 												onAction={onAction}
 												isPending={isActionPending}
+												actionDestructive={actionDestructive}
 											/>
 										</div>
 									</TableCell>
@@ -454,9 +503,9 @@ function RouteComponent() {
 	});
 
 	const cancelMutation = useMutation({
-		mutationFn: (id: string) =>
+		mutationFn: ({ id, noShow }: { id: string; noShow: boolean }) =>
 			updateReservationStatus({
-				data: { id, status: "CANCELLED" },
+				data: { id, status: "CANCELLED", noShow },
 			}),
 		onSuccess: (_data, variables) => {
 			queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.kpis });
@@ -464,12 +513,16 @@ function RouteComponent() {
 				queryKey: queryKeys.dashboard.todaySchedule,
 			});
 			queryClient.invalidateQueries({
-				queryKey: queryKeys.reservations.detail(variables),
+				queryKey: queryKeys.reservations.detail(variables.id),
 			});
 			queryClient.invalidateQueries({
 				queryKey: queryKeys.reservations.all,
 			});
-			toast.success("Réservation annulée, matériel libéré");
+			toast.success(
+				variables.noShow
+					? "Réservation annulée, matériel libéré, client marqué non présenté"
+					: "Réservation annulée, matériel libéré",
+			);
 		},
 		onError: (err) => {
 			toast.error(
@@ -477,6 +530,35 @@ function RouteComponent() {
 			);
 		},
 	});
+
+	/**
+	 * Une action de comptoir ne s'exécute pas au clic : elle s'ouvre en
+	 * dialogue. Le tableau du jour ne fait qu'énoncer ce qui va se passer, et
+	 * c'est `onConfirm` qui, une fois confirmé, part sur la mutation dédiée.
+	 */
+	const openAction = (
+		kind: ReservationActionData["kind"],
+		row: TodayReservationRow,
+	) => {
+		openDialog("reservationAction", {
+			kind,
+			clientName: row.clientName,
+			// Un retrait déjà dépassé est le cas d'école du no-show : la case
+			// part cochée, l'agent peut toujours la décocher.
+			defaultNoShow: isPickupLate(row.pickupDate),
+			onConfirm: async (noShow) => {
+				if (kind === "pickup") {
+					await pickupMutation.mutateAsync(row.id);
+					return;
+				}
+				if (kind === "return") {
+					await returnMutation.mutateAsync(row.id);
+					return;
+				}
+				await cancelMutation.mutateAsync({ id: row.id, noShow });
+			},
+		});
+	};
 
 	const lateReturns = schedule?.lateReturns ?? [];
 	const latePickups = schedule?.latePickups ?? [];
@@ -508,7 +590,7 @@ function RouteComponent() {
 										`Marquer le retour de ${row.clientName} comme effectué`
 									}
 									actionIcon={<Undo2 className="size-4" />}
-									onAction={(id) => returnMutation.mutate(id)}
+									onAction={(row) => openAction("return", row)}
 									isActionPending={returnMutation.isPending}
 								/>
 							)}
@@ -521,9 +603,10 @@ function RouteComponent() {
 									actionLabel={(row) =>
 										`Annuler la réservation de ${row.clientName} et libérer le matériel`
 									}
-									actionIcon={<X className="size-4" />}
-									onAction={(id) => cancelMutation.mutate(id)}
+									actionIcon={<UserX className="size-4" />}
+									onAction={(row) => openAction("cancel", row)}
 									isActionPending={cancelMutation.isPending}
+									actionDestructive
 								/>
 							)}
 						</div>
@@ -556,8 +639,8 @@ function RouteComponent() {
 							actionLabel={(row) =>
 								`Marquer la réservation de ${row.clientName} comme récupérée`
 							}
-							actionIcon={<Check className="size-4" />}
-							onAction={(id) => pickupMutation.mutate(id)}
+							actionIcon={<PackageCheck className="size-4" />}
+							onAction={(row) => openAction("pickup", row)}
 							isActionPending={pickupMutation.isPending}
 						/>
 
@@ -571,7 +654,7 @@ function RouteComponent() {
 								`Marquer la réservation de ${row.clientName} comme retournée`
 							}
 							actionIcon={<Undo2 className="size-4" />}
-							onAction={(id) => returnMutation.mutate(id)}
+							onAction={(row) => openAction("return", row)}
 							isActionPending={returnMutation.isPending}
 						/>
 					</div>

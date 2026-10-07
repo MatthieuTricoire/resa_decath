@@ -67,6 +67,8 @@ export type StatsData = {
 		totalReservations: number;
 		avgDurationDays: number;
 		occupancyRate: number;
+		/** Nombre de non-présentations (`is_no_show = 1`) sur la période. */
+		noShows: number;
 	};
 };
 
@@ -138,9 +140,19 @@ export const getStatsData = createServerFn({ method: "GET" })
 				.select({
 					status: schema.reservations.status,
 					count: sql<number>`count(*)::int`,
+					noShowCount: sql<number>`coalesce(sum(case when ${schema.reservations.isNoShow} = 1 then 1 else 0 end), 0)::int`,
 				})
 				.from(schema.reservations)
-				.where(period)
+				// Seule sous-requête de la page à garder les annulations : c'est
+				// d'elle que sort la répartition par statut, où « Annulée » se
+				// scinde en annulation simple et non-présentation. Les autres
+				// agrégats (CA, volumes, durées) continuent d'exclure CANCELLED.
+				.where(
+					and(
+						gte(schema.reservations.pickupDate, from),
+						lte(schema.reservations.pickupDate, to),
+					),
+				)
 				.groupBy(schema.reservations.status),
 
 			db
@@ -263,6 +275,14 @@ export const getStatsData = createServerFn({ method: "GET" })
 			Math.round((unitDaysRented / capacity) * 1000) / 10,
 		);
 
+		// Le total des non-présentations se lit dans la ligne CANCELLED de la
+		// répartition par statut : pas de requête en plus, même source.
+		const noShows = statusRows.reduce(
+			(total, row) =>
+				total + (row.status === "CANCELLED" ? Number(row.noShowCount) : 0),
+			0,
+		);
+
 		return {
 			range: data,
 			from: from.toISOString(),
@@ -278,10 +298,19 @@ export const getStatsData = createServerFn({ method: "GET" })
 				rentals: Number(r.rentals),
 				revenue: Number.parseFloat(r.revenue),
 			})),
-			statusDistribution: statusRows.map((r) => ({
-				status: r.status,
-				count: Number(r.count),
-			})),
+			statusDistribution: statusRows.flatMap((r) => {
+				const count = Number(r.count);
+				if (r.status !== "CANCELLED") return [{ status: r.status, count }];
+				// Une annulation se raconte en deux : celle du client (il prévient,
+				// on libère) et la non-présentation (il n'est jamais venu).
+				// `NO_SHOW` est une clé de rendu, jamais un statut réel.
+				const noShow = Number(r.noShowCount);
+				const cancelled = count - noShow;
+				return [
+					...(cancelled > 0 ? [{ status: "CANCELLED", count: cancelled }] : []),
+					...(noShow > 0 ? [{ status: "NO_SHOW", count: noShow }] : []),
+				];
+			}),
 			durationDistribution: durationRows.map((r) => ({
 				days: Number(r.days),
 				count: Number(r.count),
@@ -299,6 +328,7 @@ export const getStatsData = createServerFn({ method: "GET" })
 				totalReservations,
 				avgDurationDays,
 				occupancyRate,
+				noShows,
 			},
 		};
 	});

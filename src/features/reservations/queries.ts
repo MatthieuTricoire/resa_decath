@@ -337,6 +337,16 @@ export const updateReservationStatus = createServerFn({ method: "POST" })
 		z.object({
 			id: z.string().min(1),
 			status: z.enum(["CONFIRMED", "COLLECTED", "RETURNED", "CANCELLED"]),
+			/**
+			 * Le client était-il absent au moment de l'annulation ?
+			 *
+			 * Ignoré sur toute autre transition : `isNoShow` raconte une
+			 * non-présentation, pas un statut. Une annulation décidée d'avance
+			 * (le client prévient, on libère la réservation) reste ce qu'elle est —
+			 * une annulation sans histoire — tandis qu'une commande jamais venue
+			 * laisse sa trace ici, seul endroit où le distingue le schéma.
+			 */
+			noShow: z.boolean().optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -362,7 +372,11 @@ export const updateReservationStatus = createServerFn({ method: "POST" })
 
 		await db
 			.update(schema.reservations)
-			.set({ status: data.status })
+			.set(
+				data.status === "CANCELLED"
+					? { status: data.status, isNoShow: data.noShow ? 1 : 0 }
+					: { status: data.status },
+			)
 			.where(eq(schema.reservations.id, data.id));
 
 		return { success: true };

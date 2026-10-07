@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { AppSidebar } from "#/components/app-sidebar";
+import { ReservationActionDialog } from "#/components/dialogs/ReservationActionDialog";
 import { SidebarInset, SidebarProvider } from "#/components/ui/sidebar";
 import { getDashboardSession } from "#/features/auth/queries";
 
@@ -36,6 +37,9 @@ function AdminLayout() {
 					<Outlet />
 				</div>
 			</SidebarInset>
+			{/* Une seule instance pour tout l'admin : le tableau du jour comme la
+			    fiche réservation ouvrent la même confirmation d'action. */}
+			<ReservationActionDialog />
 		</SidebarProvider>
 	);
 }
