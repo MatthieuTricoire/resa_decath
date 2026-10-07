@@ -18,5 +18,11 @@ export default defineConfig({
 			external: [/^@sentry\//],
 		},
 	},
-	plugins: [devtools(), tailwindcss(), tanstackStart(), nitro(), viteReact()],
+	plugins: [
+		devtools(),
+		tailwindcss(),
+		tanstackStart({ server: { build: { inlineCss: true } } }),
+		nitro(),
+		viteReact(),
+	],
 });

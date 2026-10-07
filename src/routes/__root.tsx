@@ -19,7 +19,7 @@ import { Button } from "#/components/ui/button";
 import { store, storeCanonicalPath } from "#/config/store";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
-import appCss from "../styles.css?url";
+import "../styles.css";
 
 interface MyRouterContext {
 	queryClient: QueryClient;
@@ -44,10 +44,6 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			},
 		],
 		links: [
-			{
-				rel: "stylesheet",
-				href: appCss,
-			},
 			// Preload des polices critiques : téléchargement immédiat, en
 			// parallèle du CSS, au lieu d'attendre leur découverte dans le CSS
 			// (le navigateur ne charge les @font-face qu'après le CSS entier).
