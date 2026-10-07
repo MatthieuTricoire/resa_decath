@@ -29,15 +29,16 @@ export function pageTitle(title: string): string {
 /**
  * Origine des URL absolues (canonical, og:url, JSON-LD).
  *
- * Côté serveur on renvoie `store.siteOrigin` et non l'hôte de la requête : un
- * canonical doit rester stable (et pointer la production) même derrière un
- * proxy ou en prévisualisation. Côté client on suit l'hôte courant, pratique
- * en dev. `src/lib/seo.ts` étant importé par les routes, il ne peut pas
- * importer `@tanstack/react-start/server` (protégé par `import-protection`
- * côté client).
+ * Toujours `store.siteOrigin`, côté serveur comme côté client : un canonical
+ * doit rester stable et pointer la production, même derrière un proxy, une
+ * prévisualisation ou pendant l'hydratation. Suivre l'hôte courant côté
+ * client (`window.location.origin`) faisait diverger la `<head>` réhydratée
+ * (ex. `resa-decath.vercel.app`) et produisait deux canonicals
+ * contradictoires dans le DOM final. `src/lib/seo.ts` étant importé par les
+ * routes, il ne peut pas importer `@tanstack/react-start/server` (protégé par
+ * `import-protection` côté client).
  */
 export function resolveOrigin(): string {
-	if (typeof document !== "undefined") return window.location.origin;
 	return store.siteOrigin;
 }
 
