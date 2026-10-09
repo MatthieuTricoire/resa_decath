@@ -203,6 +203,21 @@ function RouteComponent() {
 				<Badge className={statusBadgeClass[reservation.status] ?? ""}>
 					{statusLabel[reservation.status] ?? reservation.status}
 				</Badge>
+				{reservation.source === "WEB" ? (
+					<Badge
+						variant="outline"
+						className="border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+					>
+						Web
+					</Badge>
+				) : (
+					<Badge
+						variant="outline"
+						className="border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+					>
+						Magasin
+					</Badge>
+				)}
 				{isOverdue(reservation) && (
 					<Badge className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
 						{overdueLabel(reservation)}

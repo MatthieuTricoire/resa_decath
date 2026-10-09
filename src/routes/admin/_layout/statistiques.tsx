@@ -24,6 +24,7 @@ import {
 } from "recharts";
 import { KpiCard } from "#/components/kpi-card";
 import { SiteHeader } from "#/components/site-header";
+import { Badge } from "#/components/ui/badge";
 import {
 	Card,
 	CardContent,
@@ -40,6 +41,14 @@ import {
 	ChartTooltipContent,
 } from "#/components/ui/chart";
 import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "#/components/ui/table";
+import {
 	getStatsData,
 	type StatsData,
 	type StatsRange,
@@ -53,14 +62,6 @@ const RANGE_OPTIONS: Array<{ key: StatsRange; label: string }> = [
 	{ key: "3m", label: "3 mois" },
 	{ key: "12m", label: "12 mois" },
 ];
-
-const STATUS_LABELS: Record<string, string> = {
-	CONFIRMED: "Confirmée",
-	COLLECTED: "Récupérée",
-	RETURNED: "Retournée",
-	CANCELLED: "Annulée",
-	NO_SHOW: "Non présenté",
-};
 
 const WEEKDAY_ORDER = ["L", "M", "M", "J", "V", "S", "D"];
 
@@ -156,27 +157,6 @@ function RouteComponent() {
 
 	const { points, weekdays } = useSeries(data);
 
-	const statusData = useMemo(() => {
-		// Les statuts du cycle de vie, dans l'ordre où l'on veut les voir ; le
-		// no-show est la part « client jamais venu » des annulations. Un état
-		// sans aucune réservation est écarté plutôt que laissé à zéro : le
-		// graphique ne doit pas compter des colonnes vides.
-		const all = ["CONFIRMED", "COLLECTED", "RETURNED", "CANCELLED", "NO_SHOW"];
-		const map = new Map(
-			(data?.statusDistribution ?? []).map((s) => [s.status, s.count]),
-		);
-		return all
-			.filter((s) => (map.get(s) ?? 0) > 0)
-			.map((s, idx) => ({
-				key: s,
-				label: STATUS_LABELS[s] ?? s,
-				value: map.get(s) ?? 0,
-				// Rouge dédié à la non-présentation : elle coûte une location
-				// sans matériel sorti, à distinguer de l'annulation simple.
-				color: s === "NO_SHOW" ? "#dc2626" : PALETTE[idx % PALETTE.length],
-			}));
-	}, [data]);
-
 	const categoryData = useMemo(
 		() =>
 			(data?.revenueByCategory ?? []).map((c, idx) => ({
@@ -188,14 +168,6 @@ function RouteComponent() {
 		[data],
 	);
 
-	const statusConfig = useMemo(
-		() =>
-			Object.fromEntries(
-				statusData.map((s) => [s.key, { label: s.label, color: s.color }]),
-			) satisfies ChartConfig,
-		[statusData],
-	);
-
 	const categoryConfig = useMemo(
 		() =>
 			Object.fromEntries(
@@ -204,7 +176,12 @@ function RouteComponent() {
 		[categoryData],
 	);
 
-	const topItems = data?.topItems ?? [];
+	const rentedItems = useMemo(() => data?.rentedItems ?? [], [data]);
+	const totalUnitsRented = useMemo(
+		() => rentedItems.reduce((acc, item) => acc + item.rentals, 0),
+		[rentedItems],
+	);
+
 	const seriesConfig = {
 		revenue: { label: "Revenus", color: "#2563eb" },
 		count: { label: "Réservations", color: "#10b981" },
@@ -255,6 +232,14 @@ function RouteComponent() {
 											? `${Math.round(data.kpis.totalRevenue).toLocaleString("fr-FR")} €`
 											: "—"
 									}
+									footer={
+										data && data.kpis.totalRevenue > 0
+											? {
+													primary: `En ligne : ${euro(data.kpis.webRevenue)} € · Magasin : ${euro(data.kpis.storeRevenue)} €`,
+													secondary: `${Math.round((data.kpis.webRevenue / data.kpis.totalRevenue) * 100)} % en ligne · ${Math.round((data.kpis.storeRevenue / data.kpis.totalRevenue) * 100)} % magasin`,
+												}
+											: undefined
+									}
 								/>
 								<KpiCard
 									label="Réservations"
@@ -262,6 +247,14 @@ function RouteComponent() {
 										data
 											? data.kpis.totalReservations.toLocaleString("fr-FR")
 											: "—"
+									}
+									footer={
+										data && data.kpis.totalReservations > 0
+											? {
+													primary: `${data.kpis.webReservations} en ligne · ${data.kpis.storeReservations} magasin`,
+													secondary: `${Math.round((data.kpis.webReservations / data.kpis.totalReservations) * 100)} % en ligne · ${Math.round((data.kpis.storeReservations / data.kpis.totalReservations) * 100)} % magasin`,
+												}
+											: undefined
 									}
 								/>
 								<KpiCard
@@ -365,103 +358,6 @@ function RouteComponent() {
 													radius={4}
 												/>
 											</BarChart>
-										</ChartContainer>
-									</CardContent>
-								</Card>
-
-								<Card>
-									<CardHeader>
-										<CardTitle>Top 5 matériel loué</CardTitle>
-										<CardDescription>
-											Quantité réservée et revenus générés
-										</CardDescription>
-									</CardHeader>
-									<CardContent>
-										<ChartContainer
-											config={{
-												rentals: { label: "Locations", color: "#0ea5e9" },
-											}}
-											className="aspect-auto h-[260px] w-full"
-										>
-											<BarChart
-												data={topItems}
-												layout="vertical"
-												margin={{ left: 8, right: 8 }}
-											>
-												<CartesianGrid horizontal={false} />
-												<XAxis
-													type="number"
-													tickLine={false}
-													axisLine={false}
-													allowDecimals={false}
-												/>
-												<YAxis
-													type="category"
-													dataKey="itemName"
-													tickLine={false}
-													axisLine={false}
-													width={150}
-													tick={{ fontSize: 12 }}
-												/>
-												<ChartTooltip
-													cursor={false}
-													content={
-														<ChartTooltipContent
-															formatter={(value, name, item) =>
-																name === "rentals"
-																	? [
-																			`${value} unité(s) · ${euro(
-																				Number(item.payload?.revenue ?? 0),
-																			)}`,
-																			"Locations",
-																		]
-																	: [value, name]
-															}
-														/>
-													}
-												/>
-												<Bar
-													dataKey="rentals"
-													fill="var(--color-rentals)"
-													radius={4}
-													barSize={22}
-												/>
-											</BarChart>
-										</ChartContainer>
-									</CardContent>
-								</Card>
-
-								<Card>
-									<CardHeader>
-										<CardTitle>Répartition par statut</CardTitle>
-										<CardDescription>
-											État des réservations de la période
-										</CardDescription>
-									</CardHeader>
-									<CardContent>
-										<ChartContainer
-											config={statusConfig}
-											className="aspect-auto h-[260px] w-full"
-										>
-											<PieChart>
-												<Pie
-													data={statusData}
-													dataKey="value"
-													nameKey="key"
-													innerRadius={55}
-													outerRadius={90}
-												>
-													{statusData.map((entry) => (
-														<Cell key={entry.key} fill={entry.color} />
-													))}
-												</Pie>
-												<ChartTooltip
-													content={<ChartTooltipContent hideLabel />}
-												/>
-												<ChartLegend
-													content={<ChartLegendContent nameKey="key" />}
-												/>
-											</PieChart>
 										</ChartContainer>
 									</CardContent>
 								</Card>
@@ -619,6 +515,101 @@ function RouteComponent() {
 												/>
 											</BarChart>
 										</ChartContainer>
+									</CardContent>
+								</Card>
+
+								<Card className="xl:col-span-2">
+									<CardHeader>
+										<CardTitle>Classement des équipements loués</CardTitle>
+										<CardDescription>
+											Tous les équipements réservés sur la période (
+											{rentedItems.length} référence
+											{rentedItems.length > 1 ? "s" : ""})
+										</CardDescription>
+									</CardHeader>
+									<CardContent>
+										{rentedItems.length === 0 ? (
+											<div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
+												Aucun équipement loué sur la période
+											</div>
+										) : (
+											<div className="max-h-[460px] overflow-auto rounded-md border">
+												<Table>
+													<TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-xs">
+														<TableRow>
+															<TableHead className="w-16 text-center">
+																Rang
+															</TableHead>
+															<TableHead>Équipement</TableHead>
+															<TableHead>Catégorie</TableHead>
+															<TableHead className="text-right">
+																Locations
+															</TableHead>
+															<TableHead className="text-right">
+																Part du total
+															</TableHead>
+															<TableHead className="text-right">
+																Chiffre d’affaires
+															</TableHead>
+														</TableRow>
+													</TableHeader>
+													<TableBody>
+														{rentedItems.map((item, idx) => {
+															const rank = idx + 1;
+															const sharePct =
+																totalUnitsRented > 0
+																	? (item.rentals / totalUnitsRented) * 100
+																	: 0;
+															const formattedPct =
+																sharePct >= 10
+																	? `${Math.round(sharePct)} %`
+																	: `${sharePct.toLocaleString("fr-FR", {
+																			minimumFractionDigits: 1,
+																			maximumFractionDigits: 1,
+																		})} %`;
+															return (
+																<TableRow key={item.itemId}>
+																	<TableCell className="text-center font-medium">
+																		{rank === 1 ? (
+																			<Badge className="bg-amber-500 font-bold text-white hover:bg-amber-600">
+																				#1
+																			</Badge>
+																		) : rank === 2 ? (
+																			<Badge className="bg-slate-400 font-bold text-white hover:bg-slate-500">
+																				#2
+																			</Badge>
+																		) : rank === 3 ? (
+																			<Badge className="bg-amber-700 font-bold text-white hover:bg-amber-800">
+																				#3
+																			</Badge>
+																		) : (
+																			<span className="text-muted-foreground">
+																				#{rank}
+																			</span>
+																		)}
+																	</TableCell>
+																	<TableCell className="font-medium">
+																		{item.itemName}
+																	</TableCell>
+																	<TableCell className="text-muted-foreground">
+																		{item.categoryName ?? "—"}
+																	</TableCell>
+																	<TableCell className="text-right tabular-nums font-semibold">
+																		{item.rentals.toLocaleString("fr-FR")}
+																	</TableCell>
+																	<TableCell className="text-right tabular-nums text-muted-foreground">
+																		{formattedPct}
+																	</TableCell>
+																	<TableCell className="text-right tabular-nums font-medium">
+																		{euro(item.revenue)} €
+																	</TableCell>
+																</TableRow>
+															);
+														})}
+													</TableBody>
+												</Table>
+											</div>
+										)}
 									</CardContent>
 								</Card>
 							</div>

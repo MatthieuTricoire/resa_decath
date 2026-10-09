@@ -1,10 +1,19 @@
 import z from "zod";
 
-export const createTeamAccountSchema = z
+export const inviteTeamMemberSchema = z.object({
+	name: z.string().min(1, "Le nom est requis"),
+	email: z.email("Email invalide"),
+	role: z.enum(["admin", "manager"]),
+});
+
+export type InviteTeamMemberFormData = z.infer<typeof inviteTeamMemberSchema>;
+
+// Alias pour rétro-compatibilité
+export const createTeamAccountSchema = inviteTeamMemberSchema;
+export type CreateTeamAccountFormData = InviteTeamMemberFormData;
+
+export const setPasswordSchema = z
 	.object({
-		name: z.string().min(1, "Le nom est requis"),
-		email: z.email("Email invalide"),
-		role: z.enum(["admin", "manager"]),
 		password: z
 			.string()
 			.min(8, "Le mot de passe doit contenir au moins 8 caractères"),
@@ -15,4 +24,4 @@ export const createTeamAccountSchema = z
 		path: ["confirmPassword"],
 	});
 
-export type CreateTeamAccountFormData = z.infer<typeof createTeamAccountSchema>;
+export type SetPasswordFormData = z.infer<typeof setPasswordSchema>;

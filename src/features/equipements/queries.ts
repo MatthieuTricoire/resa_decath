@@ -169,7 +169,12 @@ async function loadVariants(): Promise<VariantRow[]> {
 			? await db
 					.select()
 					.from(schema.priceOptions)
-					.where(inArray(schema.priceOptions.variantId, uniqueIds))
+					.where(
+						and(
+							inArray(schema.priceOptions.variantId, uniqueIds),
+							eq(schema.priceOptions.isActive, true),
+						),
+					)
 			: [];
 
 	const priceOptMap = new Map<string, PriceOptionRow[]>();
@@ -407,7 +412,12 @@ export const getItemVariants = createServerFn({ method: "GET" })
 				? await db
 						.select()
 						.from(schema.priceOptions)
-						.where(inArray(schema.priceOptions.variantId, variantIds))
+						.where(
+							and(
+								inArray(schema.priceOptions.variantId, variantIds),
+								eq(schema.priceOptions.isActive, true),
+							),
+						)
 				: [];
 
 		const priceOptMap = new Map<string, PriceOptionRow[]>();
@@ -724,10 +734,19 @@ export const updateItem = createServerFn({ method: "POST" })
 					);
 				}
 
+				// Les options archivées ne sont pas soumises par le formulaire — elles
+				// ne lui sont même pas renvoyées — et ne doivent pas non plus entrer
+				// dans la comparaison : elles seraient supprimées en dur, alors que
+				// `reservation_items` continue de les référencer.
 				const existingOpts = await db
 					.select({ id: schema.priceOptions.id })
 					.from(schema.priceOptions)
-					.where(eq(schema.priceOptions.variantId, variant.id));
+					.where(
+						and(
+							eq(schema.priceOptions.variantId, variant.id),
+							eq(schema.priceOptions.isActive, true),
+						),
+					);
 
 				const submittedOptIds = new Set(
 					options.filter((o) => !!o.id).map((o) => o.id as string),

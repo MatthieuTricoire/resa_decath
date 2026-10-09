@@ -3,11 +3,14 @@ import {
 	availableQuantity,
 	cartLineBlocker,
 	evaluateItemAvailability,
+	evaluateSeasonWindow,
 	getActiveSeasonsForRange,
 	getReservationDurationDays,
 	getSeasonalAvailability,
 	isItemOutOfSeason,
+	nextSeasonRestart,
 	type RentalAvailabilitySettings,
+	seasonRestartMessage,
 	stockShortage,
 } from "./availability";
 
@@ -111,7 +114,7 @@ describe("evaluateItemAvailability", () => {
 		expect(result.available).toBe(true);
 	});
 
-	it("autorise all dans un trou mais refuse une saison précise", () => {
+	it("ferme tout le monde dans un trou, mixte compris", () => {
 		const pickupDate = at("2026-03-01");
 		const returnDate = at("2026-06-14");
 		const allResult = evaluateItemAvailability({
@@ -127,7 +130,7 @@ describe("evaluateItemAvailability", () => {
 			returnDate,
 		});
 
-		expect(allResult.available).toBe(true);
+		expect(allResult.reason).toBe("outside_active_season");
 		expect(summerResult.reason).toBe("outside_active_season");
 	});
 
@@ -212,7 +215,9 @@ describe("evaluateItemAvailability", () => {
 		});
 
 		expect(allResult.available).toBe(true);
-		expect(summerResult.reason).toBe("season_not_configured");
+		// Rien de configuré, rien de filtré : le refus serait arbitraire.
+		expect(summerResult.available).toBe(true);
+		expect(summerResult.reason).toBeNull();
 	});
 });
 
@@ -253,9 +258,11 @@ describe("getSeasonalAvailability", () => {
 		expect(
 			getSeasonalAvailability({ season: "winter" }, settings, at("2026-07-10")),
 		).toBe("not_configured");
+		// Le badge décrit l'état du réglage, pas le produit : même les produits
+		// mixte n'ont rien à quoi se fier tant qu'aucune période n'existe.
 		expect(
 			getSeasonalAvailability({ season: "all" }, settings, at("2026-07-10")),
-		).toBe("available");
+		).toBe("not_configured");
 	});
 });
 
@@ -294,7 +301,7 @@ describe("isItemOutOfSeason", () => {
 		).toBe(false);
 	});
 
-	it("ne masque jamais un article toutes saisons", () => {
+	it("ne masque pas un article mixte à l'intérieur d'une saison", () => {
 		expect(
 			isItemOutOfSeason(
 				{ season: "all" },
@@ -302,6 +309,25 @@ describe("isItemOutOfSeason", () => {
 				at("2026-01-10"),
 			),
 		).toBe(false);
+	});
+
+	it("masque un article mixte en inter-saison", () => {
+		// Entre l'hiver (fin 02-28) et l'été (début 06-15) : aucun jour n'est
+		// couvert, donc personne n'est louable.
+		expect(
+			isItemOutOfSeason(
+				{ season: "all" },
+				configuredSettings,
+				at("2026-04-15"),
+			),
+		).toBe(true);
+		expect(
+			isItemOutOfSeason(
+				{ season: "all" },
+				configuredSettings,
+				at("2026-11-05"),
+			),
+		).toBe(true);
 	});
 
 	it("ne masque rien quand le filtrage est désactivé", () => {
@@ -335,6 +361,142 @@ describe("isItemOutOfSeason", () => {
 		expect(
 			isItemOutOfSeason({ season: "summer" }, settings, at("2026-01-10")),
 		).toBe(false);
+	});
+});
+
+describe("evaluateSeasonWindow", () => {
+	it("n'interdit rien quand le filtrage est désactivé", () => {
+		expect(
+			evaluateSeasonWindow(
+				{ season: "all" },
+				at("2026-04-15"),
+				at("2026-05-15"),
+				{ ...configuredSettings, seasonalFilteringEnabled: false },
+			),
+		).toBeNull();
+	});
+
+	it("n'interdit rien quand aucune période n'est configurée", () => {
+		const settings = {
+			...configuredSettings,
+			summerFrom: null,
+			summerTo: null,
+			winterFrom: null,
+			winterTo: null,
+		};
+		expect(
+			evaluateSeasonWindow(
+				{ season: "summer" },
+				at("2026-04-15"),
+				at("2026-05-15"),
+				settings,
+			),
+		).toBeNull();
+	});
+
+	it("accepte une fenêtre entièrement couverte, mixte ou non", () => {
+		expect(
+			evaluateSeasonWindow(
+				{ season: "winter" },
+				at("2026-01-05"),
+				at("2026-01-12"),
+				configuredSettings,
+			),
+		).toBeNull();
+		expect(
+			evaluateSeasonWindow(
+				{ season: "all" },
+				at("2026-01-05"),
+				at("2026-01-12"),
+				configuredSettings,
+			),
+		).toBeNull();
+	});
+
+	it("refuse une fenêtre qui traverse un trou, mixte compris", () => {
+		expect(
+			evaluateSeasonWindow(
+				{ season: "all" },
+				at("2026-09-29"),
+				at("2026-10-05"),
+				configuredSettings,
+			),
+		).toBe("outside_active_season");
+		expect(
+			evaluateSeasonWindow(
+				{ season: "summer" },
+				at("2026-09-29"),
+				at("2026-10-05"),
+				configuredSettings,
+			),
+		).toBe("outside_active_season");
+	});
+
+	it("laisse une saison forcée ne jamais créer de trou", () => {
+		expect(
+			evaluateSeasonWindow(
+				{ season: "summer" },
+				at("2026-04-15"),
+				at("2026-05-15"),
+				{ ...configuredSettings, seasonOverride: "summer" },
+			),
+		).toBeNull();
+		// En revanche le produit, lui, reste hors saison.
+		expect(
+			evaluateSeasonWindow(
+				{ season: "winter" },
+				at("2026-04-15"),
+				at("2026-05-15"),
+				{ ...configuredSettings, seasonOverride: "summer" },
+			),
+		).toBe("outside_active_season");
+	});
+});
+
+describe("nextSeasonRestart", () => {
+	it("annonce la prochaine saison configurée", () => {
+		const restart = nextSeasonRestart(configuredSettings, at("2026-04-15"));
+		expect(restart?.season).toBe("summer");
+		expect(restart?.date.toISOString().slice(0, 10)).toBe("2026-06-15");
+	});
+
+	it("annonce la saison d'après quand on est dans une saison déjà commencée", () => {
+		const restart = nextSeasonRestart(configuredSettings, at("2026-10-01"));
+		expect(restart?.season).toBe("winter");
+		expect(restart?.date.toISOString().slice(0, 10)).toBe("2026-12-15");
+	});
+
+	it("ne dit rien hors mode automatique ou sans période", () => {
+		expect(
+			nextSeasonRestart(
+				{ ...configuredSettings, seasonOverride: "summer" },
+				at("2026-04-15"),
+			),
+		).toBeNull();
+		expect(
+			nextSeasonRestart(
+				{
+					...configuredSettings,
+					summerFrom: null,
+					summerTo: null,
+					winterFrom: null,
+					winterTo: null,
+				},
+				at("2026-04-15"),
+			),
+		).toBeNull();
+	});
+
+	it("date le message de reprise", () => {
+		expect(seasonRestartMessage(configuredSettings, at("2026-04-15"))).toBe(
+			"Les locations reprennent le 15 juin.",
+		);
+		expect(
+			seasonRestartMessage(
+				{ ...configuredSettings, seasonOverride: "winter" },
+				at("2026-04-15"),
+			),
+		).toBeNull();
 	});
 });
 

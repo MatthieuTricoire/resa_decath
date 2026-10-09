@@ -456,15 +456,21 @@ export const reservationItemsRelations = relations(
 // 5. Paramètres de facturation (singleton, 1 ligne)
 // =============================
 
-// Forfait mensuel + pourcentage de commission appliqué au CA des locations.
-// Une seule ligne, modifiable depuis l'admin (les montants sont en discussion).
+// Forfait mensuel + pourcentages de commission appliqués au CA des locations (Web vs Magasin).
+// Une seule ligne, modifiable depuis l'admin.
 export const billingSettings = pgTable("billing_settings", {
 	id: integer("id").primaryKey().default(1),
 	monthlyFee: decimal("monthly_fee", { precision: 10, scale: 2 })
 		.notNull()
 		.default("30.00"),
-	commissionRate: decimal("commission_rate", { precision: 4, scale: 2 })
+	commissionRateWeb: decimal("commission_rate_web", { precision: 4, scale: 2 })
 		.notNull()
 		.default("10.00"),
+	commissionRateStore: decimal("commission_rate_store", {
+		precision: 4,
+		scale: 2,
+	})
+		.notNull()
+		.default("5.00"),
 	updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

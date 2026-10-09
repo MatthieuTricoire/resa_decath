@@ -1,9 +1,13 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ItemForm, type ItemFormValues } from "./item-form";
+import {
+	ItemForm,
+	type ItemFormSubmitValues,
+	type ItemFormValues,
+} from "./item-form";
 
 vi.mock("@tanstack/react-router", () => ({
 	Link: ({
@@ -51,7 +55,12 @@ const initialItem: ItemFormValues = {
 	],
 };
 
-function renderItemForm(props: { initialValues?: ItemFormValues } = {}) {
+function renderItemForm(
+	props: {
+		initialValues?: ItemFormValues;
+		onSubmit?: (values: ItemFormSubmitValues) => Promise<void>;
+	} = {},
+) {
 	const queryClient = new QueryClient({
 		defaultOptions: { queries: { retry: false } },
 	});
@@ -117,5 +126,46 @@ describe("ItemForm", () => {
 		const slug = screen.getByLabelText("Slug d’URL") as HTMLInputElement;
 		expect(name.value).toBe("Sac à dos MH500");
 		expect(slug.value).toBe("sac-a-dos-mh500");
+	});
+
+	it("reprend la saison du produit en modification", async () => {
+		renderItemForm({ initialValues: { ...initialItem, season: "winter" } });
+		await settle();
+
+		await screen.findByLabelText("Nom");
+		expect((screen.getByLabelText("Hiver") as HTMLInputElement).checked).toBe(
+			true,
+		);
+		expect((screen.getByLabelText("Été") as HTMLInputElement).checked).toBe(
+			false,
+		);
+	});
+
+	it("bloque l'envoi tant qu'aucune saison n'est choisie", async () => {
+		const onSubmit = vi.fn(async (_values: ItemFormSubmitValues) => undefined);
+		renderItemForm({ onSubmit });
+		await settle();
+
+		const name = (await screen.findByLabelText("Nom")) as HTMLInputElement;
+		fireEvent.change(name, { target: { value: "Tente Quechua" } });
+		await settle();
+
+		fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+		await new Promise((resolve) => setTimeout(resolve, 40));
+
+		expect(onSubmit).not.toHaveBeenCalled();
+		expect(screen.getByRole("alert").textContent).toContain(
+			"Sélectionnez une saison : été, hiver ou mixte.",
+		);
+
+		// Une fois la saison choisie, l'erreur tombe et l'envoi repasse.
+		fireEvent.click(screen.getByLabelText("Été"));
+		await new Promise((resolve) => setTimeout(resolve, 40));
+		expect(screen.queryByText(/Sélectionnez une saison/)).toBeNull();
+
+		fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+		await new Promise((resolve) => setTimeout(resolve, 40));
+		expect(onSubmit).toHaveBeenCalledTimes(1);
+		expect(onSubmit.mock.calls[0]?.[0].season).toBe("summer");
 	});
 });

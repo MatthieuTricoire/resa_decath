@@ -7,7 +7,7 @@ import { BarcodeDisplay } from "#/components/barcode";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card";
-import { Field, FieldLabel } from "#/components/ui/field";
+import { Field, FieldError, FieldLabel } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
 import {
@@ -25,6 +25,7 @@ import { getRentalDurations } from "#/features/durees/queries";
 import { queryKeys as dureeQueryKeys } from "#/features/durees/query-keys";
 import { getCategories } from "#/features/equipements/queries";
 import { queryKeys } from "#/features/equipements/query-keys";
+import { SEASON_LABELS } from "#/features/reservations/availability";
 import { slugify } from "#/lib/slug";
 import { cn } from "#/lib/utils";
 import { useAppForm } from "./app-form";
@@ -61,7 +62,12 @@ export type ItemFormValues = {
 	description: string;
 	brand: string;
 	categoryId: string;
-	season: "winter" | "summer" | "all";
+	/**
+	 * Vide à la création : la saison est un choix que l'admin doit faire, le
+	 * formulaire la bloque tant qu'il ne l'a pas fait. En modification, la
+	 * valeur vient toujours du produit.
+	 */
+	season: "" | "winter" | "summer" | "all";
 	decathlonUrl: string;
 	images: ItemFormImage[];
 	availableFrom: string;
@@ -72,10 +78,15 @@ export type ItemFormValues = {
 	variants: ItemFormVariant[];
 };
 
+/** Valeurs envoyées au serveur : la saison y est toujours renseignée. */
+export type ItemFormSubmitValues = ItemFormValues & {
+	season: "winter" | "summer" | "all";
+};
+
 type ItemFormProps = {
 	initialValues?: ItemFormValues;
 	submitLabel: string;
-	onSubmit: (values: ItemFormValues) => Promise<void>;
+	onSubmit: (values: ItemFormSubmitValues) => Promise<void>;
 };
 
 function defaultVariant(): ItemFormVariant {
@@ -94,7 +105,7 @@ function defaultValues(): ItemFormValues {
 		description: "",
 		brand: "Decathlon",
 		categoryId: "",
-		season: "all",
+		season: "",
 		decathlonUrl: "",
 		images: [],
 		availableFrom: "",
@@ -146,7 +157,11 @@ export function ItemForm({
 	const form = useAppForm({
 		defaultValues: defaultFormValues,
 		onSubmit: async ({ value }) => {
-			await onSubmit(value);
+			// La validation du champ saison empêche déjà l'envoi : ce garde ne
+			// sert qu'à donner à TypeScript la saison renseignée qu'exigent les
+			// mutations de création et de modification.
+			if (!value.season) return;
+			await onSubmit({ ...value, season: value.season });
 		},
 	});
 
@@ -816,33 +831,46 @@ export function ItemForm({
 						/>
 					</div>
 
-					<form.Field name="season">
-						{(field) => (
-							<Field>
-								<FieldLabel>Saison</FieldLabel>
-								<div className="flex items-center gap-6">
-									{(["all", "winter", "summer"] as const).map((s) => (
-										<Label
-											key={s}
-											className="flex items-center gap-2 cursor-pointer"
-										>
-											<input
-												type="radio"
-												name={field.name}
-												className="size-4"
-												checked={field.state.value === s}
-												onChange={() => field.handleChange(s)}
-											/>
-											{s === "all"
-												? "Toutes saisons"
-												: s === "winter"
-													? "Hiver"
-													: "Été"}
-										</Label>
-									))}
-								</div>
-							</Field>
-						)}
+					<form.Field
+						name="season"
+						validators={{
+							onSubmit: ({ value }) =>
+								value
+									? undefined
+									: "Sélectionnez une saison : été, hiver ou mixte.",
+						}}
+					>
+						{(field) => {
+							const error = field.state.meta.errors[0];
+							const showError = Boolean(error);
+							return (
+								<Field data-invalid={showError}>
+									<FieldLabel>Saison</FieldLabel>
+									<div className="flex items-center gap-6">
+										{(["summer", "winter", "all"] as const).map((s) => (
+											<Label
+												key={s}
+												className="flex items-center gap-2 cursor-pointer"
+											>
+												<input
+													type="radio"
+													name={field.name}
+													className="size-4"
+													checked={field.state.value === s}
+													onChange={() => field.handleChange(s)}
+												/>
+												{SEASON_LABELS[s]}
+											</Label>
+										))}
+									</div>
+									<p className="text-sm text-muted-foreground">
+										Été et hiver suivent les périodes des réglages de location.
+										Mixte reste louable dans les deux, mais pas en inter-saison.
+									</p>
+									{showError && <FieldError errors={[error]} />}
+								</Field>
+							);
+						}}
 					</form.Field>
 
 					<div />

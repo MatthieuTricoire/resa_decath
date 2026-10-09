@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ConfirmDeleteDialog } from "#/components/dialogs/ConfirmDeleteDialog";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card";
@@ -24,6 +25,8 @@ import {
 	updateRentalDuration,
 } from "#/features/durees/queries";
 import { queryKeys } from "#/features/durees/query-keys";
+import { queryKeys as equipementQueryKeys } from "#/features/equipements/query-keys";
+import { openDialog } from "#/stores/dialog.store";
 
 export function RentalDurationsForm() {
 	const queryClient = useQueryClient();
@@ -38,8 +41,16 @@ export function RentalDurationsForm() {
 	const [editLabel, setEditLabel] = useState("");
 	const [editDays, setEditDays] = useState(1);
 
-	const invalidate = () =>
+	const invalidate = () => {
 		queryClient.invalidateQueries({ queryKey: queryKeys.durees.all });
+		// Une durée part avec ses options de tarif : le catalogue admin, la fiche
+		// article et les durées affichées par le site public doivent le voir.
+		queryClient.invalidateQueries({
+			queryKey: equipementQueryKeys.variants.all,
+		});
+		queryClient.invalidateQueries({ queryKey: equipementQueryKeys.items.all });
+		queryClient.invalidateQueries({ queryKey: queryKeys.publicDurations });
+	};
 	const mutationError = (fallback: string) => (error: unknown) =>
 		toast.error(error instanceof Error ? error.message : fallback);
 
@@ -68,9 +79,24 @@ export function RentalDurationsForm() {
 
 	const deleteMutation = useMutation({
 		mutationFn: (id: string) => deleteRentalDuration({ data: id }),
-		onSuccess: () => {
+		onSuccess: ({ removed, archived }) => {
 			invalidate();
-			toast.success("Durée supprimée.");
+			const details: string[] = [];
+			if (removed > 0) {
+				details.push(
+					`${removed} tarif${removed > 1 ? "s" : ""} supprimé${removed > 1 ? "s" : ""}`,
+				);
+			}
+			if (archived > 0) {
+				details.push(
+					`${archived} tarif${archived > 1 ? "s" : ""} conservé${archived > 1 ? "s" : ""} pour l'historique`,
+				);
+			}
+			toast.success(
+				details.length > 0
+					? `Durée supprimée : ${details.join(", ")}.`
+					: "Durée supprimée.",
+			);
 		},
 		onError: mutationError("Erreur"),
 	});
@@ -107,6 +133,9 @@ export function RentalDurationsForm() {
 				<h2 className="text-lg font-semibold">Durées de location</h2>
 				<p className="text-sm text-muted-foreground">
 					Ces durées alimentent les options de prix par durée de chaque article.
+					Supprimer une durée retire aussi ses options de tarif : celles déjà
+					facturées sur une réservation sont conservées pour l&rsquo;historique
+					et simplement retirées de la vente.
 				</p>
 			</div>
 
@@ -167,6 +196,11 @@ export function RentalDurationsForm() {
 				<ul className="space-y-2">
 					{durees.map((duration, index) => {
 						const isUsed = duration.usageCount > 0;
+						const confirmDescription = isUsed
+							? duration.usageCount > 1
+								? `Elle est utilisée par ${duration.usageCount} options de tarif : elles seront supprimées, sauf celles déjà facturées sur une réservation, qui sont conservées pour l'historique.`
+								: "Elle est utilisée par 1 option de tarif : elle sera supprimée, sauf si elle a déjà été facturée sur une réservation, auquel cas elle est conservée pour l'historique."
+							: "Aucune option de tarif n'est rattachée à cette durée.";
 						return (
 							<li
 								key={duration.id}
@@ -289,16 +323,16 @@ export function RentalDurationsForm() {
 												variant="ghost"
 												size="icon"
 												className="size-10 text-destructive sm:size-8"
-												disabled={isUsed || deleteMutation.isPending}
-												onClick={() => {
-													if (
-														window.confirm(
-															`Supprimer la durée « ${duration.label} » ?`,
-														)
-													) {
-														deleteMutation.mutate(duration.id);
-													}
-												}}
+												disabled={deleteMutation.isPending}
+												onClick={() =>
+													openDialog("confirmDelete", {
+														title: `Supprimer la durée « ${duration.label} »`,
+														description: confirmDescription,
+														onConfirm: () => {
+															deleteMutation.mutate(duration.id);
+														},
+													})
+												}
 												aria-label={`Supprimer ${duration.label}`}
 											>
 												<Trash2 className="size-4" />
@@ -311,6 +345,7 @@ export function RentalDurationsForm() {
 					})}
 				</ul>
 			)}
+			<ConfirmDeleteDialog />
 		</div>
 	);
 }

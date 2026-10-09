@@ -25,14 +25,11 @@ import {
 	type VariantRow,
 } from "#/features/equipements/queries";
 import { queryKeys } from "#/features/equipements/query-keys";
+import { SEASON_LABELS } from "#/features/reservations/availability";
 import { openDialog } from "#/stores/dialog.store";
 import { formatPriceString } from "#/stores/public-cart.store";
 
-const seasonLabel: Record<string, string> = {
-	all: "Toutes saisons",
-	winter: "Hiver",
-	summer: "Été",
-};
+const seasonLabel = SEASON_LABELS;
 
 const statusBadgeClass: Record<string, string> = {
 	AVAILABLE:

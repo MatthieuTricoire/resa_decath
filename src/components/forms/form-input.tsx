@@ -1,8 +1,9 @@
-import { useStore } from "@tanstack/react-form";
 import { Field, FieldDescription, FieldError, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
+import { PasswordInput } from "../ui/password-input";
 import { Textarea } from "../ui/textarea";
 import { useFieldContext } from "./app-form-context";
+import { useFieldError } from "./use-field-error";
 
 export function TextField({
 	label,
@@ -18,30 +19,40 @@ export function TextField({
 	onChange?: (value: string) => void;
 }) {
 	const field = useFieldContext<string>();
-	const errors = useStore(field.store, (state) => state.meta.errors);
-	const isInvalid = useStore(
-		field.store,
-		(state) => state.meta.isTouched && !state.meta.isValid,
-	);
+	const { errors, showError, focusProps } = useFieldError<string>();
+
+	const handleInput = (value: string) => {
+		field.handleChange(value);
+		onChange?.(value);
+	};
 
 	return (
-		<Field data-invalid={isInvalid}>
+		<Field data-invalid={showError}>
 			<FieldLabel htmlFor={field.name}>{label}</FieldLabel>
-			<Input
-				id={field.name}
-				type={type}
-				value={field.state.value}
-				placeholder={placeholder}
-				onBlur={field.handleBlur}
-				onChange={(e) => {
-					field.handleChange(e.target.value);
-					onChange?.(e.target.value);
-				}}
-				aria-invalid={isInvalid}
-				autoComplete="off"
-			/>
+			{type === "password" ? (
+				<PasswordInput
+					id={field.name}
+					value={field.state.value}
+					placeholder={placeholder}
+					{...focusProps}
+					onChange={(e) => handleInput(e.target.value)}
+					aria-invalid={showError}
+					autoComplete="off"
+				/>
+			) : (
+				<Input
+					id={field.name}
+					type={type}
+					value={field.state.value}
+					placeholder={placeholder}
+					{...focusProps}
+					onChange={(e) => handleInput(e.target.value)}
+					aria-invalid={showError}
+					autoComplete="off"
+				/>
+			)}
 			{description ? <FieldDescription>{description}</FieldDescription> : null}
-			{isInvalid && errors.length > 0 && <FieldError errors={[errors[0]]} />}
+			{showError && errors.length > 0 && <FieldError errors={[errors[0]]} />}
 		</Field>
 	);
 }
@@ -56,25 +67,22 @@ export function TextArea({
 	rows?: number;
 }) {
 	const field = useFieldContext<string>();
-	const errors = useStore(field.store, (state) => state.meta.errors);
-	const isInvalid = useStore(
-		field.store,
-		(state) => state.meta.isTouched && !state.meta.isValid,
-	);
+	const { errors, showError, focusProps } = useFieldError<string>();
 
 	return (
-		<Field>
+		<Field data-invalid={showError}>
 			<FieldLabel htmlFor={field.name}>{label}</FieldLabel>
 			<Textarea
 				name={field.name}
 				id={label}
 				value={field.state.value}
 				placeholder={placeholder}
-				onBlur={field.handleBlur}
+				{...focusProps}
 				rows={rows}
 				onChange={(e) => field.handleChange(e.target.value)}
+				aria-invalid={showError}
 			/>
-			{isInvalid && errors.length > 0 && <FieldError errors={[errors[0]]} />}
+			{showError && errors.length > 0 && <FieldError errors={[errors[0]]} />}
 		</Field>
 	);
 }
@@ -87,26 +95,22 @@ export function NumberField({
 	placeholder?: string;
 }) {
 	const field = useFieldContext<number>();
-	const errors = useStore(field.store, (state) => state.meta.errors);
-	const isInvalid = useStore(
-		field.store,
-		(state) => state.meta.isTouched && !state.meta.isValid,
-	);
+	const { errors, showError, focusProps } = useFieldError<number>();
 
 	return (
-		<Field data-invalid={isInvalid}>
+		<Field data-invalid={showError}>
 			<FieldLabel htmlFor={field.name}>{label}</FieldLabel>
 			<Input
 				id={field.name}
 				type="number"
 				value={field.state.value}
 				placeholder={placeholder}
-				onBlur={field.handleBlur}
+				{...focusProps}
 				onChange={(e) => field.handleChange(e.target.valueAsNumber)}
-				aria-invalid={isInvalid}
+				aria-invalid={showError}
 				autoComplete="off"
 			/>
-			{isInvalid && errors.length > 0 && <FieldError errors={[errors[0]]} />}
+			{showError && errors.length > 0 && <FieldError errors={[errors[0]]} />}
 		</Field>
 	);
 }

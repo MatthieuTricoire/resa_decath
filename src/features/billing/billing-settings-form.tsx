@@ -29,17 +29,22 @@ export function BillingSettingsForm({ isAdmin }: { isAdmin: boolean }) {
 		queryFn: () => getBillingSettings(),
 	});
 	const [monthlyFee, setMonthlyFee] = useState("");
-	const [commissionRate, setCommissionRate] = useState("");
+	const [commissionRateWeb, setCommissionRateWeb] = useState("");
+	const [commissionRateStore, setCommissionRateStore] = useState("");
 
 	useEffect(() => {
 		if (!settings) return;
 		setMonthlyFee(String(settings.monthlyFee));
-		setCommissionRate(String(settings.commissionRate));
+		setCommissionRateWeb(String(settings.commissionRateWeb));
+		setCommissionRateStore(String(settings.commissionRateStore));
 	}, [settings]);
 
 	const saveMutation = useMutation({
-		mutationFn: (input: { monthlyFee: number; commissionRate: number }) =>
-			updateBillingSettings({ data: input }),
+		mutationFn: (input: {
+			monthlyFee: number;
+			commissionRateWeb: number;
+			commissionRateStore: number;
+		}) => updateBillingSettings({ data: input }),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: queryKeys.billing.settings });
 			queryClient.invalidateQueries({ queryKey: queryKeys.billing.monthly });
@@ -51,22 +56,32 @@ export function BillingSettingsForm({ isAdmin }: { isAdmin: boolean }) {
 
 	const handleSave = () => {
 		const parsedMonthlyFee = Number.parseFloat(monthlyFee);
-		const parsedCommissionRate = Number.parseFloat(commissionRate);
+		const parsedCommissionRateWeb = Number.parseFloat(commissionRateWeb);
+		const parsedCommissionRateStore = Number.parseFloat(commissionRateStore);
 		if (Number.isNaN(parsedMonthlyFee) || parsedMonthlyFee < 0) {
 			toast.error("Forfait mensuel invalide.");
 			return;
 		}
 		if (
-			Number.isNaN(parsedCommissionRate) ||
-			parsedCommissionRate < 0 ||
-			parsedCommissionRate > 100
+			Number.isNaN(parsedCommissionRateWeb) ||
+			parsedCommissionRateWeb < 0 ||
+			parsedCommissionRateWeb > 100
 		) {
-			toast.error("La commission doit être comprise entre 0 et 100 %.");
+			toast.error("La commission web doit être comprise entre 0 et 100 %.");
+			return;
+		}
+		if (
+			Number.isNaN(parsedCommissionRateStore) ||
+			parsedCommissionRateStore < 0 ||
+			parsedCommissionRateStore > 100
+		) {
+			toast.error("La commission magasin doit être comprise entre 0 et 100 %.");
 			return;
 		}
 		saveMutation.mutate({
 			monthlyFee: parsedMonthlyFee,
-			commissionRate: parsedCommissionRate,
+			commissionRateWeb: parsedCommissionRateWeb,
+			commissionRateStore: parsedCommissionRateStore,
 		});
 	};
 
@@ -87,7 +102,7 @@ export function BillingSettingsForm({ isAdmin }: { isAdmin: boolean }) {
 					>
 						<FieldLabel>Forfait mensuel</FieldLabel>
 						<FieldContent>
-							<InputGroup className="w-full sm:w-40">
+							<InputGroup className="w-full sm:w-36">
 								<InputGroupInput
 									type="number"
 									min={0}
@@ -105,7 +120,7 @@ export function BillingSettingsForm({ isAdmin }: { isAdmin: boolean }) {
 						orientation="horizontal"
 						className="items-start sm:items-center"
 					>
-						<FieldLabel>Commission</FieldLabel>
+						<FieldLabel>Commission Web</FieldLabel>
 						<FieldContent>
 							<InputGroup className="w-full sm:w-32">
 								<InputGroupInput
@@ -114,9 +129,32 @@ export function BillingSettingsForm({ isAdmin }: { isAdmin: boolean }) {
 									max={100}
 									step="0.01"
 									inputMode="decimal"
-									value={commissionRate}
+									value={commissionRateWeb}
 									disabled={!isAdmin}
-									onChange={(event) => setCommissionRate(event.target.value)}
+									onChange={(event) => setCommissionRateWeb(event.target.value)}
+								/>
+								<InputGroupAddon align="inline-end">%</InputGroupAddon>
+							</InputGroup>
+						</FieldContent>
+					</Field>
+					<Field
+						orientation="horizontal"
+						className="items-start sm:items-center"
+					>
+						<FieldLabel>Commission Magasin</FieldLabel>
+						<FieldContent>
+							<InputGroup className="w-full sm:w-32">
+								<InputGroupInput
+									type="number"
+									min={0}
+									max={100}
+									step="0.01"
+									inputMode="decimal"
+									value={commissionRateStore}
+									disabled={!isAdmin}
+									onChange={(event) =>
+										setCommissionRateStore(event.target.value)
+									}
 								/>
 								<InputGroupAddon align="inline-end">%</InputGroupAddon>
 							</InputGroup>

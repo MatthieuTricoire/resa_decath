@@ -50,6 +50,13 @@
       "when": 1791388247045,
       "tag": "0006_misty_next_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791492801759,
+      "tag": "0007_add_billing_commission_rates",
+      "breakpoints": true
     }
   ]
 }

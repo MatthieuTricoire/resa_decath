@@ -34,11 +34,19 @@ export type ReservationActionData = {
 	onConfirm: (noShow: boolean) => void | Promise<void>;
 };
 
+export type EditUserRoleData = {
+	userId: string;
+	userName: string;
+	currentRole: "admin" | "manager";
+	onConfirm: (role: "admin" | "manager") => void | Promise<void>;
+};
+
 type DialogData = {
 	confirmDelete: ConfirmDeleteData;
 	createUser: Record<string, never>;
 	editCategory: EditCategoryData;
 	reservationAction: ReservationActionData;
+	editUserRole: EditUserRoleData;
 };
 
 type DialogId = keyof DialogData;

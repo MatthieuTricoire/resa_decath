@@ -186,7 +186,7 @@ function FieldError({
 	errors,
 	...props
 }: React.ComponentProps<"div"> & {
-	errors?: Array<{ message?: string } | undefined>;
+	errors?: Array<{ message?: string } | string | undefined>;
 }) {
 	const content = useMemo(() => {
 		if (children) {
@@ -197,20 +197,26 @@ function FieldError({
 			return null;
 		}
 
+		// TanStack Form rend les erreurs de validateur comme des chaînes, alors
+		// que certains champs les passent en `{ message }` : les deux formes
+		// doivent aboutir au même texte, sinon le message reste muet.
+		const messageOf = (error: { message?: string } | string | undefined) =>
+			typeof error === "string" ? error : error?.message;
+
 		const uniqueErrors = [
-			...new Map(errors.map((error) => [error?.message, error])).values(),
+			...new Map(errors.map((error) => [messageOf(error), error])).values(),
 		];
 
 		if (uniqueErrors?.length === 1) {
-			return uniqueErrors[0]?.message;
+			return messageOf(uniqueErrors[0]);
 		}
 
 		return (
 			<ul className="ml-4 flex list-disc flex-col gap-1">
-				{uniqueErrors.map(
-					(error, index) =>
-						error?.message && <li key={index}>{error.message}</li>,
-				)}
+				{uniqueErrors.map((error, index) => {
+					const message = messageOf(error);
+					return message ? <li key={index}>{message}</li> : null;
+				})}
 			</ul>
 		);
 	}, [children, errors]);

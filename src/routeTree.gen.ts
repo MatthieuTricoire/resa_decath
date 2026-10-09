@@ -17,6 +17,7 @@ import { Route as PublicMonCompteRouteImport } from './routes/_public/mon-compte
 import { Route as PublicPanierRouteImport } from './routes/_public/panier'
 import { Route as PublicReservationRouteImport } from './routes/_public/reservation'
 import { Route as AdminLayoutRouteImport } from './routes/admin/_layout'
+import { Route as AdminDefinirMotDePasseRouteImport } from './routes/admin/definir-mot-de-passe'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminMotDePasseOublieRouteImport } from './routes/admin/mot-de-passe-oublie'
 import { Route as AdminReinitialiserMotDePasseRouteImport } from './routes/admin/reinitialiser-mot-de-passe'
@@ -93,6 +94,11 @@ const PublicReservationRoute = PublicReservationRouteImport.update({
 const AdminLayoutRoute = AdminLayoutRouteImport.update({
   id: '/admin/_layout',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminDefinirMotDePasseRoute = AdminDefinirMotDePasseRouteImport.update({
+  id: '/admin/definir-mot-de-passe',
+  path: '/admin/definir-mot-de-passe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
@@ -312,6 +318,7 @@ export interface FileRoutesByFullPath {
   '/panier': typeof PublicPanierRoute
   '/reservation': typeof PublicReservationRouteWithChildren
   '/admin': typeof AdminLayoutRouteWithChildren
+  '/admin/definir-mot-de-passe': typeof AdminDefinirMotDePasseRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/mot-de-passe-oublie': typeof AdminMotDePasseOublieRoute
   '/admin/reinitialiser-mot-de-passe': typeof AdminReinitialiserMotDePasseRoute
@@ -357,6 +364,7 @@ export interface FileRoutesByTo {
   '/mon-compte': typeof PublicMonCompteRoute
   '/panier': typeof PublicPanierRoute
   '/reservation': typeof PublicReservationRouteWithChildren
+  '/admin/definir-mot-de-passe': typeof AdminDefinirMotDePasseRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/mot-de-passe-oublie': typeof AdminMotDePasseOublieRoute
   '/admin/reinitialiser-mot-de-passe': typeof AdminReinitialiserMotDePasseRoute
@@ -398,6 +406,7 @@ export interface FileRoutesById {
   '/_public/panier': typeof PublicPanierRoute
   '/_public/reservation': typeof PublicReservationRouteWithChildren
   '/admin/_layout': typeof AdminLayoutRouteWithChildren
+  '/admin/definir-mot-de-passe': typeof AdminDefinirMotDePasseRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/mot-de-passe-oublie': typeof AdminMotDePasseOublieRoute
   '/admin/reinitialiser-mot-de-passe': typeof AdminReinitialiserMotDePasseRoute
@@ -446,6 +455,7 @@ export interface FileRouteTypes {
     | '/panier'
     | '/reservation'
     | '/admin'
+    | '/admin/definir-mot-de-passe'
     | '/admin/login'
     | '/admin/mot-de-passe-oublie'
     | '/admin/reinitialiser-mot-de-passe'
@@ -491,6 +501,7 @@ export interface FileRouteTypes {
     | '/mon-compte'
     | '/panier'
     | '/reservation'
+    | '/admin/definir-mot-de-passe'
     | '/admin/login'
     | '/admin/mot-de-passe-oublie'
     | '/admin/reinitialiser-mot-de-passe'
@@ -531,6 +542,7 @@ export interface FileRouteTypes {
     | '/_public/panier'
     | '/_public/reservation'
     | '/admin/_layout'
+    | '/admin/definir-mot-de-passe'
     | '/admin/login'
     | '/admin/mot-de-passe-oublie'
     | '/admin/reinitialiser-mot-de-passe'
@@ -574,6 +586,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   PublicRoute: typeof PublicRouteWithChildren
   AdminLayoutRoute: typeof AdminLayoutRouteWithChildren
+  AdminDefinirMotDePasseRoute: typeof AdminDefinirMotDePasseRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminMotDePasseOublieRoute: typeof AdminMotDePasseOublieRoute
   AdminReinitialiserMotDePasseRoute: typeof AdminReinitialiserMotDePasseRoute
@@ -637,6 +650,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminLayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/definir-mot-de-passe': {
+      id: '/admin/definir-mot-de-passe'
+      path: '/admin/definir-mot-de-passe'
+      fullPath: '/admin/definir-mot-de-passe'
+      preLoaderRoute: typeof AdminDefinirMotDePasseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/login': {
@@ -1098,6 +1118,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   PublicRoute: PublicRouteWithChildren,
   AdminLayoutRoute: AdminLayoutRouteWithChildren,
+  AdminDefinirMotDePasseRoute: AdminDefinirMotDePasseRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminMotDePasseOublieRoute: AdminMotDePasseOublieRoute,
   AdminReinitialiserMotDePasseRoute: AdminReinitialiserMotDePasseRoute,

@@ -20,6 +20,7 @@ import {
 	STOCK_CONSUMING_STATUSES as activeStatuses,
 	evaluateItemAvailability,
 	getReservationDurationDays,
+	seasonRestartMessage,
 } from "#/features/reservations/availability";
 import {
 	closedEndpointMessage,
@@ -202,13 +203,15 @@ export const reserveEquipment = createServerOnlyFn(
 				returnDate: returnD,
 			});
 			if (availability.available) continue;
+			const restart = seasonRestartMessage(settings);
 			const message = {
 				rentals_closed: "Les locations sont actuellement fermées.",
 				variant_unavailable: `« ${variant.itemName} » n’est pas disponible à la location.`,
 				outside_item_period: `La période de disponibilité de « ${variant.itemName} » ne couvre pas toute la réservation.`,
 				below_minimum_duration: `La durée de location est trop courte pour « ${variant.itemName} ».`,
-				season_not_configured: "Le calendrier saisonnier n’est pas configuré.",
-				outside_active_season: `« ${variant.itemName} » n’est pas disponible pendant cette période.`,
+				outside_active_season: `« ${variant.itemName} » n’est pas disponible pendant cette période.${
+					restart ? ` ${restart}` : ""
+				}`,
 			}[availability.reason ?? "outside_active_season"];
 			throw new Error(message);
 		}

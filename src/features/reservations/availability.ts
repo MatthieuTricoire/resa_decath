@@ -60,6 +60,13 @@ export function stockShortage(
 	return quantity > Math.max(0, Number(available ?? 0));
 }
 
+/** Libellés des saisons, affichés tels quels à l'admin comme au public. */
+export const SEASON_LABELS: Record<RentalSeason, string> = {
+	summer: "Été",
+	winter: "Hiver",
+	all: "Mixte",
+};
+
 /**
  * Raison pour laquelle une ligne du panier ne peut pas être réservée, ou `null`
  * si elle est reservable. Deux causes distinctes : le devis serveur la refuse
@@ -91,7 +98,6 @@ export type AvailabilityResult = {
 		| "variant_unavailable"
 		| "outside_item_period"
 		| "below_minimum_duration"
-		| "season_not_configured"
 		| "outside_active_season"
 		| null;
 };
@@ -206,6 +212,36 @@ function isDateRangeWithinBounds(
 	return dateKeys.every((dateKey) => isDayWithinBounds(dateKey, from, to));
 }
 
+/** Une saison configurée : ses deux bornes sont saisies et valides. */
+export type ConfiguredSeason = {
+	season: Exclude<RentalSeason, "all">;
+	from: string;
+	to: string;
+};
+
+/**
+ * Les saisons réellement enregistrées. C'est la **seule** définition de
+ * « la saison existe » de l'application : une saison à moitié saisie n'existe
+ * pas, et n'importe quoi de non configuré ne filtre rien du tout.
+ */
+export function configuredSeasons(
+	settings: RentalAvailabilitySettings,
+): ConfiguredSeason[] {
+	const periods: Array<{
+		season: Exclude<RentalSeason, "all">;
+		from: string | null;
+		to: string | null;
+	}> = [
+		{ season: "summer", from: settings.summerFrom, to: settings.summerTo },
+		{ season: "winter", from: settings.winterFrom, to: settings.winterTo },
+	];
+	return periods.flatMap((period) =>
+		isValidMonthDay(period.from) && isValidMonthDay(period.to)
+			? [{ season: period.season, from: period.from, to: period.to }]
+			: [],
+	);
+}
+
 export function getActiveSeasonsForRange(
 	pickupDate: Date,
 	returnDate: Date,
@@ -215,19 +251,7 @@ export function getActiveSeasonsForRange(
 		return { seasons: [settings.seasonOverride], wholeRangeAvailable: true };
 	}
 
-	const periods: Array<{
-		season: Exclude<RentalSeason, "all">;
-		from: string | null;
-		to: string | null;
-	}> = [
-		{ season: "summer", from: settings.summerFrom, to: settings.summerTo },
-		{ season: "winter", from: settings.winterFrom, to: settings.winterTo },
-	];
-	const configuredPeriods = periods.flatMap((period) =>
-		isValidMonthDay(period.from) && isValidMonthDay(period.to)
-			? [{ ...period, from: period.from, to: period.to }]
-			: [],
-	);
+	const configuredPeriods = configuredSeasons(settings);
 	const dateKeys = getDateKeys(pickupDate, returnDate);
 	if (configuredPeriods.length === 0 || !dateKeys) {
 		return { seasons: [], wholeRangeAvailable: false };
@@ -252,6 +276,107 @@ export function getActiveSeasonsForRange(
 	return { seasons: [...seasons], wholeRangeAvailable };
 }
 
+/**
+ * La saison interdit-elle cette fenêtre pour cet article ? `null` = rien à
+ * refuser.
+ *
+ * Règle unique, la même pour le devis public, le contrôle serveur et la caisse
+ * du back-office :
+ *
+ * - filtrage désactivé, saison forcée, ou mode automatique sans **aucune**
+ *   période configurée : la saison n'interdit rien (rien de configuré = rien
+ *   de filtré) ;
+ * - mode automatique : toute la fenêtre doit être couverte par une saison
+ *   configurée — **un trou d'inter-saison ferme tout le monde, mixte compris** ;
+ * - puis l'article doit appartenir à au moins une saison active de la fenêtre
+ *   (« mixte » appartient aux deux ; les trous sont traités ci-dessus).
+ */
+export function evaluateSeasonWindow(
+	item: Pick<AvailabilityItem, "season">,
+	pickupDate: Date,
+	returnDate: Date,
+	settings: RentalAvailabilitySettings,
+): "outside_active_season" | null {
+	if (!settings.seasonalFilteringEnabled) return null;
+	if (
+		settings.seasonOverride === "auto" &&
+		configuredSeasons(settings).length === 0
+	) {
+		return null;
+	}
+	// Fenêtre illisible (inversée, > 1 an…) : d'autres contrôles s'en chargent.
+	if (!getDateKeys(pickupDate, returnDate)) return null;
+
+	const active = getActiveSeasonsForRange(pickupDate, returnDate, settings);
+	if (!active.wholeRangeAvailable) return "outside_active_season";
+	if (item.season !== "all" && !active.seasons.includes(item.season)) {
+		return "outside_active_season";
+	}
+	return null;
+}
+
+/** Prochaine reprise des locations, quand elle est prévisible. */
+export type SeasonRestart = {
+	season: Exclude<RentalSeason, "all">;
+	date: Date;
+};
+
+/**
+ * La prochaine saison configurée qui démarre après `from` (par défaut
+ * aujourd'hui), à l'année suivante si sa borne est déjà passée.
+ *
+ * En mode automatique uniquement : en mode forcé il n'y a pas de calendrier à
+ * annoncer, et sans période configurée il n'y a rien à annoncer non plus.
+ * Sert aux messages refusés (« Les locations reprennent le 1er juin. ») et au
+ * bandeau d'inter-saison.
+ */
+export function nextSeasonRestart(
+	settings: RentalAvailabilitySettings,
+	from: Date = new Date(),
+): SeasonRestart | null {
+	if (settings.seasonOverride !== "auto") return null;
+	const configured = configuredSeasons(settings);
+	if (configured.length === 0) return null;
+
+	const fromKey = toDateKey(from);
+	const year = Number(fromKey.slice(0, 4));
+	let next: string | null = null;
+	let nextSeason: ConfiguredSeason["season"] | null = null;
+	for (const period of configured) {
+		const candidate =
+			`${year}-${period.from}` >= fromKey
+				? `${year}-${period.from}`
+				: `${year + 1}-${period.from}`;
+		if (!next || candidate < next) {
+			next = candidate;
+			nextSeason = period.season;
+		}
+	}
+	if (!next || !nextSeason) return null;
+	const [y, m, d] = next.split("-").map(Number);
+	return { season: nextSeason, date: new Date(Date.UTC(y, m - 1, d)) };
+}
+
+const restartFormatter = new Intl.DateTimeFormat("fr-FR", {
+	day: "numeric",
+	month: "long",
+	timeZone: "UTC",
+});
+
+/**
+ * Phrase de reprise à accrocher à un refus de saison, ou `null` quand la date
+ * n'est pas prévisible (mode forcé, rien configuré).
+ */
+export function seasonRestartMessage(
+	settings: RentalAvailabilitySettings,
+	from: Date = new Date(),
+): string | null {
+	const restart = nextSeasonRestart(settings, from);
+	return restart
+		? `Les locations reprennent le ${restartFormatter.format(restart.date)}.`
+		: null;
+}
+
 export type SeasonalAvailability =
 	| "available"
 	| "out_of_season"
@@ -264,20 +389,15 @@ export function getSeasonalAvailability(
 	date = new Date(),
 ): SeasonalAvailability {
 	if (!settings.seasonalFilteringEnabled) return "not_filtered";
-	if (item.season === "all") return "available";
-
-	if (settings.seasonOverride === "auto") {
-		const hasConfiguredSeason =
-			(isValidMonthDay(settings.summerFrom) &&
-				isValidMonthDay(settings.summerTo)) ||
-			(isValidMonthDay(settings.winterFrom) &&
-				isValidMonthDay(settings.winterTo));
-		if (!hasConfiguredSeason) return "not_configured";
+	if (
+		settings.seasonOverride === "auto" &&
+		configuredSeasons(settings).length === 0
+	) {
+		return "not_configured";
 	}
-
-	const active = getActiveSeasonsForRange(date, date, settings);
-	if (!active.wholeRangeAvailable) return "out_of_season";
-	return active.seasons.includes(item.season) ? "available" : "out_of_season";
+	return evaluateSeasonWindow(item, date, date, settings)
+		? "out_of_season"
+		: "available";
 }
 
 /**
@@ -330,24 +450,14 @@ export function evaluateItemAvailability({
 		return { available: false, reason: "below_minimum_duration" };
 	}
 
-	if (!settings.seasonalFilteringEnabled || item.season === "all") {
-		return { available: true, reason: null };
-	}
-
-	const active = getActiveSeasonsForRange(pickupDate, returnDate, settings);
-	if (settings.seasonOverride === "auto") {
-		const isConfigured =
-			(isValidMonthDay(settings.summerFrom) &&
-				isValidMonthDay(settings.summerTo)) ||
-			(isValidMonthDay(settings.winterFrom) &&
-				isValidMonthDay(settings.winterTo));
-		if (!isConfigured) {
-			return { available: false, reason: "season_not_configured" };
-		}
-	}
-
-	if (!active.wholeRangeAvailable || !active.seasons.includes(item.season)) {
-		return { available: false, reason: "outside_active_season" };
+	const seasonRefusal = evaluateSeasonWindow(
+		item,
+		pickupDate,
+		returnDate,
+		settings,
+	);
+	if (seasonRefusal) {
+		return { available: false, reason: seasonRefusal };
 	}
 
 	return { available: true, reason: null };

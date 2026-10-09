@@ -52,6 +52,13 @@ export type StatsData = {
 	from: string;
 	to: string;
 	series: StatsSeriesPoint[];
+	rentedItems: Array<{
+		itemId: string;
+		itemName: string;
+		categoryName: string | null;
+		rentals: number;
+		revenue: number;
+	}>;
 	topItems: Array<{
 		itemId: string;
 		itemName: string;
@@ -64,7 +71,11 @@ export type StatsData = {
 	weekdayPattern: Array<{ day: number; count: number }>;
 	kpis: {
 		totalRevenue: number;
+		webRevenue: number;
+		storeRevenue: number;
 		totalReservations: number;
+		webReservations: number;
+		storeReservations: number;
 		avgDurationDays: number;
 		occupancyRate: number;
 		/** Nombre de non-présentations (`is_no_show = 1`) sur la période. */
@@ -115,6 +126,7 @@ export const getStatsData = createServerFn({ method: "GET" })
 				.select({
 					itemId: schema.items.id,
 					itemName: schema.items.name,
+					categoryName: schema.categories.name,
 					rentals: sql<number>`sum(${schema.reservationItems.quantity})::int`,
 					revenue: sql<string>`coalesce(sum(case when ${schema.reservations.status} = 'RETURNED' then ${schema.reservationItems.priceAppliedAtReservation} * ${schema.reservationItems.quantity} else 0 end), '0')`,
 				})
@@ -131,10 +143,13 @@ export const getStatsData = createServerFn({ method: "GET" })
 					schema.items,
 					eq(schema.itemVariants.itemId, schema.items.id),
 				)
+				.leftJoin(
+					schema.categories,
+					eq(schema.items.categoryId, schema.categories.id),
+				)
 				.where(period)
-				.groupBy(schema.items.id, schema.items.name)
-				.orderBy(desc(sql`sum(${schema.reservationItems.quantity})`))
-				.limit(5),
+				.groupBy(schema.items.id, schema.items.name, schema.categories.name)
+				.orderBy(desc(sql`sum(${schema.reservationItems.quantity})`)),
 
 			db
 				.select({
@@ -217,6 +232,8 @@ export const getStatsData = createServerFn({ method: "GET" })
 				db
 					.select({
 						revenue: sql<string>`coalesce(sum(${schema.reservations.totalPrice}), '0')`,
+						webRevenue: sql<string>`coalesce(sum(case when ${schema.reservations.source} = 'WEB' then ${schema.reservations.totalPrice} else 0 end), '0')`,
+						storeRevenue: sql<string>`coalesce(sum(case when ${schema.reservations.source} = 'STORE' then ${schema.reservations.totalPrice} else 0 end), '0')`,
 					})
 					.from(schema.reservations)
 					.where(
@@ -226,13 +243,25 @@ export const getStatsData = createServerFn({ method: "GET" })
 							eq(schema.reservations.status, "RETURNED"),
 						),
 					)
-					.then((r) => Number.parseFloat(r[0]?.revenue ?? "0")),
+					.then((r) => ({
+						totalRevenue: Number.parseFloat(r[0]?.revenue ?? "0"),
+						webRevenue: Number.parseFloat(r[0]?.webRevenue ?? "0"),
+						storeRevenue: Number.parseFloat(r[0]?.storeRevenue ?? "0"),
+					})),
 
 				db
-					.select({ count: sql<number>`count(*)::int` })
+					.select({
+						count: sql<number>`count(*)::int`,
+						webCount: sql<number>`coalesce(sum(case when ${schema.reservations.source} = 'WEB' then 1 else 0 end), 0)::int`,
+						storeCount: sql<number>`coalesce(sum(case when ${schema.reservations.source} = 'STORE' then 1 else 0 end), 0)::int`,
+					})
 					.from(schema.reservations)
 					.where(period)
-					.then((r) => Number(r[0]?.count ?? 0)),
+					.then((r) => ({
+						totalReservations: Number(r[0]?.count ?? 0),
+						webReservations: Number(r[0]?.webCount ?? 0),
+						storeReservations: Number(r[0]?.storeCount ?? 0),
+					})),
 
 				db
 					.select({ avg: sql<number>`round(avg(${durationExpr()}), 1)` })
@@ -262,8 +291,8 @@ export const getStatsData = createServerFn({ method: "GET" })
 		]);
 
 		const [
-			totalRevenue,
-			totalReservations,
+			revenueKpi,
+			reservationsKpi,
 			avgDurationDays,
 			unitDaysRented,
 			totalStock,
@@ -283,6 +312,14 @@ export const getStatsData = createServerFn({ method: "GET" })
 			0,
 		);
 
+		const mappedRentedItems = topItems.map((r) => ({
+			itemId: r.itemId,
+			itemName: r.itemName,
+			categoryName: r.categoryName ?? null,
+			rentals: Number(r.rentals),
+			revenue: Number.parseFloat(r.revenue),
+		}));
+
 		return {
 			range: data,
 			from: from.toISOString(),
@@ -292,12 +329,8 @@ export const getStatsData = createServerFn({ method: "GET" })
 				revenue: Number.parseFloat(r.revenue),
 				count: Number(r.count),
 			})),
-			topItems: topItems.map((r) => ({
-				itemId: r.itemId,
-				itemName: r.itemName,
-				rentals: Number(r.rentals),
-				revenue: Number.parseFloat(r.revenue),
-			})),
+			rentedItems: mappedRentedItems,
+			topItems: mappedRentedItems.slice(0, 5),
 			statusDistribution: statusRows.flatMap((r) => {
 				const count = Number(r.count);
 				if (r.status !== "CANCELLED") return [{ status: r.status, count }];
@@ -324,8 +357,12 @@ export const getStatsData = createServerFn({ method: "GET" })
 				count: Number(r.count),
 			})),
 			kpis: {
-				totalRevenue,
-				totalReservations,
+				totalRevenue: revenueKpi.totalRevenue,
+				webRevenue: revenueKpi.webRevenue,
+				storeRevenue: revenueKpi.storeRevenue,
+				totalReservations: reservationsKpi.totalReservations,
+				webReservations: reservationsKpi.webReservations,
+				storeReservations: reservationsKpi.storeReservations,
 				avgDurationDays,
 				occupancyRate,
 				noShows,

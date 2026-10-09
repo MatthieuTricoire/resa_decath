@@ -8,22 +8,30 @@ import {
 	requireDashboardSession,
 } from "#/features/auth/queries";
 
-// Forfait mensuel + commission (% du CA) appliqués au gérant de la plateforme.
+// Forfait mensuel + commissions (% du CA Web et Magasin) appliqués au gérant de la plateforme.
 // Si la table est vide (jamais seedée), valeurs par défaut.
 const DEFAULT_MONTHLY_FEE = 30;
-const DEFAULT_COMMISSION_RATE = 10;
+const DEFAULT_COMMISSION_RATE_WEB = 10;
+const DEFAULT_COMMISSION_RATE_STORE = 5;
 const MONTHS_COUNT = 12;
 
 export type BillingSettings = {
 	monthlyFee: number;
-	commissionRate: number;
+	commissionRateWeb: number;
+	commissionRateStore: number;
 };
 
 export type MonthlyBillingRow = {
 	month: string;
 	label: string;
 	revenue: number;
+	webRevenue: number;
+	storeRevenue: number;
 	reservationCount: number;
+	webReservationCount: number;
+	storeReservationCount: number;
+	webCommission: number;
+	storeCommission: number;
 	commission: number;
 	monthlyFee: number;
 	totalDue: number;
@@ -31,7 +39,15 @@ export type MonthlyBillingRow = {
 
 const monthKey = sql<string>`to_char(date_trunc('month', ${schema.reservations.pickupDate}), 'YYYY-MM')`;
 
-type BillingAggRow = { month: string; revenue: string; count: number };
+type BillingAggRow = {
+	month: string;
+	revenue: string;
+	webRevenue: string;
+	storeRevenue: string;
+	count: number;
+	webCount: number;
+	storeCount: number;
+};
 
 async function getSettingsOrDefaults(): Promise<BillingSettings> {
 	const row = await db.query.billingSettings.findFirst();
@@ -39,8 +55,11 @@ async function getSettingsOrDefaults(): Promise<BillingSettings> {
 		monthlyFee: Number.parseFloat(
 			row?.monthlyFee ?? String(DEFAULT_MONTHLY_FEE),
 		),
-		commissionRate: Number.parseFloat(
-			row?.commissionRate ?? String(DEFAULT_COMMISSION_RATE),
+		commissionRateWeb: Number.parseFloat(
+			row?.commissionRateWeb ?? String(DEFAULT_COMMISSION_RATE_WEB),
+		),
+		commissionRateStore: Number.parseFloat(
+			row?.commissionRateStore ?? String(DEFAULT_COMMISSION_RATE_STORE),
 		),
 	};
 }
@@ -54,10 +73,14 @@ export const getBillingSettings = createServerFn({ method: "GET" }).handler(
 
 const updateSettingsSchema = z.object({
 	monthlyFee: z.coerce.number().min(0, "Le forfait doit être positif"),
-	commissionRate: z.coerce
+	commissionRateWeb: z.coerce
 		.number()
-		.min(0, "La commission doit être positive")
-		.max(100, "La commission ne peut pas dépasser 100 %"),
+		.min(0, "La commission web doit être positive")
+		.max(100, "La commission web ne peut pas dépasser 100 %"),
+	commissionRateStore: z.coerce
+		.number()
+		.min(0, "La commission magasin doit être positive")
+		.max(100, "La commission magasin ne peut pas dépasser 100 %"),
 });
 
 export const updateBillingSettings = createServerFn({ method: "POST" })
@@ -66,7 +89,8 @@ export const updateBillingSettings = createServerFn({ method: "POST" })
 		await requireAdminSession();
 		const values = {
 			monthlyFee: data.monthlyFee.toFixed(2),
-			commissionRate: data.commissionRate.toFixed(2),
+			commissionRateWeb: data.commissionRateWeb.toFixed(2),
+			commissionRateStore: data.commissionRateStore.toFixed(2),
 			updatedAt: new Date(),
 		};
 		await db
@@ -76,8 +100,49 @@ export const updateBillingSettings = createServerFn({ method: "POST" })
 				target: schema.billingSettings.id,
 				set: values,
 			});
-		return { monthlyFee: data.monthlyFee, commissionRate: data.commissionRate };
+		return {
+			monthlyFee: data.monthlyFee,
+			commissionRateWeb: data.commissionRateWeb,
+			commissionRateStore: data.commissionRateStore,
+		};
 	});
+
+export function calculateMonthBilling({
+	webRevenue,
+	storeRevenue,
+	webReservationCount,
+	storeReservationCount,
+	settings,
+}: {
+	webRevenue: number;
+	storeRevenue: number;
+	webReservationCount: number;
+	storeReservationCount: number;
+	settings: Pick<
+		BillingSettings,
+		"monthlyFee" | "commissionRateWeb" | "commissionRateStore"
+	>;
+}) {
+	const revenue = webRevenue + storeRevenue;
+	const reservationCount = webReservationCount + storeReservationCount;
+	const webCommission = webRevenue * (settings.commissionRateWeb / 100);
+	const storeCommission = storeRevenue * (settings.commissionRateStore / 100);
+	const commission = webCommission + storeCommission;
+	const totalDue = settings.monthlyFee + commission;
+	return {
+		revenue,
+		webRevenue,
+		storeRevenue,
+		reservationCount,
+		webReservationCount,
+		storeReservationCount,
+		webCommission,
+		storeCommission,
+		commission,
+		monthlyFee: settings.monthlyFee,
+		totalDue,
+	};
+}
 
 export const getMonthlyBilling = createServerFn({ method: "GET" }).handler(
 	async (): Promise<{
@@ -99,7 +164,23 @@ export const getMonthlyBilling = createServerFn({ method: "GET" }).handler(
 					sql<string>`coalesce(sum(${schema.reservations.totalPrice}), '0')`.as(
 						"revenue",
 					),
+				webRevenue:
+					sql<string>`coalesce(sum(case when ${schema.reservations.source} = 'WEB' then ${schema.reservations.totalPrice} else 0 end), '0')`.as(
+						"web_revenue",
+					),
+				storeRevenue:
+					sql<string>`coalesce(sum(case when ${schema.reservations.source} = 'STORE' then ${schema.reservations.totalPrice} else 0 end), '0')`.as(
+						"store_revenue",
+					),
 				count: sql<number>`count(*)::int`.as("count"),
+				webCount:
+					sql<number>`coalesce(sum(case when ${schema.reservations.source} = 'WEB' then 1 else 0 end), 0)::int`.as(
+						"web_count",
+					),
+				storeCount:
+					sql<number>`coalesce(sum(case when ${schema.reservations.source} = 'STORE' then 1 else 0 end), 0)::int`.as(
+						"store_count",
+					),
 			})
 			.from(schema.reservations)
 			.where(
@@ -120,18 +201,23 @@ export const getMonthlyBilling = createServerFn({ method: "GET" }).handler(
 			const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
 			const key = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`;
 			const raw = byMonth.get(key);
-			const revenue = raw ? Number.parseFloat(raw.revenue) : 0;
-			const commission = revenue * (settings.commissionRate / 100);
+			const webRevenue = raw ? Number.parseFloat(raw.webRevenue) : 0;
+			const storeRevenue = raw ? Number.parseFloat(raw.storeRevenue) : 0;
+			const webReservationCount = raw?.webCount ?? 0;
+			const storeReservationCount = raw?.storeCount ?? 0;
+			const calc = calculateMonthBilling({
+				webRevenue,
+				storeRevenue,
+				webReservationCount,
+				storeReservationCount,
+				settings,
+			});
 			months.push({
 				month: key,
 				label: start
 					.toLocaleDateString("fr-FR", { month: "short", year: "numeric" })
 					.replace(".", ""),
-				revenue,
-				reservationCount: raw?.count ?? 0,
-				commission,
-				monthlyFee: settings.monthlyFee,
-				totalDue: settings.monthlyFee + commission,
+				...calc,
 			});
 		}
 

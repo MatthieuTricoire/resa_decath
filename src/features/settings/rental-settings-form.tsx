@@ -133,8 +133,8 @@ export function RentalSettingsForm({ settings }: { settings: RentalSettings }) {
 					<FieldContent>
 						<FieldLabel>Filtrage saisonnier</FieldLabel>
 						<p className="text-sm text-muted-foreground">
-							Les produits « Toutes saisons » restent toujours disponibles, hors
-							période exceptionnelle et stock.
+							Chaque produit est proposé selon sa saison (été, hiver ou mixte).
+							Sans période configurée, rien n’est filtré.
 						</p>
 					</FieldContent>
 					<Switch
@@ -190,8 +190,9 @@ export function RentalSettingsForm({ settings }: { settings: RentalSettings }) {
 				{seasonOverride === "auto" && seasonalFilteringEnabled && (
 					<p className="text-sm text-muted-foreground">
 						En mode automatique, une saison n’est appliquée que lorsque ses deux
-						dates sont configurées. Les périodes peuvent se chevaucher ou
-						traverser décembre.
+						dates sont configurées. Entre deux périodes — l’inter-saison —
+						aucune location n’est possible, produits mixte compris. Les périodes
+						peuvent se chevaucher ou traverser décembre.
 					</p>
 				)}
 

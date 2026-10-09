@@ -42,7 +42,11 @@ import {
 	type VariantRow,
 } from "#/features/equipements/queries";
 import { queryKeys as equipmentQueryKeys } from "#/features/equipements/query-keys";
-import { getReservationDurationDays } from "#/features/reservations/availability";
+import {
+	evaluateSeasonWindow,
+	getReservationDurationDays,
+	seasonRestartMessage,
+} from "#/features/reservations/availability";
 import {
 	blockedCheckoutDurations,
 	resolveCheckoutWindow,
@@ -54,6 +58,8 @@ import {
 	getAvailableStock,
 } from "#/features/reservations/queries";
 import { queryKeys as reservationQueryKeys } from "#/features/reservations/query-keys";
+import { getRentalSettings } from "#/features/settings/queries";
+import { queryKeys as settingsQueryKeys } from "#/features/settings/query-keys";
 import { getStoreHours } from "#/features/store-hours/queries";
 import { storeHoursKeys } from "#/features/store-hours/query-keys";
 import { openDaysFromHours } from "#/features/store-hours/types";
@@ -172,6 +178,27 @@ function RouteComponent() {
 		enabled: reservableDates !== null,
 	});
 	const allVariants = reservableData?.variants;
+
+	// Mêmes réglages que le site public : en inter-saison la liste des articles
+	// est vide, autant dire pourquoi plutôt que de laisser un vide muet.
+	const { data: rentalSettings } = useQuery({
+		queryKey: settingsQueryKeys.settings.all,
+		queryFn: () => getRentalSettings(),
+	});
+
+	const seasonNotice = useMemo(() => {
+		if (!rentalSettings || !reservableDates) return null;
+		const pickup = new Date(reservableDates.pickupDate);
+		const returned = new Date(reservableDates.returnDate);
+		// « mixte » renonce à sa propre saison : si même lui est refusé, c'est
+		// que la fenêtre tombe dans un trou entre deux périodes configurées.
+		if (
+			!evaluateSeasonWindow({ season: "all" }, pickup, returned, rentalSettings)
+		) {
+			return null;
+		}
+		return seasonRestartMessage(rentalSettings);
+	}, [rentalSettings, reservableDates]);
 
 	const selectedVariant = useMemo(
 		() => allVariants?.find((v) => v.id === selectedVariantId),
@@ -322,13 +349,17 @@ function RouteComponent() {
 	);
 
 	const uniqueItems = useMemo(() => {
-		const map = new Map<string, { id: string; name: string; brand: string }>();
+		const map = new Map<
+			string,
+			{ id: string; name: string; brand: string; label: string }
+		>();
 		for (const v of allVariants ?? []) {
 			if (!map.has(v.itemId)) {
 				map.set(v.itemId, {
 					id: v.itemId,
 					name: v.itemName,
 					brand: v.brand,
+					label: `${v.itemName} (${v.brand})`,
 				});
 			}
 		}
@@ -336,6 +367,14 @@ function RouteComponent() {
 	}, [allVariants]);
 
 	const [selectedItemId, setSelectedItemId] = useState("");
+
+	// L'objet article dérivé de l'id : c'est lui que le Combobox compare et
+	// affiche (via son `label`), l'id en string reste la source de vérité pour
+	// les effets d'auto-sélection et de réinitialisation.
+	const selectedItem = useMemo(
+		() => uniqueItems.find((item) => item.id === selectedItemId) ?? null,
+		[uniqueItems, selectedItemId],
+	);
 
 	const filteredVariants = useMemo(
 		() => allVariants?.filter((v) => v.itemId === selectedItemId) ?? [],
@@ -688,38 +727,55 @@ function RouteComponent() {
 								Filtrage des articles disponibles...
 							</p>
 						) : allVariants?.length === 0 ? (
-							<p className="text-sm text-muted-foreground">
-								Aucun article n’est disponible pour ces dates.
+							<p
+								className={
+									seasonNotice
+										? "text-sm text-destructive"
+										: "text-sm text-muted-foreground"
+								}
+							>
+								{seasonNotice
+									? `Inter-saison : aucun article n’est louable sur cette fenêtre. ${seasonNotice}`
+									: "Aucun article n’est disponible pour ces dates."}
 							</p>
 						) : null)}
 					<div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-5">
 						<div>
 							<Field>
-								<FieldLabel>Article</FieldLabel>
-								<Select
-									value={selectedItemId}
-									onValueChange={(v) => {
-										setSelectedItemId(v);
+								<FieldLabel htmlFor="reservation-article">Article</FieldLabel>
+								{/* Même recherche que le select client : on tape un nom de
+								    matériel ou de marque, ou on parcourt la liste avec la
+								    flèche. `selectedItemId` reste la source de vérité. */}
+								<Combobox
+									items={uniqueItems}
+									value={selectedItem}
+									onValueChange={(item) => {
+										setSelectedItemId(item?.id ?? "");
 										setSelectedVariantId("");
 										setSelectedPriceOptionId("");
 									}}
-									disabled={
-										!reservableDates ||
-										reservableData?.isRentalOpen === false ||
-										variantsPending
-									}
+									isItemEqualToValue={(a, b) => a?.id === b?.id}
 								>
-									<SelectTrigger>
-										<SelectValue placeholder="Choisir..." />
-									</SelectTrigger>
-									<SelectContent>
-										{uniqueItems.map((item) => (
-											<SelectItem key={item.id} value={item.id}>
-												{item.name} ({item.brand})
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
+									<ComboboxInput
+										id="reservation-article"
+										placeholder="Rechercher un article..."
+										disabled={
+											!reservableDates ||
+											reservableData?.isRentalOpen === false ||
+											variantsPending
+										}
+									/>
+									<ComboboxContent>
+										<ComboboxEmpty>Aucun article trouvé</ComboboxEmpty>
+										<ComboboxList>
+											{(item) => (
+												<ComboboxItem key={item.id} value={item}>
+													{item.label}
+												</ComboboxItem>
+											)}
+										</ComboboxList>
+									</ComboboxContent>
+								</Combobox>
 							</Field>
 						</div>
 						<div>

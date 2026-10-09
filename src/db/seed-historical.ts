@@ -395,6 +395,7 @@ async function main() {
 					totalPrice: totalPrice.toFixed(2),
 					createdAt,
 					isNoShow,
+					source: rng() < 0.65 ? "WEB" : "STORE",
 				},
 				lineItems,
 			});

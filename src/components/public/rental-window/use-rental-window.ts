@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
+import { queryKeys } from "#/features/durees/query-keys";
 import {
 	getPublicRentalDurations,
 	getPublicStoreSchedule,
@@ -31,7 +32,7 @@ export function useRentalWindow() {
 	const durationDays = usePublicCart(cartDurationDays);
 
 	const durationsQuery = useQuery({
-		queryKey: ["public", "rental-durations"],
+		queryKey: queryKeys.publicDurations,
 		queryFn: () => getPublicRentalDurations(),
 		staleTime: 5 * 60 * 1000,
 	});

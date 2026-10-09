@@ -18,6 +18,7 @@ import {
 	storeCanonicalPath,
 	storeOpeningHoursText,
 } from "#/config/store";
+import { queryKeys as durationQueryKeys } from "#/features/durees/query-keys";
 import {
 	getPublicActivities,
 	getPublicRentalDurations,
@@ -97,7 +98,7 @@ export const Route = createFileRoute("/_public/location-materiel-{$ville}")({
 				queryFn: () => getPublicActivities(),
 			}),
 			queryClient.prefetchQuery({
-				queryKey: ["public", "rental-durations"],
+				queryKey: durationQueryKeys.publicDurations,
 				queryFn: () => getPublicRentalDurations(),
 			}),
 		]);

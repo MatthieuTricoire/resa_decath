@@ -49,14 +49,35 @@ function RouteComponent() {
 	const current = data?.months[data.months.length - 1];
 
 	const totals = useMemo(() => {
-		if (!data) return { revenue: 0, commission: 0, totalDue: 0 };
+		if (!data)
+			return {
+				revenue: 0,
+				webRevenue: 0,
+				storeRevenue: 0,
+				webCommission: 0,
+				storeCommission: 0,
+				commission: 0,
+				totalDue: 0,
+			};
 		return data.months.reduce(
 			(acc, m) => ({
 				revenue: acc.revenue + m.revenue,
+				webRevenue: acc.webRevenue + m.webRevenue,
+				storeRevenue: acc.storeRevenue + m.storeRevenue,
+				webCommission: acc.webCommission + m.webCommission,
+				storeCommission: acc.storeCommission + m.storeCommission,
 				commission: acc.commission + m.commission,
 				totalDue: acc.totalDue + m.totalDue,
 			}),
-			{ revenue: 0, commission: 0, totalDue: 0 },
+			{
+				revenue: 0,
+				webRevenue: 0,
+				storeRevenue: 0,
+				webCommission: 0,
+				storeCommission: 0,
+				commission: 0,
+				totalDue: 0,
+			},
 		);
 	}, [data]);
 
@@ -69,8 +90,9 @@ function RouteComponent() {
 						<h2 className="text-lg font-semibold">Suivi de la facturation</h2>
 						<div className="flex flex-col gap-2">
 							<p className="text-sm text-muted-foreground">
-								Montant à verser = forfait mensuel + commission du chiffre
-								d’affaires des locations retournées.
+								Montant à verser = forfait mensuel + commissions distinctes sur
+								le chiffre d’affaires web ({data?.settings.commissionRateWeb} %)
+								et magasin ({data?.settings.commissionRateStore} %).
 							</p>
 							<Link
 								to="/admin/reglages"
@@ -93,7 +115,7 @@ function RouteComponent() {
 									footer={
 										current
 											? {
-													primary: `Forfait ${euro(current.monthlyFee)} € + commission ${data?.settings.commissionRate} % du CA`,
+													primary: `Forfait ${euro(current.monthlyFee)} € + comm. Web (${data?.settings.commissionRateWeb} %) & Magasin (${data?.settings.commissionRateStore} %)`,
 												}
 											: undefined
 									}
@@ -104,7 +126,7 @@ function RouteComponent() {
 									footer={
 										current
 											? {
-													primary: `${current.reservationCount.toLocaleString("fr-FR")} locations retournées`,
+													primary: `Web : ${euro(current.webRevenue)} € · Magasin : ${euro(current.storeRevenue)} € (${current.reservationCount} locations)`,
 												}
 											: undefined
 									}
@@ -115,7 +137,7 @@ function RouteComponent() {
 									footer={
 										current
 											? {
-													primary: `${data?.settings.commissionRate} % du CA · soit ${euro(current.commission)} €`,
+													primary: `Web : ${euro(current.webCommission)} € (${data?.settings.commissionRateWeb} %) · Magasin : ${euro(current.storeCommission)} € (${data?.settings.commissionRateStore} %)`,
 												}
 											: undefined
 									}
@@ -126,7 +148,8 @@ function RouteComponent() {
 								<CardHeader>
 									<CardTitle>Détail mensuel</CardTitle>
 									<CardDescription>
-										Les 12 derniers mois de locations retournées
+										Les 12 derniers mois de locations retournées ventilées par
+										canal
 									</CardDescription>
 								</CardHeader>
 								<CardContent>
@@ -134,10 +157,11 @@ function RouteComponent() {
 										<TableHeader>
 											<TableRow>
 												<TableHead>Mois</TableHead>
-												<TableHead className="text-right">CA</TableHead>
+												<TableHead className="text-right">CA Total</TableHead>
 												<TableHead className="text-right">Locations</TableHead>
 												<TableHead className="text-right">
-													Commission ({data?.settings.commissionRate} %)
+													Commission ({data?.settings.commissionRateWeb} % web ·{" "}
+													{data?.settings.commissionRateStore} % mag.)
 												</TableHead>
 												<TableHead className="text-right">Forfait</TableHead>
 												<TableHead className="text-right">
@@ -160,13 +184,25 @@ function RouteComponent() {
 															)}
 														</TableCell>
 														<TableCell className="text-right tabular-nums">
-															{euro(m.revenue)} €
+															<div>{euro(m.revenue)} €</div>
+															<div className="text-[11px] text-muted-foreground">
+																Web {euro(m.webRevenue)} € · Mag.{" "}
+																{euro(m.storeRevenue)} €
+															</div>
 														</TableCell>
 														<TableCell className="text-right tabular-nums">
-															{m.reservationCount}
+															<div>{m.reservationCount}</div>
+															<div className="text-[11px] text-muted-foreground">
+																{m.webReservationCount} web ·{" "}
+																{m.storeReservationCount} mag.
+															</div>
 														</TableCell>
 														<TableCell className="text-right tabular-nums">
-															{euro(m.commission)} €
+															<div>{euro(m.commission)} €</div>
+															<div className="text-[11px] text-muted-foreground">
+																Web {euro(m.webCommission)} € + Mag.{" "}
+																{euro(m.storeCommission)} €
+															</div>
 														</TableCell>
 														<TableCell className="text-right tabular-nums">
 															{euro(m.monthlyFee)} €
@@ -182,11 +218,19 @@ function RouteComponent() {
 											<TableRow>
 												<TableCell>Total (12 mois)</TableCell>
 												<TableCell className="text-right tabular-nums">
-													{euro(totals.revenue)} €
+													<div>{euro(totals.revenue)} €</div>
+													<div className="text-[11px] text-muted-foreground font-normal">
+														Web {euro(totals.webRevenue)} € · Mag.{" "}
+														{euro(totals.storeRevenue)} €
+													</div>
 												</TableCell>
 												<TableCell />
 												<TableCell className="text-right tabular-nums">
-													{euro(totals.commission)} €
+													<div>{euro(totals.commission)} €</div>
+													<div className="text-[11px] text-muted-foreground font-normal">
+														Web {euro(totals.webCommission)} € · Mag.{" "}
+														{euro(totals.storeCommission)} €
+													</div>
 												</TableCell>
 												<TableCell />
 												<TableCell className="text-right tabular-nums">

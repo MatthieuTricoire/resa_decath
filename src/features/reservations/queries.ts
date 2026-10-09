@@ -68,6 +68,7 @@ export type ReservationRow = {
 	pickupDate: string;
 	returnDate: string;
 	status: string;
+	source: "STORE" | "WEB";
 	createdAt: string;
 	totalPrice: string;
 	isNoShow: number;
@@ -134,6 +135,7 @@ export const getReservations = createServerFn({ method: "GET" })
 				pickupDate: schema.reservations.pickupDate,
 				returnDate: schema.reservations.returnDate,
 				status: schema.reservations.status,
+				source: schema.reservations.source,
 				createdAt: schema.reservations.createdAt,
 				totalPrice: schema.reservations.totalPrice,
 				isNoShow: schema.reservations.isNoShow,
@@ -222,6 +224,7 @@ export const getReservation = createServerFn({ method: "GET" })
 				pickupDate: schema.reservations.pickupDate,
 				returnDate: schema.reservations.returnDate,
 				status: schema.reservations.status,
+				source: schema.reservations.source,
 				createdAt: schema.reservations.createdAt,
 				totalPrice: schema.reservations.totalPrice,
 				isNoShow: schema.reservations.isNoShow,

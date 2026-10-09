@@ -2,6 +2,8 @@ import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { ConfirmDeleteDialog } from "#/components/dialogs/ConfirmDeleteDialog";
+import { EditUserRoleDialog } from "#/components/dialogs/EditUserRoleDialog";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card";
@@ -22,74 +24,30 @@ import {
 	TableHeader,
 	TableRow,
 } from "#/components/ui/table";
-import type { CreateTeamAccountFormData } from "#/features/auth/create-team-account.schema";
-import { createTeamAccountSchema } from "#/features/auth/create-team-account.schema";
+import type { InviteTeamMemberFormData } from "#/features/auth/create-team-account.schema";
+import { inviteTeamMemberSchema } from "#/features/auth/create-team-account.schema";
 import { getDashboardSession } from "#/features/auth/queries";
+import type { TeamMemberItem } from "#/features/auth/team.queries";
+import {
+	getTeamMembers,
+	inviteTeamMember,
+	resendTeamInvitation,
+} from "#/features/auth/team.queries";
+import { deleteUser } from "#/features/users/queries";
 import { authClient } from "#/lib/auth-client";
+import { openDialog } from "#/stores/dialog.store";
 
 const TEAM_QUERY_KEY = ["equipe"] as const;
 
-type TeamMember = {
-	id: string;
-	name: string;
-	email: string;
-	role: "admin" | "manager";
-};
-
-const ROLE_LABELS: Record<TeamMember["role"], string> = {
+const ROLE_LABELS: Record<TeamMemberItem["role"], string> = {
 	admin: "Administrateur",
 	manager: "Gérant",
 };
 
-/**
- * La liste des membres passe par l'API admin du plugin better-auth (déjà
- * montée en prod, mêmes permissions que cet écran) : pas de nouvelle
- * `createServerFn`, et la création d'un compte officie du même code que le
- * plugin — hash du mot de passe et ligne `account` `credential` inclus.
- */
-async function fetchTeamMembers(): Promise<TeamMember[]> {
-	const { data, error } = await authClient.admin.listUsers({
-		query: { limit: 100 },
-	});
-	if (error) {
-		throw new Error(error.message);
-	}
-	return (data?.users ?? [])
-		.filter((user) => user.role === "admin" || user.role === "manager")
-		.map((user) => ({
-			id: user.id,
-			name: user.name,
-			email: user.email,
-			role: user.role as TeamMember["role"],
-		}))
-		.sort((a, b) => a.name.localeCompare(b.name, "fr"));
-}
-
-/** Traduction des codes d'erreur renvoyés par /admin/create-user. */
-function mapCreateError(error: unknown): string {
-	if (error && typeof error === "object" && "code" in error) {
-		const code = (error as { code?: unknown }).code;
-		if (code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL") {
-			return "Un compte avec cet email existe déjà.";
-		}
-		if (code === "INVALID_EMAIL") {
-			return "Email invalide.";
-		}
-		if (code === "YOU_ARE_NOT_ALLOWED_TO_CREATE_USERS") {
-			return "Vous n'avez pas le droit de créer des comptes.";
-		}
-	}
-	if (error instanceof Error && error.message) {
-		return error.message;
-	}
-	return "Une erreur est survenue lors de la création du compte.";
-}
-
 export const Route = createFileRoute("/admin/_layout/equipe/")({
 	loader: async () => {
 		const session = await getDashboardSession();
-		// La création de comptes admin/gérant est réservée aux admins : l'API
-		// better-auth refuserait un gérant, on coupe en amont.
+		// La gestion de l'équipe est réservée aux admins.
 		if (session.user.role !== "admin") {
 			throw redirect({ to: "/admin" });
 		}
@@ -104,30 +62,21 @@ function RouteComponent() {
 
 	const { data: team, isPending } = useQuery({
 		queryKey: TEAM_QUERY_KEY,
-		queryFn: fetchTeamMembers,
+		queryFn: () => getTeamMembers(),
 	});
 
-	const mutation = useMutation({
-		mutationFn: async (values: CreateTeamAccountFormData) => {
-			const { name, email, password, role } = values;
-			const { data, error } = await authClient.admin.createUser({
-				name,
-				email,
-				password,
-				// Seules les valeurs "admin" (défaut du plugin) et "manager" sont
-				// proposées. Le schéma serveur accepte toute chaîne et la stocke
-				// telle quelle ; le type client est simplement plus étroit car
-				// "manager" n'est pas dans les `adminRoles` du plugin — l'ajouter
-				// révèlerait au contraire les endpoints admin au gérant.
-				role: role as "admin",
-			});
-			if (error) {
-				throw error;
-			}
-			return data;
+	const inviteMutation = useMutation({
+		mutationFn: async (values: InviteTeamMemberFormData) => {
+			return await inviteTeamMember({ data: values });
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: TEAM_QUERY_KEY });
+		},
+	});
+
+	const resendMutation = useMutation({
+		mutationFn: async (userId: string) => {
+			return await resendTeamInvitation({ data: { userId } });
 		},
 	});
 
@@ -136,21 +85,23 @@ function RouteComponent() {
 			name: "",
 			email: "",
 			role: "manager" as "admin" | "manager",
-			password: "",
-			confirmPassword: "",
 		},
 		validators: {
-			onSubmit: createTeamAccountSchema,
+			onSubmit: inviteTeamMemberSchema,
 		},
 		onSubmit: async ({ value }) => {
 			try {
-				await mutation.mutateAsync(value);
+				await inviteMutation.mutateAsync(value);
 				form.reset();
 				toast.success(
-					`Compte ${ROLE_LABELS[value.role]} créé : ${value.email}.`,
+					`Invitation envoyée à ${value.email} (${ROLE_LABELS[value.role]}).`,
 				);
 			} catch (error) {
-				toast.error(mapCreateError(error));
+				toast.error(
+					error instanceof Error
+						? error.message
+						: "Une erreur est survenue lors de l'envoi de l'invitation.",
+				);
 			}
 		},
 	});
@@ -160,15 +111,15 @@ function RouteComponent() {
 			<div>
 				<h2 className="text-lg font-semibold">Équipe</h2>
 				<p className="text-sm text-muted-foreground">
-					Créez les comptes d'accès au dashboard (administrateur ou gérant).
-					Chaque membre peut ensuite changer son mot de passe depuis « Mon
-					compte ».
+					Invitez les membres d'accès au dashboard (administrateur ou gérant).
+					Un email leur sera envoyé avec un lien pour qu'ils définissent
+					eux-mêmes leur mot de passe.
 				</p>
 			</div>
 
 			<Card>
 				<CardHeader>
-					<CardTitle>Ajouter un membre</CardTitle>
+					<CardTitle>Inviter un membre</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<form
@@ -242,7 +193,7 @@ function RouteComponent() {
 											<SelectTrigger id={field.name} className="w-full">
 												<SelectValue placeholder="Choisir un rôle" />
 											</SelectTrigger>
-											<SelectContent>
+											<SelectContent position="popper">
 												<SelectItem value="admin">Administrateur</SelectItem>
 												<SelectItem value="manager">Gérant</SelectItem>
 											</SelectContent>
@@ -257,64 +208,18 @@ function RouteComponent() {
 							/>
 						</div>
 
-						<div className="grid gap-4 sm:grid-cols-2">
-							<form.Field
-								name="password"
-								// biome-ignore lint/correctness/noChildrenProp: API TanStack Form (render prop)
-								children={(field) => (
-									<div className="flex flex-col gap-2">
-										<Label htmlFor={field.name}>Mot de passe</Label>
-										<Input
-											id={field.name}
-											name={field.name}
-											type="password"
-											autoComplete="new-password"
-											value={field.state.value}
-											onBlur={field.handleBlur}
-											onChange={(e) => field.handleChange(e.target.value)}
-										/>
-										{field.state.meta.errors.length > 0 && (
-											<p className="text-sm text-destructive">
-												{field.state.meta.errors.join(", ")}
-											</p>
-										)}
-									</div>
-								)}
-							/>
-
-							<form.Field
-								name="confirmPassword"
-								// biome-ignore lint/correctness/noChildrenProp: API TanStack Form (render prop)
-								children={(field) => (
-									<div className="flex flex-col gap-2">
-										<Label htmlFor={field.name}>
-											Confirmer le mot de passe
-										</Label>
-										<Input
-											id={field.name}
-											name={field.name}
-											type="password"
-											autoComplete="new-password"
-											value={field.state.value}
-											onBlur={field.handleBlur}
-											onChange={(e) => field.handleChange(e.target.value)}
-										/>
-										{field.state.meta.errors.length > 0 && (
-											<p className="text-sm text-destructive">
-												{field.state.meta.errors.join(", ")}
-											</p>
-										)}
-									</div>
-								)}
-							/>
-						</div>
+						<p className="text-xs text-muted-foreground">
+							Un email contenant un lien d'activation sécurisé sera
+							automatiquement envoyé à cette adresse pour lui permettre de
+							définir son mot de passe (lien valable 48h).
+						</p>
 
 						<Button
 							type="submit"
-							disabled={mutation.isPending}
+							disabled={inviteMutation.isPending}
 							className="self-start"
 						>
-							{mutation.isPending ? "Création..." : "Créer le compte"}
+							{inviteMutation.isPending ? "Envoi..." : "Inviter le membre"}
 						</Button>
 					</form>
 				</CardContent>
@@ -329,18 +234,20 @@ function RouteComponent() {
 								<TableHead>Nom</TableHead>
 								<TableHead>Email</TableHead>
 								<TableHead>Rôle</TableHead>
+								<TableHead>Statut</TableHead>
+								<TableHead className="w-24 text-right">Actions</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
 							{isPending ? (
 								<TableRow>
-									<TableCell colSpan={3} className="text-center">
+									<TableCell colSpan={5} className="text-center">
 										Chargement...
 									</TableCell>
 								</TableRow>
 							) : team && team.length === 0 ? (
 								<TableRow>
-									<TableCell colSpan={3} className="text-center">
+									<TableCell colSpan={5} className="text-center">
 										Aucun membre de l'équipe pour le moment.
 									</TableCell>
 								</TableRow>
@@ -363,6 +270,120 @@ function RouteComponent() {
 												{ROLE_LABELS[member.role]}
 											</Badge>
 										</TableCell>
+										<TableCell>
+											{member.hasPassword ? (
+												<Badge
+													variant="outline"
+													className="border-emerald-600/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+												>
+													Actif
+												</Badge>
+											) : (
+												<Badge
+													variant="outline"
+													className="border-amber-600/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+												>
+													En attente d'activation
+												</Badge>
+											)}
+										</TableCell>
+										<TableCell className="whitespace-nowrap">
+											<div className="flex items-center justify-end gap-2">
+												{!member.hasPassword && member.id !== user.id && (
+													<Button
+														variant="outline"
+														size="sm"
+														disabled={resendMutation.isPending}
+														onClick={async () => {
+															try {
+																await resendMutation.mutateAsync(member.id);
+																toast.success(
+																	`Invitation renvoyée à ${member.email}.`,
+																);
+															} catch (error) {
+																toast.error(
+																	error instanceof Error
+																		? error.message
+																		: "Impossible de renvoyer l'invitation.",
+																);
+															}
+														}}
+													>
+														Renvoyer l'invitation
+													</Button>
+												)}
+												{member.id !== user.id && (
+													<Button
+														variant="outline"
+														size="sm"
+														onClick={() => {
+															openDialog("editUserRole", {
+																userId: member.id,
+																userName: member.name,
+																currentRole: member.role,
+																onConfirm: async (newRole) => {
+																	const { error } =
+																		await authClient.admin.updateUser({
+																			userId: member.id,
+																			data: {
+																				role: newRole,
+																			},
+																		});
+																	if (error) {
+																		throw new Error(
+																			error.message ||
+																				"Impossible de modifier le rôle.",
+																		);
+																	}
+																	toast.success(
+																		`Rôle de ${member.name} mis à jour avec succès.`,
+																	);
+																	queryClient.invalidateQueries({
+																		queryKey: TEAM_QUERY_KEY,
+																	});
+																},
+															});
+														}}
+													>
+														Modifier le rôle
+													</Button>
+												)}
+												{member.id !== user.id && (
+													<Button
+														variant="destructive"
+														size="sm"
+														onClick={() => {
+															openDialog("confirmDelete", {
+																title: "Supprimer l'utilisateur",
+																description: `Voulez-vous vraiment supprimer le compte de ${member.name} ? Cette action est irréversible.`,
+																confirmLabel: "Supprimer définitivement",
+																onConfirm: async () => {
+																	try {
+																		await deleteUser({
+																			data: { id: member.id },
+																		});
+																		toast.success(
+																			`Compte de ${member.name} supprimé avec succès.`,
+																		);
+																		queryClient.invalidateQueries({
+																			queryKey: TEAM_QUERY_KEY,
+																		});
+																	} catch (error) {
+																		toast.error(
+																			error instanceof Error
+																				? error.message
+																				: "Une erreur est survenue lors de la suppression de l'utilisateur.",
+																		);
+																	}
+																},
+															});
+														}}
+													>
+														Supprimer
+													</Button>
+												)}
+											</div>
+										</TableCell>
 									</TableRow>
 								))
 							)}
@@ -370,6 +391,11 @@ function RouteComponent() {
 					</Table>
 				</div>
 			</section>
+
+			{/* Dialogs globales du store : modification de rôle et confirmation de
+			    suppression — les deux boutons d'action de chaque ligne les ouvrent. */}
+			<EditUserRoleDialog />
+			<ConfirmDeleteDialog />
 		</div>
 	);
 }

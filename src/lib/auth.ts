@@ -21,6 +21,25 @@ export const auth = betterAuth({
 	// Activé pour admin et équipe (Accès dashboard)
 	emailAndPassword: {
 		enabled: true,
+		resetPasswordTokenExpiresIn: 48 * 3600, // 48 heures pour les invitations
+		async sendResetPassword({ user, url }) {
+			const { canSendTeamInvitation, sendTeamInvitationEmail } = await import(
+				"#/lib/email/team-invitation"
+			);
+			const decision = await canSendTeamInvitation(user.email);
+			if (!decision.ok) {
+				console.log(
+					`✉️ [INVITATION ÉQUIPE] Envoi ignoré pour ${user.email} (${decision.reason}) — quota préservé ou utilisateur non éligible.`,
+				);
+				return;
+			}
+			await sendTeamInvitationEmail({
+				to: user.email.trim(),
+				name: decision.user.name,
+				role: decision.user.role,
+				url,
+			});
+		},
 	},
 
 	user: {

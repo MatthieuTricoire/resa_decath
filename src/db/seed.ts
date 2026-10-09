@@ -819,10 +819,13 @@ async function main() {
 		.values({
 			id: 1,
 			monthlyFee: "30.00",
-			commissionRate: "10.00",
+			commissionRateWeb: "10.00",
+			commissionRateStore: "5.00",
 		})
 		.onConflictDoNothing();
-	console.log("🔢 Paramètres de facturation créés (30 €/mois + 10 %).");
+	console.log(
+		"🔢 Paramètres de facturation créés (30 €/mois, 10 % Web, 5 % Magasin).",
+	);
 
 	console.log("🚀 Base de données peuplée avec succès !");
 	await pool.end();

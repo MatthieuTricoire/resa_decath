@@ -308,3 +308,11 @@ export const updateUser = createServerFn({ method: "POST" })
 
 		return { success: true };
 	});
+
+export const deleteUser = createServerFn({ method: "POST" })
+	.validator(z.object({ id: z.string() }))
+	.handler(async ({ data }) => {
+		await requireDashboardSession();
+		await db.delete(schema.user).where(eq(schema.user.id, data.id));
+		return { success: true };
+	});

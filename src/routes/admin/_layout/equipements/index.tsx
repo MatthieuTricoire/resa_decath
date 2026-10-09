@@ -56,6 +56,7 @@ import {
 import { queryKeys } from "#/features/equipements/query-keys";
 import {
 	getSeasonalAvailability,
+	SEASON_LABELS,
 	type SeasonalAvailability,
 } from "#/features/reservations/availability";
 import {
@@ -78,12 +79,6 @@ const statusLabel: Record<string, string> = {
 	AVAILABLE: "Disponible",
 	MAINTENANCE: "En maintenance",
 	RETIRED: "Retiré",
-};
-
-const seasonLabel: Record<VariantRow["season"], string> = {
-	all: "Toutes saisons",
-	winter: "Hiver",
-	summer: "Été",
 };
 
 const seasonalAvailabilityLabel: Record<SeasonalAvailability, string> = {
@@ -121,9 +116,10 @@ const isVariantReservable = (
 	}
 
 	return (
-		!settings.seasonalFilteringEnabled ||
-		getSeasonalAvailability({ season: variant.season }, settings, date) ===
-			"available"
+		// Rien de configuré en saison ne masque rien : seul un refus réel fait
+		// basculer la pastille au gris.
+		getSeasonalAvailability({ season: variant.season }, settings, date) !==
+		"out_of_season"
 	);
 };
 
@@ -270,7 +266,7 @@ function RouteComponent() {
 			cell: ({ row }) => (
 				<div className="flex min-w-32 flex-col gap-1">
 					<Badge variant="secondary" className="w-fit">
-						{seasonLabel[row.original.season]}
+						{SEASON_LABELS[row.original.season]}
 					</Badge>
 					{row.original.availableFrom && row.original.availableTo && (
 						<span className="text-xs text-muted-foreground">

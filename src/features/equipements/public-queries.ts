@@ -7,10 +7,13 @@ import * as schema from "#/db/schema";
 import {
 	availableQuantity,
 	evaluateItemAvailability,
+	evaluateSeasonWindow,
 	isItemOutOfSeason,
+	nextSeasonRestart,
 	type RentalAvailabilitySettings,
 	type RentalSeason,
 	STOCK_CONSUMING_STATUSES,
+	seasonRestartMessage,
 	stockShortage,
 } from "#/features/reservations/availability";
 import type { OpeningDaysSettings } from "#/features/reservations/opening-days";
@@ -440,10 +443,18 @@ export const getPublicActivities = createServerFn({ method: "GET" }).handler(
 				(candidate) => candidate.product.categorySlug === categorySlug,
 			);
 			const season = seasonByCategory.get(categorySlug);
-			if (!bundle || !season || season === "all") continue;
+			if (!bundle || !season) continue;
+			// Un produit mixte n'a pas de saison à lui : masqué, c'est qu'on est
+			// dans un trou d'inter-saison — il revient à la première saison qui
+			// démarre, et l'annonce n'a de sens que si cette date existe.
+			const returnSeason =
+				season !== "all"
+					? season
+					: (nextSeasonRestart(settings)?.season ?? null);
+			if (!returnSeason) continue;
 			hidden.push({
 				name: bundle.product.categoryName,
-				returnSeason: season,
+				returnSeason,
 			});
 		}
 
@@ -452,6 +463,28 @@ export const getPublicActivities = createServerFn({ method: "GET" }).handler(
 				a.name.localeCompare(b.name, "fr"),
 			),
 			hidden,
+		};
+	},
+);
+
+/**
+ * Bandeau d'inter-saison.
+ *
+ * Une fenêtre qui ne tombe dans aucune période configurée ferme tout le
+ * catalogue, mixte compris : le public a alors besoin d'une phrase plutôt que
+ * d'une page vide, et surtout d'une date de reprise. `null` dès qu'une seule
+ * saison reste active — ou que rien n'est filtré.
+ */
+export const getPublicSeasonNotice = createServerFn({ method: "GET" }).handler(
+	async (): Promise<{ message: string } | null> => {
+		const settings = await getRentalSettingsRecord();
+		const now = new Date();
+		if (!evaluateSeasonWindow({ season: "all" }, now, now, settings)) {
+			return null;
+		}
+		// Une inter-saison suppose des périodes configurées : la date existe.
+		return {
+			message: seasonRestartMessage(settings, now) ?? "Bientôt.",
 		};
 	},
 );
@@ -735,7 +768,10 @@ const cartQuoteSchema = z
 	})
 	.superRefine(checkWindow);
 
-const availabilityMessages: Record<string, (itemName: string) => string> = {
+const availabilityMessages: Record<
+	string,
+	(itemName: string, settings: RentalAvailabilitySettings) => string
+> = {
 	rentals_closed: () => "Les locations sont actuellement fermées.",
 	variant_unavailable: (itemName) =>
 		`« ${itemName} » n’est pas disponible à la location.`,
@@ -743,9 +779,12 @@ const availabilityMessages: Record<string, (itemName: string) => string> = {
 		`La période de disponibilité de « ${itemName} » ne couvre pas votre fenêtre de location.`,
 	below_minimum_duration: (itemName) =>
 		`La durée de location est trop courte pour « ${itemName} ».`,
-	season_not_configured: () => "Le calendrier saisonnier n’est pas configuré.",
-	outside_active_season: (itemName) =>
-		`« ${itemName} » n’est pas disponible sur toute votre fenêtre de location.`,
+	outside_active_season: (itemName, settings) => {
+		const restart = seasonRestartMessage(settings);
+		return `« ${itemName} » n’est pas disponible sur toute votre fenêtre de location.${
+			restart ? ` ${restart}` : ""
+		}`;
+	},
 };
 
 const pricingMessages: Record<string, string> = {
@@ -918,8 +957,11 @@ function quoteOneVariant(
 	if (!availability.available) {
 		const reason = availability.reason ?? "outside_active_season";
 		const message =
-			availabilityMessages[reason]?.(variant.itemName) ??
-			availabilityMessages.outside_active_season(variant.itemName);
+			availabilityMessages[reason]?.(variant.itemName, context.settings) ??
+			availabilityMessages.outside_active_season(
+				variant.itemName,
+				context.settings,
+			);
 		return {
 			variantId: variant.id,
 			status: "unavailable",

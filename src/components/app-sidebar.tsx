@@ -1,14 +1,10 @@
 import {
 	IconCalendarWeek,
-	IconCamera,
 	IconChartBar,
 	IconDashboard,
-	IconFileAi,
-	IconFileDescription,
 	IconReceiptEuro,
 	IconSettings,
 	IconStack3,
-	IconUser,
 	IconUserShield,
 	IconUsers,
 } from "@tabler/icons-react";
@@ -56,54 +52,6 @@ const data = {
 			icon: IconChartBar,
 		},
 	],
-	navClouds: [
-		{
-			title: "Capture",
-			icon: IconCamera,
-			isActive: true,
-			url: "#",
-			items: [
-				{
-					title: "Active Proposals",
-					url: "#",
-				},
-				{
-					title: "Archived",
-					url: "#",
-				},
-			],
-		},
-		{
-			title: "Proposal",
-			icon: IconFileDescription,
-			url: "#",
-			items: [
-				{
-					title: "Active Proposals",
-					url: "#",
-				},
-				{
-					title: "Archived",
-					url: "#",
-				},
-			],
-		},
-		{
-			title: "Prompts",
-			icon: IconFileAi,
-			url: "#",
-			items: [
-				{
-					title: "Active Proposals",
-					url: "#",
-				},
-				{
-					title: "Archived",
-					url: "#",
-				},
-			],
-		},
-	],
 	navSecondary: [
 		{
 			title: "Facturation",
@@ -120,11 +68,6 @@ const data = {
 			url: "/admin/equipe",
 			icon: IconUserShield,
 		},
-		{
-			title: "Mon compte",
-			url: "/admin/compte",
-			icon: IconUser,
-		},
 	],
 };
 
@@ -132,7 +75,7 @@ export function AppSidebar({
 	user,
 	...props
 }: {
-	user: { name: string; email: string; avatar: string };
+	user: { name: string; email: string; avatar: string; role?: string };
 } & React.ComponentProps<typeof Sidebar>) {
 	return (
 		<Sidebar collapsible="offcanvas" {...props}>

@@ -197,6 +197,7 @@ function RouteComponent() {
 							<TableHeader className="bg-muted/50">
 								<TableRow>
 									<TableHead>Client</TableHead>
+									<TableHead>Canal</TableHead>
 									<TableHead>Téléphone</TableHead>
 									<TableHead>Carte fidélité</TableHead>
 									<TableHead>Retrait</TableHead>
@@ -211,7 +212,7 @@ function RouteComponent() {
 								{isPending ? (
 									<TableRow>
 										<TableCell
-											colSpan={9}
+											colSpan={10}
 											className="h-24 text-center text-muted-foreground"
 										>
 											Chargement...
@@ -234,6 +235,23 @@ function RouteComponent() {
 												<div className="text-xs text-muted-foreground">
 													{r.clientEmail}
 												</div>
+											</TableCell>
+											<TableCell>
+												{r.source === "WEB" ? (
+													<Badge
+														variant="outline"
+														className="border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+													>
+														Web
+													</Badge>
+												) : (
+													<Badge
+														variant="outline"
+														className="border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+													>
+														Magasin
+													</Badge>
+												)}
 											</TableCell>
 											<TableCell className="text-sm">
 												{r.clientPhone ?? "—"}
@@ -297,7 +315,7 @@ function RouteComponent() {
 								) : (
 									<TableRow>
 										<TableCell
-											colSpan={9}
+											colSpan={10}
 											className="h-24 text-center text-muted-foreground"
 										>
 											Aucune réservation trouvée.
