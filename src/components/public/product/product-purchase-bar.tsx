@@ -20,6 +20,7 @@ export function ProductPurchaseBar({
 	quantityMax,
 	onQuantityChange,
 	label,
+	shortLabel,
 	icon,
 	disabled,
 	busy,
@@ -30,6 +31,7 @@ export function ProductPurchaseBar({
 	quantityMax: number;
 	onQuantityChange: (next: number) => void;
 	label: string;
+	shortLabel?: string;
 	icon: PurchaseCtaIcon;
 	disabled: boolean;
 	busy: boolean;
@@ -38,23 +40,36 @@ export function ProductPurchaseBar({
 }) {
 	const Icon = ICONS[icon];
 	return (
-		<div className={cn("flex items-center gap-3", !compact && "flex-wrap")}>
+		<div
+			className={cn(
+				"flex items-center gap-2 sm:gap-3",
+				!compact && "flex-wrap",
+			)}
+		>
 			<QuantityStepper
 				value={quantity}
 				max={quantityMax}
 				onChange={onQuantityChange}
 				hideLabel={compact}
+				size={compact ? "compact" : "default"}
 				className="shrink-0"
 			/>
 			<Button
 				size="lg"
-				className={cn(compact && "flex-1")}
+				className={cn("h-10", compact && "flex-1 min-w-0 shrink px-3 sm:px-4")}
 				onClick={onClick}
 				disabled={disabled}
 				aria-busy={busy}
 			>
-				<Icon className="size-4" aria-hidden="true" />
-				{label}
+				<Icon className="size-4 shrink-0" aria-hidden="true" />
+				{compact && shortLabel ? (
+					<>
+						<span className="truncate sm:hidden">{shortLabel}</span>
+						<span className="hidden truncate sm:inline">{label}</span>
+					</>
+				) : (
+					<span className="truncate">{label}</span>
+				)}
 			</Button>
 		</div>
 	);

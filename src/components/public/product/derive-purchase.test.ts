@@ -33,6 +33,7 @@ describe("derivePurchaseCta", () => {
 		expect(derivePurchaseCta(base).label).toBe(
 			"Ajouter à ma réservation (25,00 €)",
 		);
+		expect(derivePurchaseCta(base).shortLabel).toBe("Ajouter · 25,00 €");
 	});
 
 	it("désactive le bouton en rupture ou sans devis ferme", () => {

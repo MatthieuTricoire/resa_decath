@@ -10,6 +10,7 @@ export type PurchaseCtaIcon = "dates" | "duration" | "add";
 
 export type PurchaseCta = {
 	label: string;
+	shortLabel: string;
 	icon: PurchaseCtaIcon;
 	disabled: boolean;
 	/** Le bouton mène au sélecteur de dates au lieu d'ajouter au panier. */
@@ -41,8 +42,20 @@ export function derivePurchaseCta(input: {
 				: input.unitPrice !== null
 					? `Ajouter à ma réservation (${formatPrice(input.unitPrice * input.quantity)})`
 					: "Ajouter à ma réservation";
+
+	const shortLabel = !hasWindow
+		? "Choisir mes dates"
+		: durationNotPriced
+			? "Autre durée"
+			: soldOut || allSoldOut
+				? "Épuisé"
+				: input.unitPrice !== null
+					? `Ajouter · ${formatPrice(input.unitPrice * input.quantity)}`
+					: "Ajouter";
+
 	return {
 		label,
+		shortLabel,
 		icon: !hasWindow ? "dates" : durationNotPriced ? "duration" : "add",
 		disabled: !needsDates && (!bookableNow || soldOut),
 		needsDates,

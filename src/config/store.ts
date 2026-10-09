@@ -13,7 +13,7 @@
 import type { StoreHours } from "#/features/store-hours/types";
 
 export const store = {
-	name: "Décathlon Mountain",
+	name: "Decathlon Mountain",
 	city: "Laruns",
 	citySlug: "laruns",
 	postalCode: "64440",
@@ -28,7 +28,7 @@ export const store = {
 	paymentNotice: "Paiement et retrait en magasin, au comptoir location.",
 	defaultTitle: "Location de matériel de montagne à Laruns",
 	defaultDescription:
-		"Réservez en ligne votre matériel de montagne à Décathlon Mountain Laruns : escalade, randonnée, bivouac et via ferrata. Retrait et paiement en magasin.",
+		"Réservez en ligne votre matériel de montagne à Decathlon Mountain Laruns : escalade, randonnée, bivouac et via ferrata. Retrait et paiement en magasin.",
 	robots: { index: true, follow: true },
 	/** Origine publique servie par le SEO (canonical, JSON-LD, partages). */
 	siteOrigin: "https://www.decathlon-mountain-laruns.fr",

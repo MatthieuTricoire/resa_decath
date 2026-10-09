@@ -151,6 +151,7 @@ function ProductPage() {
 		quantityMax: purchase.quantityMax,
 		onQuantityChange: purchase.setQuantity,
 		label: purchase.cta.label,
+		shortLabel: purchase.cta.shortLabel,
 		icon: purchase.cta.icon,
 		disabled: purchase.cta.disabled,
 		busy: selection.isFetching,

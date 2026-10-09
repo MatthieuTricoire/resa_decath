@@ -1,5 +1,5 @@
 # https://www.robotstxt.org/robotstxt.html
-# Site public de Décathlon Mountain Laruns.
+# Site public de Decathlon Mountain Laruns.
 User-agent: *
 
 # Pages privées (comptes, panier, réservation, admin) : inutile de demander

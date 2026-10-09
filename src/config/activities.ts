@@ -51,7 +51,7 @@ export function getActivityCopy(
 		activityCopies[slug] ?? {
 			title: `Location de matériel ${name} à Laruns`,
 			lead: `Location de matériel ${name} au magasin de Laruns.`,
-			body: `Retrouvez tout le matériel ${name} disponible à la location à Décathlon Mountain Laruns, avec retrait et paiement en magasin.`,
+			body: `Retrouvez tout le matériel ${name} disponible à la location à Decathlon Mountain Laruns, avec retrait et paiement en magasin.`,
 			card: `Matériel ${name} disponible à la location.`,
 		}
 	);

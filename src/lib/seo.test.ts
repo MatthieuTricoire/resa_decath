@@ -19,13 +19,13 @@ import {
 describe("pageTitle", () => {
 	it("ajoute le suffixe de boutique", () => {
 		expect(pageTitle("Location de vélos")).toBe(
-			"Location de vélos – Décathlon Mountain",
+			"Location de vélos – Decathlon Mountain",
 		);
 	});
 
 	it("ne duplique pas le suffixe", () => {
-		expect(pageTitle("Vélos – Décathlon Mountain")).toBe(
-			"Vélos – Décathlon Mountain",
+		expect(pageTitle("Vélos – Decathlon Mountain")).toBe(
+			"Vélos – Decathlon Mountain",
 		);
 	});
 });
